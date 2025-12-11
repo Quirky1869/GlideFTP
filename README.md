@@ -1,2 +1,3 @@
 # GlideFTP
-Client FTP en Go
+
+![](./_images/Polatouche.png)
