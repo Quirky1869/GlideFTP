@@ -1,3 +1,3 @@
 # GlideFTP
 
-![](./_images/Polatouche-ori.png)  
+![](./_images/GlideFTP.jpeg)  
