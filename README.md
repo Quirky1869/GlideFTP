@@ -1,3 +1,3 @@
 # GlideFTP
 
-![](./_images/GlideFTP.jpeg)  
+![glide-ftp](./_images/glide-ftp.png)  
