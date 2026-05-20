@@ -30,29 +30,35 @@
 
   // ── Delete confirmation ───────────────────────────────────────────────────
 
-  let confirmDeleteEntry = null;
+  let confirmDeleteEntries = null; // array when confirmation pending
   let deleteError = '';
 
-  function handleDelete(entry) {
+  function handleDelete(entries) {
     closeContext();
+    if (!entries || entries.length === 0) return;
     if ($settings?.confirmOnDelete) {
-      confirmDeleteEntry = entry;
+      confirmDeleteEntries = entries;
     } else {
-      doDelete(entry);
+      doDeleteAll(entries);
     }
   }
 
-  async function doDelete(entry) {
+  async function doDeleteAll(entries) {
     deleteError = '';
-    try {
-      await onDelete(entry.path);
-      await onRefresh();
-    } catch (e) {
-      deleteError = e?.message || e?.toString() || 'Delete failed';
-      setTimeout(() => { deleteError = ''; }, 4000);
-      await onRefresh(); // refresh anyway so UI reflects actual state
+    let lastError = null;
+    for (const entry of entries) {
+      try {
+        await onDelete(entry.path);
+      } catch (e) {
+        lastError = e?.message || e?.toString() || 'Delete failed';
+      }
     }
-    confirmDeleteEntry = null;
+    if (lastError) {
+      deleteError = lastError;
+      setTimeout(() => { deleteError = ''; }, 4000);
+    }
+    await onRefresh();
+    confirmDeleteEntries = null;
   }
 
   // ── Editable path bar ─────────────────────────────────────────────────────
@@ -323,7 +329,7 @@
     }
     if (e.key === 'Delete' && selected.length > 0 && !renamingEntry) {
       e.preventDefault();
-      handleDelete(selected[0]);
+      handleDelete(selected);
     }
   }
 
@@ -551,7 +557,7 @@
         {$t('transfer')}
       </button>
       <hr class="menu-sep" />
-      <button class="danger" on:click={() => handleDelete(contextEntry)}>
+      <button class="danger" on:click={() => handleDelete(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry])}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         {$t('delete')}
       </button>
@@ -560,17 +566,23 @@
 {/if}
 
 <!-- Delete confirmation dialog -->
-{#if confirmDeleteEntry}
-  <div class="confirm-overlay" on:click|self={() => confirmDeleteEntry = null}>
+{#if confirmDeleteEntries}
+  <div class="confirm-overlay" on:click|self={() => confirmDeleteEntries = null}>
     <div class="confirm-box" on:click|stopPropagation>
       <div class="confirm-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
       <div class="confirm-msg">{$t('confirmDeleteFile')}</div>
-      <div class="confirm-name">{confirmDeleteEntry.name}</div>
+      <div class="confirm-name">
+        {#if confirmDeleteEntries.length === 1}
+          {confirmDeleteEntries[0].name}
+        {:else}
+          {confirmDeleteEntries.length} {$t('items')}
+        {/if}
+      </div>
       <div class="confirm-actions">
-        <button class="confirm-del-btn" on:click={() => doDelete(confirmDeleteEntry)}>{$t('deleteConfirm')}</button>
-        <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntry = null}>{$t('cancel')}</button>
+        <button class="confirm-del-btn" on:click={() => doDeleteAll(confirmDeleteEntries)}>{$t('deleteConfirm')}</button>
+        <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntries = null}>{$t('cancel')}</button>
       </div>
     </div>
   </div>

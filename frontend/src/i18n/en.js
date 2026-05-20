@@ -119,6 +119,7 @@ export default {
   // Delete confirmation
   confirmDeleteFile: 'Delete this item?',
   deleteConfirm: 'Delete',
+  items: 'items',
 
   // Errors
   connectError: 'Connection failed',

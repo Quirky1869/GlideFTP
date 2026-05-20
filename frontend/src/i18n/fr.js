@@ -119,6 +119,7 @@ export default {
   // Delete confirmation
   confirmDeleteFile: 'Supprimer cet élément ?',
   deleteConfirm: 'Supprimer',
+  items: 'éléments',
 
   // Errors
   connectError: 'Connexion échouée',
