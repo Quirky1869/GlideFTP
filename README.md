@@ -27,13 +27,13 @@
 
 ### Screenshots
 
-|Main|Sites|
+|Main|Saved sites|
 |----|-----|
-| ![](./_images/main-en-d.png) | ![](./_images/sites-fr-d.png) |
+| ![](./_images/main-en-d.png) | ![](./_images/saved-sites-en-d.png) |
 
-|SFTP|Saved sites|
+|SFTP|Sites|
 |----|-----------|
-| ![](./_images/sftp-fr-w.png) | ![](./_images/saved-sites-en-d.png) |
+| ![](./_images/sftp-fr-w.png) | ![](./_images/sites-fr-d.png) |
 
 |Connected|Settings|
 |---------|--------|
@@ -117,13 +117,13 @@ The binary will be generated in `build/bin/`.
 
 ### Screenshots
 
-|Main|Sites|
+|Main|Sites Sauvegardés|
 |:----:|:-----:|
-| ![](./_images/main-en-d.png) | ![](./_images/sites-fr-d.png) |
+| ![](./_images/main-en-d.png) | ![](./_images/saved-sites-en-d.png) |
 
-|SFTP|Sites Sauvegardés|
+|SFTP|Sites|
 |:----:|:-----------:|
-| ![](./_images/sftp-fr-w.png) | ![](./_images/saved-sites-en-d.png) |
+| ![](./_images/sftp-fr-w.png) | ![](./_images/sites-fr-d.png) |
 
 |Connecté|Paramètres|
 |:---------:|:--------:|
