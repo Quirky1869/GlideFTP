@@ -60,6 +60,8 @@ export function RemoteMkDir(arg1:string):Promise<void>;
 
 export function RemoteRename(arg1:string,arg2:string):Promise<void>;
 
+export function RemoveTransfer(arg1:string):Promise<void>;
+
 export function RetryTransfer(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;

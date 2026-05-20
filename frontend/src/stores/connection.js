@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import {
   Connect, Disconnect, GetConnectionStatus,
+  ConnectToSite,
   RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename,
   LocalListDir, LocalMkDir, LocalDelete, LocalRename,
   GetLocalHome, GetLocalParent, GetLocalRoots,
@@ -18,10 +19,10 @@ export const remotePath = writable('/');
 export const remoteEntries = writable([]);
 export const remoteSelected = writable([]);
 
-export async function initLocalDir() {
-  const home = await GetLocalHome();
-  localPath.set(home);
-  await refreshLocal(home);
+export async function initLocalDir(startDir) {
+  const dir = startDir || await GetLocalHome();
+  localPath.set(dir);
+  await refreshLocal(dir);
 }
 
 export async function refreshLocal(path) {
@@ -73,6 +74,19 @@ export async function disconnect() {
   remoteEntries.set([]);
   remotePath.set('/');
   remoteSelected.set([]);
+}
+
+export async function connectBySite(id) {
+  connectionStatus.set('connecting');
+  connectionError.set('');
+  try {
+    await ConnectToSite(id);
+    connectionStatus.set('connected');
+  } catch (e) {
+    connectionStatus.set('disconnected');
+    connectionError.set(e?.toString() || 'Connection failed');
+    throw e;
+  }
 }
 
 export async function localMkDir(path) {

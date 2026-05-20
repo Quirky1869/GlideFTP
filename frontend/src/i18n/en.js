@@ -60,6 +60,7 @@ export default {
   yes: 'Yes',
   no: 'No',
   remoteDir: 'Default remote directory',
+  remoteDirHint: 'Directory to navigate to after connecting',
 
   // Auth types
   authAnonymous: 'Anonymous',

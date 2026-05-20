@@ -1,8 +1,29 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { transfers, cancelTransfer, retryTransfer, clearTransfers, formatBytes, progressPct, queueVisible } from '../stores/transfers.js';
+  import { transfers, cancelTransfer, retryTransfer, clearTransfers, removeTransfer, formatBytes, progressPct, queueVisible } from '../stores/transfers.js';
 
   let activeTab = 'pending';
+  let queueHeight = 220;
+  let resizing = false;
+  let startY = 0;
+  let startHeight = 0;
+
+  function startResize(e) {
+    resizing = true;
+    startY = e.clientY;
+    startHeight = queueHeight;
+    e.preventDefault();
+    const onMove = (ev) => {
+      queueHeight = Math.max(80, Math.min(500, startHeight - (ev.clientY - startY)));
+    };
+    const onUp = () => {
+      resizing = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
 
   $: pending = $transfers.filter(j => j.status === 'pending' || j.status === 'running');
   $: failed = $transfers.filter(j => j.status === 'failed' || j.status === 'cancelled');
@@ -21,7 +42,8 @@
   }
 </script>
 
-<div class="queue-panel">
+<div class="queue-panel" style="height: {queueHeight}px;">
+  <div class="queue-resize-handle" class:active={resizing} on:mousedown={startResize}></div>
   <div class="queue-header">
     <span class="queue-title">{$t('transferQueue')}</span>
     <div class="tabs">
@@ -74,6 +96,9 @@
             {#if job.status === 'failed'}
               <button class="small-btn" on:click={() => retryTransfer(job.id)}>{$t('retry')}</button>
             {/if}
+            {#if job.status === 'done' || job.status === 'failed' || job.status === 'cancelled'}
+              <button class="remove-btn" on:click={() => removeTransfer(job.id)} title="Supprimer">×</button>
+            {/if}
           </div>
         </div>
       {/each}
@@ -87,7 +112,20 @@
   flex-direction: column;
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
-  max-height: 220px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.queue-resize-handle {
+  height: 4px;
+  cursor: row-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.queue-resize-handle:hover, .queue-resize-handle.active {
+  background: var(--accent);
 }
 
 .queue-header {
@@ -275,5 +313,21 @@
   display: flex;
   gap: 4px;
   margin-top: 4px;
+  align-items: center;
+}
+
+.remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+  margin-left: auto;
+}
+
+.remove-btn:hover {
+  color: var(--danger);
 }
 </style>

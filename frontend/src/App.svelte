@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { t } from './i18n/index.js';
   import { loadSettings } from './stores/settings.js';
   import {
@@ -11,7 +12,7 @@
     localMkDir, localDelete, localRename,
     remoteMkDir, remoteDelete, remoteRename,
   } from './stores/connection.js';
-  import { transfers, queueVisible, initTransfers } from './stores/transfers.js';
+  import { transfers, queueVisible, initTransfers, completedTransfer } from './stores/transfers.js';
   import ConnectionBar from './components/ConnectionBar.svelte';
   import FileBrowser from './components/FileBrowser.svelte';
   import TransferQueue from './components/TransferQueue.svelte';
@@ -21,20 +22,62 @@
   let showSettings = false;
   let showSiteManager = false;
 
+  // Resizable split pane
+  let leftWidth = 50; // percent
+  let resizing = false;
+  let dualBrowserEl;
+
   $: isConnected = $connectionStatus === 'connected';
   $: pendingCount = $transfers.filter(j => j.status === 'pending' || j.status === 'running').length;
 
   onMount(async () => {
-    await loadSettings();
-    await initLocalDir();
+    const s = await loadSettings();
+    await initLocalDir(s?.defaultLocalDir || '');
     await initTransfers();
   });
+
+  // Auto-refresh both panels when a transfer completes
+  $: if ($completedTransfer) {
+    if (get(connectionStatus) === 'connected') {
+      refreshLocal(get(localPath));
+      refreshRemote(get(remotePath));
+    }
+  }
 
   function handleKeydown(e) {
     if (e.key === 'Escape') {
       showSettings = false;
       showSiteManager = false;
     }
+  }
+
+  // Settings saved — refresh file lists so showHiddenFiles takes effect
+  function handleSettingsSaved() {
+    if (isConnected) {
+      refreshLocal(get(localPath));
+      refreshRemote(get(remotePath));
+    } else {
+      refreshLocal(get(localPath));
+    }
+  }
+
+  // ── Resizable split pane ──────────────────────────────────────────────────
+
+  function startResize(e) {
+    resizing = true;
+    e.preventDefault();
+    const onMove = (ev) => {
+      if (!dualBrowserEl) return;
+      const rect = dualBrowserEl.getBoundingClientRect();
+      leftWidth = Math.max(20, Math.min(80, ((ev.clientX - rect.left) / rect.width) * 100));
+    };
+    const onUp = () => {
+      resizing = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 </script>
 
@@ -44,7 +87,7 @@
   <!-- ── Topbar ──────────────────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-left">
-      <span class="app-logo">⚡ GlideFTP</span>
+      <span class="app-logo">GlideFTP</span>
     </div>
     <div class="topbar-center">
       {#if isConnected}
@@ -92,48 +135,60 @@
       <!-- ── Disconnected: centered connection form ─────────────── -->
       <div class="connect-center">
         <div class="connect-card">
-          <div class="connect-logo">⚡</div>
           <h1 class="connect-title">GlideFTP</h1>
           <p class="connect-subtitle">{$t('connectFirst')}</p>
-          <ConnectionBar />
+          <div class="connect-bar-wrap">
+            <ConnectionBar />
+          </div>
+          <p class="connect-sites-hint">
+            <button class="link-btn" on:click={() => showSiteManager = true}>{$t('manageSites')}</button>
+          </p>
         </div>
       </div>
 
     {:else}
       <!-- ── Connected: dual file browser ──────────────────────── -->
-      <div class="dual-browser">
-        <FileBrowser
-          side="local"
-          path={$localPath}
-          entries={$localEntries}
-          selected={$localSelected}
-          otherPath={$remotePath}
-          onNavigate={refreshLocal}
-          onNavigateUp={() => navigateLocalUp($localPath)}
-          onRefresh={() => refreshLocal($localPath)}
-          onMkDir={localMkDir}
-          onDelete={localDelete}
-          onRename={localRename}
-        />
-        <div class="browser-divider"></div>
-        <FileBrowser
-          side="remote"
-          path={$remotePath}
-          entries={$remoteEntries}
-          selected={$remoteSelected}
-          otherPath={$localPath}
-          onNavigate={refreshRemote}
-          onNavigateUp={async () => {
-            const parts = $remotePath.split('/').filter(Boolean);
-            parts.pop();
-            const parent = '/' + parts.join('/');
-            await refreshRemote(parent || '/');
-          }}
-          onRefresh={() => refreshRemote($remotePath)}
-          onMkDir={remoteMkDir}
-          onDelete={remoteDelete}
-          onRename={remoteRename}
-        />
+      <div class="dual-browser" bind:this={dualBrowserEl}>
+        <div class="browser-panel" style="width: {leftWidth}%">
+          <FileBrowser
+            side="local"
+            path={$localPath}
+            entries={$localEntries}
+            selected={$localSelected}
+            otherPath={$remotePath}
+            onNavigate={refreshLocal}
+            onNavigateUp={() => navigateLocalUp($localPath)}
+            onRefresh={() => refreshLocal($localPath)}
+            onMkDir={localMkDir}
+            onDelete={localDelete}
+            onRename={localRename}
+          />
+        </div>
+        <div
+          class="browser-splitter"
+          class:active={resizing}
+          on:mousedown={startResize}
+          title="Drag to resize"
+        ></div>
+        <div class="browser-panel" style="flex: 1; min-width: 0;">
+          <FileBrowser
+            side="remote"
+            path={$remotePath}
+            entries={$remoteEntries}
+            selected={$remoteSelected}
+            otherPath={$localPath}
+            onNavigate={refreshRemote}
+            onNavigateUp={async () => {
+              const parts = $remotePath.split('/').filter(Boolean);
+              parts.pop();
+              await refreshRemote('/' + parts.join('/') || '/');
+            }}
+            onRefresh={() => refreshRemote($remotePath)}
+            onMkDir={remoteMkDir}
+            onDelete={remoteDelete}
+            onRename={remoteRename}
+          />
+        </div>
       </div>
     {/if}
 
@@ -146,7 +201,7 @@
 
   <!-- ── Overlays ───────────────────────────────────────────────── -->
   {#if showSettings}
-    <SettingsPanel onClose={() => showSettings = false} />
+    <SettingsPanel onClose={() => showSettings = false} onSaved={handleSettingsSaved} />
   {/if}
 
   {#if showSiteManager}
@@ -157,6 +212,7 @@
 <style>
 #app-root {
   height: 100vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -173,6 +229,7 @@
   gap: 8px;
   flex-shrink: 0;
   z-index: 10;
+  overflow: hidden;
 }
 
 .topbar-left {
@@ -187,6 +244,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+/* Override ConnectionBar styles when inside topbar */
+.topbar-center :global(.conn-bar) {
+  background: transparent;
+  border-bottom: none;
+  padding: 0;
+}
+/* Hide labels in topbar to keep it single-row */
+.topbar-center :global(.field-group label) {
+  display: none;
+}
+.topbar-center :global(.conn-fields) {
+  align-items: center;
 }
 
 .topbar-right {
@@ -217,6 +289,7 @@
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
   position: relative;
+  white-space: nowrap;
 }
 
 .topbar-btn:hover, .topbar-btn.active {
@@ -244,9 +317,7 @@
   padding: 1px 5px;
 }
 
-.queue-btn.has-activity {
-  color: var(--accent);
-}
+.queue-btn.has-activity { color: var(--accent); }
 
 /* ── Main content ────────────────────────────────────────────────── */
 .main-content {
@@ -270,19 +341,14 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 32px;
+  padding: 32px 32px 24px;
   width: 100%;
-  max-width: 680px;
+  max-width: 700px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-}
-
-.connect-logo {
-  font-size: 48px;
-  line-height: 1;
+  gap: 10px;
 }
 
 .connect-title {
@@ -294,7 +360,38 @@
 .connect-subtitle {
   font-size: 13px;
   color: var(--text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+}
+
+/* ConnectionBar inside the card: remove bar styling */
+.connect-bar-wrap {
+  width: 100%;
+}
+
+.connect-bar-wrap :global(.conn-bar) {
+  background: transparent;
+  border-bottom: none;
+  padding: 0;
+}
+
+.connect-bar-wrap :global(.conn-fields) {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.connect-sites-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  text-decoration: underline;
 }
 
 /* ── Dual file browser ───────────────────────────────────────────── */
@@ -305,9 +402,24 @@
   min-height: 0;
 }
 
-.browser-divider {
-  width: 1px;
-  background: var(--border);
+.browser-panel {
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.browser-splitter {
+  width: 5px;
   flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.browser-splitter:hover, .browser-splitter.active {
+  background: var(--accent);
 }
 </style>

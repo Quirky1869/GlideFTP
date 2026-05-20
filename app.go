@@ -214,3 +214,7 @@ func (a *App) RetryTransfer(id string) error {
 func (a *App) ClearTransfers(status string) {
 	a.queue.Clear(transfer.JobStatus(status))
 }
+
+func (a *App) RemoveTransfer(id string) error {
+	return a.queue.RemoveJob(id)
+}

@@ -195,6 +195,19 @@ func (q *Queue) Clear(status JobStatus) {
 	q.emitter("transfer:cleared", status)
 }
 
+func (q *Queue) RemoveJob(id string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for i, job := range q.jobs {
+		if job.ID == id && job.Status != StatusRunning && job.Status != StatusPending {
+			q.jobs = append(q.jobs[:i], q.jobs[i+1:]...)
+			q.emitter("transfer:removed", id)
+			return nil
+		}
+	}
+	return fmt.Errorf("job not found or still active")
+}
+
 func (q *Queue) Retry(id string) error {
 	q.mu.Lock()
 	var found *Job

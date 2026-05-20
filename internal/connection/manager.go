@@ -27,9 +27,13 @@ func NewManager() *Manager {
 
 func (m *Manager) Connect(cfg Config) error {
 	m.mu.Lock()
-	if m.status == StatusConnecting || m.status == StatusConnected {
+	if m.status == StatusConnecting {
 		m.mu.Unlock()
-		return fmt.Errorf("already connected or connecting")
+		return fmt.Errorf("already connecting, please wait")
+	}
+	if m.status == StatusConnected && m.client != nil {
+		m.client.Disconnect()
+		m.client = nil
 	}
 	m.status = StatusConnecting
 	m.cfg = cfg

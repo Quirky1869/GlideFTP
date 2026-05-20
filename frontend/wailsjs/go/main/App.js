@@ -110,6 +110,10 @@ export function RemoteRename(arg1, arg2) {
   return window['go']['main']['App']['RemoteRename'](arg1, arg2);
 }
 
+export function RemoveTransfer(arg1) {
+  return window['go']['main']['App']['RemoveTransfer'](arg1);
+}
+
 export function RetryTransfer(arg1) {
   return window['go']['main']['App']['RetryTransfer'](arg1);
 }

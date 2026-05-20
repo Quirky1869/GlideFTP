@@ -46,15 +46,16 @@ GlideFTP/
 │       └── local.go               # Local filesystem helpers (ListDir, MkDir, Delete, Rename)
 └── frontend/src/
     ├── App.svelte                  # Root: disconnected (centered form) vs connected (dual panel)
+    ├── style.css                   # Global CSS vars (themes: dark/light), html/body/app layout
     ├── i18n/{en,fr,index}.js       # EN/FR i18n via Svelte derived store
     ├── stores/
-    │   ├── settings.js             # Loads/saves settings, applies theme to <html data-theme>
+    │   ├── settings.js             # Loads/saves settings; loadSettings() returns the settings object
     │   ├── connection.js           # Connection state, local+remote path/entries stores
-    │   └── transfers.js            # Transfer list store; subscribes to Wails events
+    │   └── transfers.js            # Transfer list store; completedTransfer store; Wails event subs
     └── components/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button
-        ├── FileBrowser.svelte      # Single panel (local or remote): nav, rename, delete, transfer
-        ├── TransferQueue.svelte    # Bottom panel, 3 tabs: pending/failed/done
+        ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
+        ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
         ├── SettingsPanel.svelte    # Sliding panel (75% width from right)
         └── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
 ```
@@ -62,9 +63,54 @@ GlideFTP/
 ## Key Design Decisions
 
 - **One `App` struct** in `app.go` is the single Wails binding — all methods on it are exposed to JS automatically.
-- **Transfer progress** uses `runtime.EventsEmit` from Go → frontend subscribes with `EventsOn('transfer:progress', ...)`.
+- **Transfer progress** uses `runtime.EventsEmit` from Go → frontend subscribes with `EventsOn('transfer:progress', ...)`. Removal emits `transfer:removed`.
 - **Theme** is applied via `document.documentElement.setAttribute('data-theme', 'dark'|'light')` — CSS vars defined in `style.css`.
 - **i18n** is a Svelte `derived` store — `$t('key')` reactively switches language with no page reload.
 - **Config files** are stored in the OS user config dir (`os.UserConfigDir()`): cross-platform without hardcoding paths.
 - **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`).
 - **FTP passive mode** is the default (configurable in settings).
+- **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting — no "already connected" error.
+- **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
+
+## WebKit-GTK UI Patterns (Linux)
+
+The Wails WebView on Linux uses WebKit-GTK. Two native HTML patterns are broken and **must not be used**:
+
+1. **Hidden checkbox toggles** (`<label><input type="checkbox" hidden>`) — checkboxes never fire click events when hidden this way. **Use `<button class="sw" class:on={val} on:click={() => toggle(key)}>` instead.** See `SettingsPanel.svelte` for reference.
+
+2. **Native number input spinners** — unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`.
+
+## FileBrowser Features
+
+`FileBrowser.svelte` receives `side` ('local'|'remote'), `path`, `entries`, `selected`, `otherPath`, and action callbacks.
+
+- **".." entry**: always shown at the top; click/dblclick calls `onNavigateUp`
+- **Editable path bar**: click the path display to enter edit mode; Enter navigates, Esc cancels
+- **Column sort**: click Name/Size/Date headers; dirs always listed first; second click reverses order
+- **Multi-select**: Ctrl+click toggles, Shift+click range-selects
+- **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2
+- **Right-click context menu**: on a file → Rename / Transfer / Delete; on empty area → New Folder
+- **Drag & drop**: rows are `draggable`; `dataTransfer.setData('application/glideftp', JSON.stringify({ path, name, fromSide }))`. Drop checks `fromSide !== side` then queues transfer via `UploadFile`/`DownloadFile`.
+
+## App.svelte Layout
+
+- **Disconnected**: centered `.connect-card` with `ConnectionBar` and a link to open `SiteManager`
+- **Connected**: dual-panel `FileBrowser` layout with a draggable `.browser-splitter` (20–80% range via `leftWidth` percent)
+- **Auto-refresh**: `$: if ($completedTransfer)` triggers `refreshLocal` + `refreshRemote` after any finished transfer
+- **Settings saved**: `handleSettingsSaved()` refreshes file lists so changes (e.g. showHiddenFiles) take effect immediately
+
+## Key Stores & Functions
+
+| Export | File | Purpose |
+|---|---|---|
+| `completedTransfer` | transfers.js | Writable; set to `{ ...job, _ts }` when a transfer finishes; used to trigger auto-refresh |
+| `removeTransfer(id)` | transfers.js | Calls `RemoveTransfer` Go binding; frontend removes via `transfer:removed` event |
+| `connectBySite(id)` | connection.js | Sets `connectionStatus` store correctly (connecting→connected/disconnected); use instead of calling `ConnectToSite` Go binding directly |
+| `initLocalDir(startDir?)` | connection.js | Initializes local panel; pass `defaultLocalDir` from settings on startup |
+| `loadSettings()` | settings.js | Returns the loaded settings object (in addition to updating the store) |
+
+## Go Backend Notes
+
+- `queue.RemoveJob(id)` — removes a finished/cancelled/failed job; emits `transfer:removed` event
+- `app.RemoveTransfer(id)` — JS-callable wrapper around `queue.RemoveJob`
+- `manager.Connect()` — disconnects existing client first if already connected (enables reconnection from SiteManager)

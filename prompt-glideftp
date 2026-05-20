@@ -37,9 +37,56 @@ _________
 
 ISSUES :
 
-1 = quand sur l'écran de connexion (quand je lance l'appli, je créer un nouveau sites et que je clique ensuite dessus puis sur "connecter" le logiciel reste sur la page de connexion sans m'afficher les fichiers distants ou local et j'ai l'erreur : "already connected or connecting" de JavaScript - wails://wails/
+1 = Le Front de la page de connexion n'est pas correct --- regarde dans ./_images/issues/issue-1.png
 
-2 = Le Front de la page de connexion n'est pas correct
+2 = quand sur l'écran de connexion (quand je lance l'appli, je créer un nouveau sites et que je clique ensuite dessus puis sur "connecter" le logiciel reste sur la page de connexion sans m'afficher les fichiers distants ou local et j'ai l'erreur : "already connected or connecting" de JavaScript - wails://wails/ --- regarde dans ./_images/issues/issue-2.png et issue-2.1.png
 
-3 = Quand je met l'aplication en grand sur l'écran elle n'est pas capable de s'adapter à tout l'écran elle reste à une taille maximale
+3 = Quand je met mon application en grand elle ne s'adapte pas à l'écran mais reste bloquer à une taille maximum --- regarde dans ./_images/issues/issue-2.png et issue-3.png
+
+4 = Une fois connecté le bandeau en haut n'est pas bien aligner on ne vois pas certaine boutons qui sont au finale derirere une bannierre --- regarde dans ./_images/issues/issue-4.png
+
+5 = Pour les sites enregistrés il faut rajouter un input avec une note dessous "Répertoire distant par défaut"
+
+6 = une fois connecté et qu'on accès au fichier il faudrait avoir un dossier ".." pour pouvoir faire un retour arriere (il sera là en plus de la fleche que tu as deja créer ca c'est super)
+
+7 = Le drag and drop pour transférer un fichier ne fonctionne pas
+
+8 = Il n'y a pas la possibilité pour l'utilisateur de passer sa souris au milieu pour redimmensionner la taille de lhote et du serveur distant et pareil pour la file d'attente elle n'est pas réglable
+
+9 = Quand on transfere un fichier l'actualisation des fichiers distants et en local ne se fait pas toute seul il faut obligatoirement cliquer sur le bouton actualiser, il faut que ca s'actualise tous seul
+
+10 = Je ne peux pas faire un clique droit pourcréer un dossier par exmeple sur l'hote ou a distance, il faudrait aussi avoir la possibilité de faire un clique droit et -> transférer   
+
+11 = Il n'y a pas la possibiliter de trier les fichiers par nom, taille ou date 
+
+12 = je ne peut pas selectionner plusieur fichiers avec shift + clic ou ctrl + clic ni meme avec la souris en restant appuyer sur le bouton gauche
+
+13 = Le raccourci F2 ne fonctionne pas pour renommer un fichier /dossier
+
+14 = une fois connecter je ne peut plus aller dans paramètre et cocher l'option "afficher les fichiers cachés"
+
+_____
+
+15 = Sur l'appli je ne peux pas écrire moi même le chemin voulu en haut ni sur l'hote ni sur le serveur distant (exemple : /test/encore-test) 
+
+16 = Une fois connecté le bndeau du haut est un peu "mordu" on le vois sur le logo rouge "déconnecter" --- regarde dans ./_images/issues/issue-5.png
+
+17 = dans la file de transfert j'i vu ue je pouvais cliquer sur "vider" pour enlever tous les fichiers de transferts réussis mis je ne peut pas le fire un par un est-til possible de rendre cela possible en cliquant sur "done"
+
+18 = J'ai remarque que beaucoup de paramètre ne fonctionne pas, je n'ai que la langue, le darktheme qui fonctionne tous le reste ne fonctionne pas ; par exemple je ne peut pas régler la valeur du port part défaut les fleche ne fonctionne pas et tout le reste ne fonctionne pas non plus j'ai aussi essayer de changer l'emplacement par defaut pour le mettre dans /home/mon-user/Téléchargements -> ca s'affich bien dans l'application mais lorsque je me reconnecte à mon serveur distant il continue de s'ouvrir sur /home/mon-user ; les boutons "on/off" ne fonctionne pass non plus comme "afficher les fichiers cachés"
+
+_____
+
+19 = c'est possible d'avoir une autocomplétion quand on tape le chemin manuellement en haut ?
+
+20 = Peut tu rajouter un input "note" pour que l'utilisateur puisse noter ce qu'il veux sur chaque sites renseignée --- regarde dans ./_images/issues/issue-6.png
+
+21 = Le bouton "suppr" ne fonctionne pas pour supprimer un fichier ou dossier ni en local ni sur l'hote distant, de plus fait en sorte de mettre un paramtre suplémentaire avec un bouton on/off pour donner le choix à l'utilisateur s'il veux une confirmation avant la suppression  d'un élément, pour la confirmation tu doit générer un pop-up qui sera présent si l'option est coché par l'utilisateur
+
+22 = Dans les options il faut ajouter une limite de transfert en Mo (cest au cas où un user n'a pas une bonne connexion)
+
+23 = Le choix "demander le mot de passe" ne fonctionne pas quand j'ajoute un nouveaux site, le mot de passe reste enregistrer dans l'application
+
+24 = Peut ton faire ne sorte de générer un export des sites enregistrés pour par exemple les importer sur un autre ordinateur sur GlideFTP ? (en json par exemple ?)
+
 

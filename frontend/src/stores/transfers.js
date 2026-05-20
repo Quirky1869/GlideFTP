@@ -1,9 +1,10 @@
 import { writable } from 'svelte/store';
 import { EventsOn } from '../../wailsjs/runtime/runtime.js';
-import { GetTransfers, CancelTransfer, RetryTransfer, ClearTransfers } from '../../wailsjs/go/main/App.js';
+import { GetTransfers, CancelTransfer, RetryTransfer, ClearTransfers, RemoveTransfer } from '../../wailsjs/go/main/App.js';
 
 export const transfers = writable([]);
 export const queueVisible = writable(false);
+export const completedTransfer = writable(null);
 
 export async function initTransfers() {
   try {
@@ -17,6 +18,9 @@ export async function initTransfers() {
 
   EventsOn('transfer:update', (job) => {
     transfers.update(list => list.map(j => j.id === job.id ? job : j));
+    if (job.status === 'done') {
+      completedTransfer.set({ ...job, _ts: Date.now() });
+    }
   });
 
   EventsOn('transfer:progress', (job) => {
@@ -25,6 +29,10 @@ export async function initTransfers() {
 
   EventsOn('transfer:cleared', (status) => {
     transfers.update(list => list.filter(j => j.status !== status));
+  });
+
+  EventsOn('transfer:removed', (id) => {
+    transfers.update(list => list.filter(j => j.id !== id));
   });
 }
 
@@ -42,6 +50,10 @@ export async function retryTransfer(id) {
 
 export async function clearTransfers(status) {
   await ClearTransfers(status);
+}
+
+export async function removeTransfer(id) {
+  await RemoveTransfer(id);
 }
 
 export function formatBytes(bytes) {

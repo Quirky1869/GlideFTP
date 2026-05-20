@@ -60,6 +60,7 @@ export default {
   yes: 'Oui',
   no: 'Non',
   remoteDir: 'Répertoire distant par défaut',
+  remoteDirHint: 'Répertoire dans lequel naviguer après la connexion',
 
   // Auth types
   authAnonymous: 'Anonyme',

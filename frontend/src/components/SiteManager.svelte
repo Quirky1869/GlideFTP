@@ -1,8 +1,7 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, ConnectToSite, BrowseSSHKey } from '../../wailsjs/go/main/App.js';
-  import { connectionStatus, refreshRemote } from '../stores/connection.js';
-  import { connect } from '../stores/connection.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey } from '../../wailsjs/go/main/App.js';
+  import { connectBySite, refreshRemote } from '../stores/connection.js';
 
   export let onClose = () => {};
 
@@ -71,13 +70,9 @@
 
   async function connectToSite(id) {
     try {
-      await ConnectToSite(id);
+      await connectBySite(id);
       const site = sites.find(s => s.id === id);
-      if (site?.remoteDir) {
-        await refreshRemote(site.remoteDir);
-      } else {
-        await refreshRemote('/');
-      }
+      await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
       alert(e?.toString() || 'Connection failed');
@@ -213,6 +208,7 @@
             <div class="form-row">
               <label>{$t('remoteDir')}</label>
               <input type="text" bind:value={form.remoteDir} placeholder="/" />
+              <p class="field-hint">{$t('remoteDirHint')}</p>
             </div>
 
             <div class="form-actions">
@@ -440,6 +436,12 @@ input, select {
 }
 
 input:focus, select:focus { border-color: var(--accent); }
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
 
 .proto-select { display: flex; gap: 6px; }
 

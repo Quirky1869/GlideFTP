@@ -12,8 +12,10 @@ export async function loadSettings() {
     theme.set(s.theme || 'dark');
     locale.set(s.language || 'en');
     applyTheme(s.theme || 'dark');
+    return s;
   } catch (e) {
     console.error('Failed to load settings', e);
+    return null;
   }
 }
 

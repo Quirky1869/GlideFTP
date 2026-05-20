@@ -28,6 +28,9 @@ go build ./...
 cd frontend
 npm install
 
+--- Ajouter la variable GOPATH a fish (à faire une fois)---
+
+fish_add_path (go env GOPATH)/bin
 
 --- Build ---
 

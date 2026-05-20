@@ -114,15 +114,6 @@
     </button>
   </div>
 
-  {#if isConnected}
-    <div class="quick-actions">
-      <button class="action-btn" on:click={() => refreshRemote($remotePath)} title={$t('refresh')}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        {$t('refresh')}
-      </button>
-    </div>
-  {/if}
-
   {#if showError}
     <div class="conn-error">{errorMsg}</div>
   {/if}
@@ -136,6 +127,7 @@
   padding: 8px 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
+  width: 100%;
 }
 
 .conn-fields {
@@ -236,36 +228,6 @@ input:disabled, select:disabled {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.quick-actions {
-  display: flex;
-  gap: 6px;
-  padding-top: 2px;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--bg-button);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-secondary);
-  padding: 3px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.action-btn:hover {
-  background: var(--bg-button-hover);
-  color: var(--text-primary);
-}
-
-.action-btn svg {
-  width: 13px;
-  height: 13px;
 }
 
 .conn-error {
