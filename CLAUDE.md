@@ -57,7 +57,8 @@ GlideFTP/
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
         ├── SettingsPanel.svelte    # Sliding panel (75% width from right)
-        └── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
+        ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
+        └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```
 
 ## Key Design Decisions
@@ -65,32 +66,40 @@ GlideFTP/
 - **One `App` struct** in `app.go` is the single Wails binding — all methods on it are exposed to JS automatically.
 - **Transfer progress** uses `runtime.EventsEmit` from Go → frontend subscribes with `EventsOn('transfer:progress', ...)`. Removal emits `transfer:removed`.
 - **Theme** is applied via `document.documentElement.setAttribute('data-theme', 'dark'|'light')` — CSS vars defined in `style.css`.
+- **Accent color** is applied via `applyAccentColor(hex)` in `settings.js` which sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars on `document.documentElement`.
 - **i18n** is a Svelte `derived` store — `$t('key')` reactively switches language with no page reload.
 - **Config files** are stored in the OS user config dir (`os.UserConfigDir()`): cross-platform without hardcoding paths.
-- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`).
+- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Selecting SFTP auto-sets authType to `interactive`; selecting `interactive` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`).
 - **FTP passive mode** is the default (configurable in settings).
+- **FTP thread-safety**: `FTPClient` has a `sync.Mutex` — all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
+- **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
 - **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting — no "already connected" error.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
+- **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
 
 ## WebKit-GTK UI Patterns (Linux)
 
-The Wails WebView on Linux uses WebKit-GTK. Two native HTML patterns are broken and **must not be used**:
+The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must not be used**:
 
 1. **Hidden checkbox toggles** (`<label><input type="checkbox" hidden>`) — checkboxes never fire click events when hidden this way. **Use `<button class="sw" class:on={val} on:click={() => toggle(key)}>` instead.** See `SettingsPanel.svelte` for reference.
 
 2. **Native number input spinners** — unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`.
+
+3. **Dynamic `type` on `<input bind:value>`** — Svelte 3 compile error: `'type' attribute cannot be dynamic if input uses two-way binding`. **Use two separate inputs in `{#if}`/`{:else}` blocks** — one `type="text"`, one `type="password"`, both bound to the same variable. See `SiteManager.svelte` password prompt for reference.
 
 ## FileBrowser Features
 
 `FileBrowser.svelte` receives `side` ('local'|'remote'), `path`, `entries`, `selected`, `otherPath`, and action callbacks.
 
 - **".." entry**: always shown at the top; click/dblclick calls `onNavigateUp`
-- **Editable path bar**: click the path display to enter edit mode; Enter navigates, Esc cancels
+- **Editable path bar**: click the path display to enter edit mode; Enter navigates, Esc cancels; debounced autocomplete dropdown shows matching subdirs
 - **Column sort**: click Name/Size/Date headers; dirs always listed first; second click reverses order
-- **Multi-select**: Ctrl+click toggles, Shift+click range-selects
+- **Multi-select**: Ctrl+click toggles, Shift+click range-selects, rubber-band (click-drag on empty area)
 - **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2
-- **Right-click context menu**: on a file → Rename / Transfer / Delete; on empty area → New Folder
-- **Drag & drop**: rows are `draggable`; `dataTransfer.setData('application/glideftp', JSON.stringify({ path, name, fromSide }))`. Drop checks `fromSide !== side` then queues transfer via `UploadFile`/`DownloadFile`.
+- **Delete key**: keydown handler calls `handleDelete(selected)` — deletes the full selection
+- **Right-click context menu**: on a file → Rename / Transfer / Delete (deletes full selection if right-clicked item is in selection); on empty area → New Folder
+- **Delete confirmation**: `confirmDeleteEntries` (array); popup shows filename (1 item) or "N éléments" (multiple); `doDeleteAll()` iterates and calls `onDelete` for each, single refresh at end
+- **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` — if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array.
 
 ## App.svelte Layout
 
@@ -106,11 +115,17 @@ The Wails WebView on Linux uses WebKit-GTK. Two native HTML patterns are broken 
 | `completedTransfer` | transfers.js | Writable; set to `{ ...job, _ts }` when a transfer finishes; used to trigger auto-refresh |
 | `removeTransfer(id)` | transfers.js | Calls `RemoveTransfer` Go binding; frontend removes via `transfer:removed` event |
 | `connectBySite(id)` | connection.js | Sets `connectionStatus` store correctly (connecting→connected/disconnected); use instead of calling `ConnectToSite` Go binding directly |
+| `connectBySiteWithPassword(id, pwd)` | connection.js | Like `connectBySite` but passes runtime password (for `ask_password` auth sites) |
 | `initLocalDir(startDir?)` | connection.js | Initializes local panel; pass `defaultLocalDir` from settings on startup |
 | `loadSettings()` | settings.js | Returns the loaded settings object (in addition to updating the store) |
+| `applyAccentColor(hex)` | settings.js | Sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars; called on load and save |
 
 ## Go Backend Notes
 
 - `queue.RemoveJob(id)` — removes a finished/cancelled/failed job; emits `transfer:removed` event
 - `app.RemoveTransfer(id)` — JS-callable wrapper around `queue.RemoveJob`
+- `app.ConnectWithPassword(id, password)` — connects to a saved site but overrides its stored password (for `ask_password` sites)
+- `app.ExportSites()` / `app.ImportSites()` — file-dialog based JSON export/import of all saved sites
 - `manager.Connect()` — disconnects existing client first if already connected (enables reconnection from SiteManager)
+- `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
+- `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
