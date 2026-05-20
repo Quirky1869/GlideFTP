@@ -117,16 +117,16 @@ The binary will be generated in `build/bin/`.
 
 ### Screenshots
 
-|:Main:|:Sites:|
-|----|-----|
+|Main|Sites|
+|:----:|:-----:|
 | ![](./_images/main-en-d.png) | ![](./_images/sites-fr-d.png) |
 
-|:SFTP:|:Sites Sauvegardés:|
-|----|-----------|
+|SFTP|Sites Sauvegardés|
+|:----:|:-----------:|
 | ![](./_images/sftp-fr-w.png) | ![](./_images/saved-sites-en-d.png) |
 
-|:Connecté:|:Paramètres:|
-|---------|--------|
+|Connecté|Paramètres|
+|:---------:|:--------:|
 | ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
 
 ### Installation
