@@ -37,6 +37,8 @@ _________
 
 ISSUES :
 
+1.0
+
 1 = Le Front de la page de connexion n'est pas correct --- regarde dans ./_images/issues/issue-1.png
 
 2 = quand sur l'écran de connexion (quand je lance l'appli, je créer un nouveau sites et que je clique ensuite dessus puis sur "connecter" le logiciel reste sur la page de connexion sans m'afficher les fichiers distants ou local et j'ai l'erreur : "already connected or connecting" de JavaScript - wails://wails/ --- regarde dans ./_images/issues/issue-2.png et issue-2.1.png
@@ -67,6 +69,8 @@ ISSUES :
 
 _____
 
+1.0.1
+
 15 = Sur l'appli je ne peux pas écrire moi même le chemin voulu en haut ni sur l'hote ni sur le serveur distant (exemple : /test/encore-test) 
 
 16 = Une fois connecté le bndeau du haut est un peu "mordu" on le vois sur le logo rouge "déconnecter" --- regarde dans ./_images/issues/issue-5.png
@@ -76,6 +80,8 @@ _____
 18 = J'ai remarque que beaucoup de paramètre ne fonctionne pas, je n'ai que la langue, le darktheme qui fonctionne tous le reste ne fonctionne pas ; par exemple je ne peut pas régler la valeur du port part défaut les fleche ne fonctionne pas et tout le reste ne fonctionne pas non plus j'ai aussi essayer de changer l'emplacement par defaut pour le mettre dans /home/mon-user/Téléchargements -> ca s'affich bien dans l'application mais lorsque je me reconnecte à mon serveur distant il continue de s'ouvrir sur /home/mon-user ; les boutons "on/off" ne fonctionne pass non plus comme "afficher les fichiers cachés"
 
 _____
+
+1.1
 
 19 = c'est possible d'avoir une autocomplétion quand on tape le chemin manuellement en haut ?
 
@@ -97,6 +103,8 @@ _____
 
 _____
 
+1.2
+
 28 = Quand je selectionne plusieurs fichiers soit avec shift + clic soit avec ctrl + clic soit directement avec la souris en maintenant le clic gauche et que je drag and drop ma selection je n'ai que 1 seul fichiers qui est téléversé + quand je selectionne plusieurs fichiers et que je clique sur le bouton "transférer" (la petite fleche vers la droite) tout les fichiers se mettent en erreurs et si je les reprend 1 par 1 ensuite dans la laiste de transfert echoués et que je clique sur "réésayer" là ca fonctionne comme si plusieurs fichiers ne pouvais pas être transférés
 
 29 = Pour le pop-up de mot de passe requis lorsuq'on se connecte est-ce qu'on peut rajouter un petit oeil pour pouvoir voir le mdp ou le caché
@@ -107,4 +115,8 @@ _____
 
 _____
 
+1.3
+
 32 = Lorsque je selectionne plusieurs fichiers et que je veux les supprimer il n'y en a qu'un fichier qui est supprimer après avoir confirmer oui dans le pop-up
+
+_____
