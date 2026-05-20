@@ -1,0 +1,63 @@
+========================================
+  MEMO — GLIDEFTP : COMMANDES UTILES
+========================================
+
+--- Installation des outils ---
+
+# Installer Wails v2
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Ajouter le GOPATH/bin au PATH (à mettre dans ~/.bashrc ou ~/.zshrc)
+export PATH="$PATH:$(go env GOPATH)/bin"
+
+# Vérifier la version de Wails
+wails version
+
+
+--- Dépendances Go ---
+
+# Installer les libs FTP et SFTP
+go get github.com/jlaffaye/ftp github.com/pkg/sftp golang.org/x/crypto/ssh
+
+# Compiler le backend Go (vérification)
+go build ./...
+
+
+--- Dépendances frontend ---
+
+cd frontend
+npm install
+
+
+--- Build ---
+
+# Build production (Linux — nécessite webkit2gtk-4.1 sur ce système)
+wails build -tags webkit2_41
+
+# Le binaire est généré ici :
+#   build/bin/GlideFTP
+
+
+--- Lancer l'application ---
+
+./build/bin/GlideFTP
+
+
+--- Développement (hot reload) ---
+
+wails dev -tags webkit2_41
+
+
+--- Frontend seul ---
+
+cd frontend
+npm run build     # build de production
+npm run dev       # serveur de dev Vite (sans le backend Go)
+
+
+--- Note système ---
+
+# Ce système a webkit2gtk-4.1 (pas 4.0), d'où le tag -tags webkit2_41
+# Sans ce tag, le build échoue avec "webkit2gtk-4.0 not found"
+# Vérifier les versions webkit disponibles :
+pkg-config --list-all | grep -i webkit

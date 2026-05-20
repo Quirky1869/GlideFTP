@@ -1,0 +1,55 @@
+package connection
+
+import "time"
+
+type Protocol string
+type AuthType string
+type EncryptionType string
+
+const (
+	ProtocolFTP  Protocol = "ftp"
+	ProtocolSFTP Protocol = "sftp"
+
+	AuthPassword    AuthType = "password"
+	AuthSSHKey      AuthType = "key"
+	AuthInteractive AuthType = "interactive"
+	AuthAnonymous   AuthType = "anonymous"
+
+	EncryptionNone  EncryptionType = "none"
+	EncryptionTLS   EncryptionType = "tls"
+	EncryptionFTPES EncryptionType = "ftpes"
+)
+
+type Config struct {
+	Protocol   Protocol       `json:"protocol"`
+	Host       string         `json:"host"`
+	Port       int            `json:"port"`
+	User       string         `json:"user"`
+	Password   string         `json:"password"`
+	Encryption EncryptionType `json:"encryption"`
+	AuthType   AuthType       `json:"authType"`
+	SSHKeyPath string         `json:"sshKeyPath"`
+	TimeoutSec int            `json:"timeoutSec"`
+	Passive    bool           `json:"passive"`
+}
+
+type RemoteFileEntry struct {
+	Name    string    `json:"name"`
+	Path    string    `json:"path"`
+	IsDir   bool      `json:"isDir"`
+	Size    int64     `json:"size"`
+	ModTime time.Time `json:"modTime"`
+	Mode    string    `json:"mode"`
+}
+
+type Client interface {
+	Connect() error
+	Disconnect() error
+	ListDir(path string) ([]RemoteFileEntry, error)
+	MkDir(path string) error
+	Delete(path string) error
+	Rename(oldPath, newPath string) error
+	Upload(localPath, remotePath string, progress func(sent, total int64)) error
+	Download(remotePath, localPath string, progress func(received, total int64)) error
+	CurrentDir() (string, error)
+}

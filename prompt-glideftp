@@ -1,0 +1,45 @@
+prompt glide-ftp :
+
+Le nom de l'application sera "GlideFTP"
+
+Je souhaite faire un client ftp en go sousforme d'application en utilisant "wails" (la v2 celle qui est stable : github.com/wailsapp/wails/v2/cmd/wails@latest)
+
+Le but est que l'application soit compatible avec Windows et Linux
+
+Je t'ai fourni une esquisse du front que je veux (./_images/exemple.png)
+
+Il faut absolument un light theme et un darktheme (le dark theme doit etre celui par defaut, il doit etre changeable dans les paramètres) + il faut un choix de langue entre francais et anglais (l'anglais doit etre la langue par defaut mais l'utilisateur pourra changer à sa guise la langue par defaut dans les paramètres) 
+
+L'appli doit prendre en compte les clé ssh (SFTP)
+
+A coter du bouton "transférer" (à droite) tu dois rajouter un bouton file d'attente afin de faire apparaitre une file d'attente en bas de l'application qui auront 3 onglets : File d'attente, Transferts échoués, Transferts réussis
+
+A droite de l'input "Port" il faudra un bouton avec un logo de connexion pour lancer la connexion (elle est absente sur le screen que je t'ai envoyé)
+
+Pour les sites enregistrées -> Quand on clique sur "Gérer les sites" Il faut qu'on pop-up apparaisse au milieu de l'écran avec la possibilité de créer des sites et de renseigner toutes les informations nécessaires comme le protocole utilisé (ftp ou sftp, il faudra faire un petit "i" d'information quand l'utilisateur passe sa souris dessus pour expliquer rapidement les 2 protocoles), l'hote, le port, le type de chiffrement, le type d'authentification (Anonyme,Compte, Demander le mot de passe, Interactif et Normale)
+
+Pense à compléter les paramètres avec tous les paramètres necessaire, attention il faut que la fenetre des paramètre soit plus grande que sur les screen que je t'ai envoyé il faudrait que ca prenne les 3/4 de la page de droite à gauche)
+
+Maintenant fait moi réflechir a comment penser mon application stp
+
+________
+
+FRONT : 
+
+Je dois faire un client (application en dur) FTP et j'aimerais que tu me dessine une esquisse (de plusieurs photo/exemple) d'une interface client ftp stp
+les input hote, user, mdp, port et le bouton connexion doivent etre au milieu de la page si aucune connexion n'est active sinon elle doivent etre en haut au milieu 
+Un bouton avec une roue cranté (paramètres) doit etre en haut à droite et quand on clique dessus cest un menu coulissant qui vient prendre les 3/4 de la page de droite à gauche 
+Le site local (l'hote) doit être sur la gauche de la page une fois la connexion établie et le site distant (le nas par exemple) doit être à droite
+Les options rapide comme "se deconnecter" ou "actualiser" seront en dessous des input 
+Une icône/bouton doit etre à gauche de celui de la roue crantée pour les paramètres qui servira à enregistrer des sites pour s'y connecter ensuite
+
+_________
+
+ISSUES :
+
+1 = quand sur l'écran de connexion (quand je lance l'appli, je créer un nouveau sites et que je clique ensuite dessus puis sur "connecter" le logiciel reste sur la page de connexion sans m'afficher les fichiers distants ou local et j'ai l'erreur : "already connected or connecting" de JavaScript - wails://wails/
+
+2 = Le Front de la page de connexion n'est pas correct
+
+3 = Quand je met l'aplication en grand sur l'écran elle n'est pas capable de s'adapter à tout l'écran elle reste à une taille maximale
+
