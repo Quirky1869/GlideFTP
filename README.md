@@ -25,6 +25,20 @@
 - **Full settings panel** — passive mode, timeout, concurrent transfers, speed limit, hidden files, and more
 - **Encryption support** — None, TLS (implicit), FTPES (explicit)
 
+### Screenshots
+
+|Main|Sites|
+|----|-----|
+| ![](./_images/main-en-d.png) | ![](./_images/sites-fr-d.png) |
+
+|SFTP|Saved sites|
+|----|-----------|
+| ![](./_images/sftp-fr-w.png) | ![](./_images/saved-sites-en-d.png) |
+
+|Connected|Settings|
+|---------|--------|
+| ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
+
 ### Installation
 
 #### Prerequisites
@@ -100,6 +114,20 @@ The binary will be generated in `build/bin/`.
 - **Autocomplétion de chemin** — suggestions dans la barre de chemin lors de la saisie
 - **Panneau de paramètres complet** — mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés, et plus encore
 - **Support du chiffrement** — Aucun, TLS (implicite), FTPES (explicite)
+
+### Screenshots
+
+|:Main:|:Sites:|
+|----|-----|
+| ![](./_images/main-en-d.png) | ![](./_images/sites-fr-d.png) |
+
+|:SFTP:|:Sites Sauvegardés:|
+|----|-----------|
+| ![](./_images/sftp-fr-w.png) | ![](./_images/saved-sites-en-d.png) |
+
+|:Connecté:|:Paramètres:|
+|---------|--------|
+| ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
 
 ### Installation
 
