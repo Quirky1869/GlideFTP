@@ -39,6 +39,7 @@ type Site struct {
 	Password   string         `json:"password"`
 	SSHKeyPath string         `json:"sshKeyPath"`
 	RemoteDir  string         `json:"remoteDir"`
+	Note       string         `json:"note"`
 }
 
 type Manager struct {

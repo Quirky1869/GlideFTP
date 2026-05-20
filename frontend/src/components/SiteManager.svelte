@@ -1,7 +1,7 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey } from '../../wailsjs/go/main/App.js';
-  import { connectBySite, refreshRemote } from '../stores/connection.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, ExportSites, ImportSites } from '../../wailsjs/go/main/App.js';
+  import { connectBySite, connectBySiteWithPassword, refreshRemote } from '../stores/connection.js';
 
   export let onClose = () => {};
 
@@ -9,6 +9,14 @@
   let selectedSite = null;
   let editMode = false;
   let confirmDeleteId = null;
+
+  // Password prompt for ask_password sites
+  let showPasswordPrompt = false;
+  let promptSiteId = null;
+  let promptSiteName = '';
+  let promptPassword = '';
+  let promptError = '';
+  let showPwd = false;
 
   let form = emptyForm();
 
@@ -24,6 +32,7 @@
       password: '',
       sshKeyPath: '',
       remoteDir: '/',
+      note: '',
     };
   }
 
@@ -31,10 +40,33 @@
     sites = await GetSites();
   }
 
-  $: if (form.protocol === 'sftp' && form.port === 21) form.port = 22;
-  $: if (form.protocol === 'ftp' && form.port === 22) form.port = 21;
-
   loadSites();
+
+  function setProtocol(p) {
+    let authType = form.authType;
+    let port = form.port;
+    if (p === 'sftp') {
+      authType = 'interactive';
+      if (port === 21) port = 22;
+    } else {
+      if (authType === 'interactive') authType = 'normal';
+      if (port === 22) port = 21;
+    }
+    form = { ...form, protocol: p, authType, port };
+  }
+
+  function setAuthType(a) {
+    let protocol = form.protocol;
+    let port = form.port;
+    if (a === 'interactive') {
+      protocol = 'sftp';
+      if (port === 21) port = 22;
+    } else {
+      protocol = 'ftp';
+      if (port === 22) port = 21;
+    }
+    form = { ...form, authType: a, protocol, port };
+  }
 
   function selectSite(s) {
     selectedSite = s;
@@ -49,10 +81,15 @@
   }
 
   async function saveSite() {
+    const toSave = { ...form };
+    // Don't persist password when using ask_password auth
+    if (toSave.authType === 'ask_password') {
+      toSave.password = '';
+    }
     if (selectedSite?.id) {
-      await UpdateSite({ ...form, id: selectedSite.id });
+      await UpdateSite({ ...toSave, id: selectedSite.id });
     } else {
-      await CreateSite(form);
+      await CreateSite(toSave);
     }
     await loadSites();
     editMode = false;
@@ -69,9 +106,17 @@
   }
 
   async function connectToSite(id) {
+    const site = sites.find(s => s.id === id);
+    if (site?.authType === 'ask_password') {
+      promptSiteId = id;
+      promptSiteName = site.name;
+      promptPassword = '';
+      promptError = '';
+      showPasswordPrompt = true;
+      return;
+    }
     try {
       await connectBySite(id);
-      const site = sites.find(s => s.id === id);
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
@@ -79,17 +124,50 @@
     }
   }
 
+  async function confirmPasswordConnect() {
+    promptError = '';
+    try {
+      await connectBySiteWithPassword(promptSiteId, promptPassword);
+      const site = sites.find(s => s.id === promptSiteId);
+      await refreshRemote(site?.remoteDir || '/');
+      showPasswordPrompt = false;
+      onClose();
+    } catch (e) {
+      promptError = e?.toString() || 'Connection failed';
+    }
+  }
+
   async function browseSshKey() {
     const path = await BrowseSSHKey();
-    if (path) form.sshKeyPath = path;
+    if (path) form = { ...form, sshKeyPath: path };
+  }
+
+  async function exportSites() {
+    try {
+      await ExportSites();
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
+  }
+
+  async function importSites() {
+    try {
+      const count = await ImportSites();
+      if (count > 0) {
+        await loadSites();
+        alert(`${count} ${$t('importedCount')}`);
+      }
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
   }
 
   const authTypes = (t) => [
+    { value: 'normal', label: t('authNormal') },
     { value: 'anonymous', label: t('authAnonymous') },
     { value: 'account', label: t('authAccount') },
     { value: 'ask_password', label: t('authAskPassword') },
     { value: 'interactive', label: t('authInteractive') },
-    { value: 'normal', label: t('authNormal') },
   ];
 
   const encryptionTypes = (t) => [
@@ -103,6 +181,16 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">{$t('savedSites')}</span>
+      <div class="header-actions">
+        <button class="header-btn" on:click={exportSites} title={$t('exportSites')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {$t('exportSites')}
+        </button>
+        <button class="header-btn" on:click={importSites} title={$t('importSites')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          {$t('importSites')}
+        </button>
+      </div>
       <button class="close-btn" on:click={onClose}>✕</button>
     </div>
 
@@ -148,8 +236,8 @@
                 <span class="info-icon" title="{$t('ftpTooltip')}&#10;&#10;{$t('sftpTooltip')}">ⓘ</span>
               </label>
               <div class="proto-select">
-                <button class="proto-btn" class:active={form.protocol === 'ftp'} on:click={() => form.protocol = 'ftp'}>FTP</button>
-                <button class="proto-btn" class:active={form.protocol === 'sftp'} on:click={() => form.protocol = 'sftp'}>SFTP</button>
+                <button class="proto-btn" class:active={form.protocol === 'ftp'} on:click={() => setProtocol('ftp')}>FTP</button>
+                <button class="proto-btn" class:active={form.protocol === 'sftp'} on:click={() => setProtocol('sftp')}>SFTP</button>
               </div>
             </div>
 
@@ -177,7 +265,7 @@
 
             <div class="form-row">
               <label>{$t('authType')}</label>
-              <select bind:value={form.authType}>
+              <select value={form.authType} on:change={(e) => setAuthType(e.target.value)}>
                 {#each authTypes($t) as at}
                   <option value={at.value}>{at.label}</option>
                 {/each}
@@ -189,10 +277,12 @@
                 <label>{$t('user')}</label>
                 <input type="text" bind:value={form.user} />
               </div>
-              <div class="form-row">
-                <label>{$t('password')}</label>
-                <input type="password" bind:value={form.password} />
-              </div>
+              {#if form.authType !== 'ask_password'}
+                <div class="form-row">
+                  <label>{$t('password')}</label>
+                  <input type="password" bind:value={form.password} />
+                </div>
+              {/if}
             {/if}
 
             {#if form.protocol === 'sftp' && (form.authType === 'key' || form.authType === 'interactive')}
@@ -211,6 +301,11 @@
               <p class="field-hint">{$t('remoteDirHint')}</p>
             </div>
 
+            <div class="form-row">
+              <label>{$t('siteNote')}</label>
+              <textarea class="note-area" bind:value={form.note} rows="3" placeholder="..."></textarea>
+            </div>
+
             <div class="form-actions">
               <button class="btn-primary" on:click={saveSite}>{$t('save')}</button>
               <button class="btn-secondary" on:click={() => { editMode = false; form = emptyForm(); selectedSite = null; }}>{$t('close')}</button>
@@ -222,6 +317,9 @@
             <div class="site-view-header">
               <span class="view-name">{selectedSite.name}</span>
               <span class="view-sub">{selectedSite.protocol.toUpperCase()} — {selectedSite.host}:{selectedSite.port}</span>
+              {#if selectedSite.note}
+                <p class="view-note">{selectedSite.note}</p>
+              {/if}
             </div>
             <div class="view-actions">
               <button class="btn-primary" on:click={() => connectToSite(selectedSite.id)}>
@@ -256,6 +354,50 @@
   </div>
 </div>
 
+<!-- Password prompt overlay -->
+{#if showPasswordPrompt}
+  <div class="pwd-overlay">
+    <div class="pwd-box">
+      <div class="pwd-title">{$t('passwordPromptTitle')}</div>
+      <div class="pwd-site">{promptSiteName}</div>
+      <label class="pwd-label">{$t('passwordPromptLabel')} {promptSiteName}</label>
+      <div class="pwd-input-wrap">
+        {#if showPwd}
+          <input
+            class="pwd-input"
+            type="text"
+            bind:value={promptPassword}
+            autofocus
+            on:keydown={(e) => { if (e.key === 'Enter') confirmPasswordConnect(); if (e.key === 'Escape') showPasswordPrompt = false; }}
+          />
+        {:else}
+          <input
+            class="pwd-input"
+            type="password"
+            bind:value={promptPassword}
+            autofocus
+            on:keydown={(e) => { if (e.key === 'Enter') confirmPasswordConnect(); if (e.key === 'Escape') showPasswordPrompt = false; }}
+          />
+        {/if}
+        <button type="button" class="eye-btn" on:click={() => showPwd = !showPwd} tabindex="-1">
+          {#if showPwd}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          {:else}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          {/if}
+        </button>
+      </div>
+      {#if promptError}
+        <div class="pwd-error">{promptError}</div>
+      {/if}
+      <div class="pwd-actions">
+        <button class="btn-primary" on:click={confirmPasswordConnect}>{$t('connect')}</button>
+        <button class="btn-secondary" on:click={() => showPasswordPrompt = false}>{$t('cancel')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
 .modal-backdrop {
   position: fixed;
@@ -282,8 +424,8 @@
 .modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
+  gap: 8px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -291,7 +433,29 @@
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  flex: 1;
 }
+
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.header-btn:hover { background: var(--bg-button-hover); color: var(--text-primary); }
+.header-btn svg { width: 13px; height: 13px; }
 
 .close-btn {
   background: none;
@@ -301,7 +465,6 @@
   font-size: 16px;
   padding: 0 4px;
 }
-
 .close-btn:hover { color: var(--text-primary); }
 
 .modal-body {
@@ -332,7 +495,6 @@
   font-weight: 500;
   transition: background 0.1s;
 }
-
 .new-site-btn:hover { background: var(--accent-subtle); }
 .new-site-btn svg { width: 14px; height: 14px; }
 
@@ -345,7 +507,6 @@
   border-bottom: 1px solid var(--border-subtle);
   transition: background 0.1s;
 }
-
 .site-item:hover { background: var(--bg-hover); }
 .site-item.active { background: var(--accent-subtle); }
 
@@ -364,50 +525,18 @@
   flex-direction: column;
   min-width: 0;
 }
+.site-name { font-size: 13px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-host { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.site-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.no-sites { padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
-.site-host {
-  font-size: 11px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.no-sites {
-  padding: 20px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.site-detail {
-  flex: 1;
-  overflow-y: auto;
-  padding: 18px;
-}
+.site-detail { flex: 1; overflow-y: auto; padding: 18px; }
 
 .form { display: flex; flex-direction: column; gap: 12px; }
 
-.form-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.form-row { display: flex; flex-direction: column; gap: 4px; }
 
-.form-row-2 {
-  display: flex;
-  gap: 10px;
-}
-
+.form-row-2 { display: flex; gap: 10px; }
 .form-row-2 .form-row { flex: 1; }
 
 label {
@@ -419,13 +548,9 @@ label {
   gap: 4px;
 }
 
-.info-icon {
-  cursor: help;
-  color: var(--accent);
-  font-size: 14px;
-}
+.info-icon { cursor: help; color: var(--accent); font-size: 14px; }
 
-input, select {
+input, select, textarea {
   background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -433,18 +558,15 @@ input, select {
   padding: 6px 10px;
   font-size: 13px;
   outline: none;
+  font-family: inherit;
 }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
-input:focus, select:focus { border-color: var(--accent); }
+.note-area { resize: vertical; min-height: 60px; }
 
-.field-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
+.field-hint { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
 .proto-select { display: flex; gap: 6px; }
-
 .proto-btn {
   flex: 1;
   padding: 6px;
@@ -457,22 +579,11 @@ input:focus, select:focus { border-color: var(--accent); }
   cursor: pointer;
   transition: all 0.12s;
 }
-
-.proto-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
-}
-
+.proto-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
 .protocol-row label { font-size: 12px; }
 
-.input-with-btn {
-  display: flex;
-  gap: 6px;
-}
-
+.input-with-btn { display: flex; gap: 6px; }
 .input-with-btn input { flex: 1; }
-
 .browse-btn {
   background: var(--bg-button);
   border: 1px solid var(--border);
@@ -483,30 +594,17 @@ input:focus, select:focus { border-color: var(--accent); }
   cursor: pointer;
   white-space: nowrap;
 }
-
 .browse-btn:hover { background: var(--bg-button-hover); }
 
-.form-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
+.form-actions { display: flex; gap: 8px; margin-top: 4px; }
 
 .btn-primary {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: flex; align-items: center; gap: 6px;
   background: var(--accent);
-  border: none;
-  border-radius: 5px;
-  color: white;
-  padding: 7px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
+  border: none; border-radius: 5px;
+  color: white; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
   transition: background 0.12s;
 }
-
 .btn-primary:hover { background: var(--accent-hover); }
 
 .btn-secondary {
@@ -514,79 +612,111 @@ input:focus, select:focus { border-color: var(--accent); }
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-secondary);
-  padding: 7px 16px;
-  font-size: 13px;
-  cursor: pointer;
+  padding: 7px 16px; font-size: 13px; cursor: pointer;
 }
-
 .btn-secondary:hover { background: var(--bg-button-hover); }
 
 .btn-danger {
-  background: var(--danger);
-  border: none;
-  border-radius: 5px;
-  color: white;
-  padding: 7px 16px;
-  font-size: 13px;
-  cursor: pointer;
+  background: var(--danger); border: none; border-radius: 5px;
+  color: white; padding: 7px 16px; font-size: 13px; cursor: pointer;
 }
-
 .btn-danger-outline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: 1px solid var(--danger);
-  border-radius: 5px;
-  color: var(--danger);
-  padding: 7px 16px;
-  font-size: 13px;
-  cursor: pointer;
+  display: flex; align-items: center; gap: 6px;
+  background: transparent; border: 1px solid var(--danger); border-radius: 5px;
+  color: var(--danger); padding: 7px 16px; font-size: 13px; cursor: pointer;
 }
-
 .btn-danger-outline svg { width: 14px; height: 14px; }
-
 .btn-primary svg { width: 14px; height: 14px; }
 
-.site-view {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
+.site-view { display: flex; flex-direction: column; gap: 16px; }
 .site-view-header { display: flex; flex-direction: column; gap: 4px; }
-
 .view-name { font-size: 18px; font-weight: 600; color: var(--text-primary); }
-
 .view-sub { font-size: 13px; color: var(--text-muted); }
-
-.view-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+.view-note {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  border-left: 3px solid var(--border);
 }
 
-.confirm-text {
-  font-size: 12px;
-  color: var(--danger);
-}
+.view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.confirm-text { font-size: 12px; color: var(--danger); }
 
 .no-selection {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 12px; color: var(--text-muted);
+}
+.no-selection svg { width: 48px; height: 48px; opacity: 0.3; }
+.no-selection p { font-size: 13px; }
+
+/* ── Password prompt ──────────────────────────────────────────────────── */
+.pwd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  z-index: 600;
+}
+
+.pwd-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  width: 340px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+.pwd-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.pwd-site { font-size: 13px; color: var(--text-muted); }
+.pwd-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+.pwd-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.pwd-input-wrap:focus-within { border-color: var(--accent); }
+
+.pwd-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+  width: 100%;
+}
+
+.eye-btn {
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
   color: var(--text-muted);
+  padding: 0 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
+.eye-btn:hover { color: var(--text-primary); }
+.eye-btn svg { width: 15px; height: 15px; }
 
-.no-selection svg {
-  width: 48px;
-  height: 48px;
-  opacity: 0.3;
-}
+.pwd-error { font-size: 12px; color: var(--danger); }
 
-.no-selection p { font-size: 13px; }
+.pwd-actions { display: flex; gap: 8px; justify-content: flex-end; }
 </style>

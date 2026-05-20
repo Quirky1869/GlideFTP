@@ -85,8 +85,12 @@ export default {
   themeDark: 'Sombre',
   themeLight: 'Clair',
   language: 'Langue',
+  accentColor: 'Couleur',
+  colorPickerTitle: 'Sélecteur de couleur',
+  resetColor: 'Couleur par défaut',
   transfers: 'Transferts',
   maxConcurrent: 'Transferts simultanés maximum',
+  transferSpeedLimit: 'Limite de vitesse (Ko/s, 0 = illimité)',
   defaultLocalDir: 'Répertoire local par défaut',
   connection: 'Connexion',
   defaultPort: 'Port FTP par défaut',
@@ -99,6 +103,22 @@ export default {
   dateFormat: 'Format de date',
   saveSettings: 'Enregistrer',
   settingsSaved: 'Paramètres enregistrés',
+
+  // Site note
+  siteNote: 'Note',
+
+  // Ask password prompt
+  passwordPromptTitle: 'Mot de passe requis',
+  passwordPromptLabel: 'Mot de passe pour',
+
+  // Export / import
+  exportSites: 'Exporter les sites',
+  importSites: 'Importer des sites',
+  importedCount: 'sites importés',
+
+  // Delete confirmation
+  confirmDeleteFile: 'Supprimer cet élément ?',
+  deleteConfirm: 'Supprimer',
 
   // Errors
   connectError: 'Connexion échouée',

@@ -1,6 +1,9 @@
 package connection
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Protocol string
 type AuthType string
@@ -49,7 +52,7 @@ type Client interface {
 	MkDir(path string) error
 	Delete(path string) error
 	Rename(oldPath, newPath string) error
-	Upload(localPath, remotePath string, progress func(sent, total int64)) error
-	Download(remotePath, localPath string, progress func(received, total int64)) error
+	Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error
+	Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error
 	CurrentDir() (string, error)
 }

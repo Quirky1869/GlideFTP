@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 import {
   Connect, Disconnect, GetConnectionStatus,
-  ConnectToSite,
+  ConnectToSite, ConnectWithPassword,
   RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename,
   LocalListDir, LocalMkDir, LocalDelete, LocalRename,
   GetLocalHome, GetLocalParent, GetLocalRoots,
@@ -51,6 +51,16 @@ export async function refreshRemote(path) {
     remoteSelected.set([]);
   } catch (e) {
     console.error('Remote list error', e);
+    // Check if the connection dropped (e.g. timeout)
+    try {
+      const status = await GetConnectionStatus();
+      if (status !== 'connected') {
+        connectionStatus.set('disconnected');
+        remoteEntries.set([]);
+        remotePath.set('/');
+      }
+    } catch {}
+    throw e;
   }
 }
 
@@ -81,6 +91,19 @@ export async function connectBySite(id) {
   connectionError.set('');
   try {
     await ConnectToSite(id);
+    connectionStatus.set('connected');
+  } catch (e) {
+    connectionStatus.set('disconnected');
+    connectionError.set(e?.toString() || 'Connection failed');
+    throw e;
+  }
+}
+
+export async function connectBySiteWithPassword(id, password) {
+  connectionStatus.set('connecting');
+  connectionError.set('');
+  try {
+    await ConnectWithPassword(id, password);
     connectionStatus.set('connected');
   } catch (e) {
     connectionStatus.set('disconnected');

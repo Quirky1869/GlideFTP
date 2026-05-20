@@ -1,10 +1,11 @@
 <script>
   import { t } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
-  import { QueueUpload, QueueDownload } from '../../wailsjs/go/main/App.js';
+  import { settings } from '../stores/settings.js';
+  import { QueueUpload, QueueDownload, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
 
-  export let side = 'local'; // 'local' | 'remote'
+  export let side = 'local';
   export let path = '';
   export let entries = [];
   export let selected = [];
@@ -25,29 +26,112 @@
   let contextIsEmpty = false;
   let dragOver = false;
   let panelEl;
+  let fileListEl;
 
-  // Editable path bar
+  // ── Delete confirmation ───────────────────────────────────────────────────
+
+  let confirmDeleteEntry = null;
+  let deleteError = '';
+
+  function handleDelete(entry) {
+    closeContext();
+    if ($settings?.confirmOnDelete) {
+      confirmDeleteEntry = entry;
+    } else {
+      doDelete(entry);
+    }
+  }
+
+  async function doDelete(entry) {
+    deleteError = '';
+    try {
+      await onDelete(entry.path);
+      await onRefresh();
+    } catch (e) {
+      deleteError = e?.message || e?.toString() || 'Delete failed';
+      setTimeout(() => { deleteError = ''; }, 4000);
+      await onRefresh(); // refresh anyway so UI reflects actual state
+    }
+    confirmDeleteEntry = null;
+  }
+
+  // ── Editable path bar ─────────────────────────────────────────────────────
+
   let editingPath = false;
   let editPathValue = '';
+  let pathSuggestions = [];
+  let highlightedSugg = -1;
+  let suggDebounce = null;
 
   function startEditPath() {
     editPathValue = path;
     editingPath = true;
+    pathSuggestions = [];
+    highlightedSugg = -1;
   }
 
   async function confirmEditPath() {
     editingPath = false;
+    pathSuggestions = [];
     if (editPathValue && editPathValue !== path) {
-      await onNavigate(editPathValue);
+      try { await onNavigate(editPathValue); } catch {}
     }
   }
 
   function handlePathKeydown(e) {
-    if (e.key === 'Enter') { e.preventDefault(); confirmEditPath(); }
-    if (e.key === 'Escape') { editingPath = false; }
+    if (e.key === 'ArrowDown') {
+      highlightedSugg = Math.min(highlightedSugg + 1, pathSuggestions.length - 1);
+      e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      highlightedSugg = Math.max(highlightedSugg - 1, -1);
+      e.preventDefault();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedSugg >= 0 && pathSuggestions[highlightedSugg]) {
+        editPathValue = pathSuggestions[highlightedSugg];
+        pathSuggestions = [];
+        highlightedSugg = -1;
+      } else {
+        confirmEditPath();
+      }
+    } else if (e.key === 'Escape') {
+      editingPath = false;
+      pathSuggestions = [];
+    }
   }
 
-  // Sort state
+  function onPathInput(value) {
+    clearTimeout(suggDebounce);
+    highlightedSugg = -1;
+    suggDebounce = setTimeout(() => fetchSuggestions(value), 350);
+  }
+
+  async function fetchSuggestions(value) {
+    if (!value || value.length < 2) { pathSuggestions = []; return; }
+    const sep = '/';
+    const lastSepIdx = value.lastIndexOf(sep);
+    if (lastSepIdx < 0) { pathSuggestions = []; return; }
+    const parentDir = lastSepIdx === 0 ? '/' : value.substring(0, lastSepIdx);
+    const prefix = value.substring(lastSepIdx + 1).toLowerCase();
+    try {
+      const list = side === 'local' ? await LocalListDir(parentDir) : await RemoteListDir(parentDir);
+      pathSuggestions = (list || [])
+        .filter(e => e.isDir && e.name.toLowerCase().startsWith(prefix))
+        .map(e => e.path)
+        .slice(0, 8);
+    } catch {
+      pathSuggestions = [];
+    }
+  }
+
+  function selectSuggestion(s) {
+    editPathValue = s;
+    pathSuggestions = [];
+    highlightedSugg = -1;
+  }
+
+  // ── Sort ──────────────────────────────────────────────────────────────────
+
   let sortKey = 'name';
   let sortDir = 'asc';
 
@@ -56,13 +140,9 @@
     const files = entries.filter(e => !e.isDir);
     const cmp = (a, b) => {
       let v = 0;
-      if (sortKey === 'name') {
-        v = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-      } else if (sortKey === 'size') {
-        v = (a.size || 0) - (b.size || 0);
-      } else if (sortKey === 'date') {
-        v = (new Date(a.modTime || 0)) - (new Date(b.modTime || 0));
-      }
+      if (sortKey === 'name') v = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      else if (sortKey === 'size') v = (a.size || 0) - (b.size || 0);
+      else if (sortKey === 'date') v = (new Date(a.modTime || 0)) - (new Date(b.modTime || 0));
       return sortDir === 'asc' ? v : -v;
     };
     return [...dirs.sort(cmp), ...files.sort(cmp)];
@@ -103,6 +183,62 @@
     if (entry.isDir) onNavigate(entry.path);
   }
 
+  // ── Rubber-band selection ─────────────────────────────────────────────────
+
+  let rubberBand = null;
+
+  function handleListMouseDown(e) {
+    if (e.button !== 0) return;
+    if (e.target.closest('.file-row')) return;
+    if (e.target.closest('.file-list-header')) return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+
+    const onMove = (ev) => {
+      if (!dragging) {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (Math.sqrt(dx * dx + dy * dy) > 5) {
+          dragging = true;
+          selected = [];
+        }
+      }
+      if (dragging) {
+        rubberBand = { x1: startX, y1: startY, x2: ev.clientX, y2: ev.clientY };
+        updateRubberBandSelection();
+      }
+    };
+    const onUp = () => {
+      if (!dragging) selected = [];
+      rubberBand = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  }
+
+  function updateRubberBandSelection() {
+    if (!rubberBand || !fileListEl) return;
+    const { x1, y1, x2, y2 } = rubberBand;
+    const left = Math.min(x1, x2);
+    const right = Math.max(x1, x2);
+    const top = Math.min(y1, y2);
+    const bottom = Math.max(y1, y2);
+    const rows = fileListEl.querySelectorAll('.file-row:not(.parent-row)');
+    const newSelected = [];
+    rows.forEach((row, idx) => {
+      const rect = row.getBoundingClientRect();
+      if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
+        if (sortedEntries[idx]) newSelected.push(sortedEntries[idx]);
+      }
+    });
+    selected = newSelected;
+  }
+
   // ── Context menu ──────────────────────────────────────────────────────────
 
   function handleFileContextMenu(e, entry) {
@@ -138,17 +274,11 @@
     if (!renameValue || renameValue === entry.name) { renamingEntry = null; return; }
     const sep = entry.path.includes('/') ? '/' : '\\';
     const dir = entry.path.substring(0, entry.path.lastIndexOf(sep) + 1);
-    await onRename(entry.path, dir + renameValue);
+    try {
+      await onRename(entry.path, dir + renameValue);
+      await onRefresh();
+    } catch {}
     renamingEntry = null;
-    await onRefresh();
-  }
-
-  // ── Delete ────────────────────────────────────────────────────────────────
-
-  async function handleDelete(entry) {
-    await onDelete(entry.path);
-    closeContext();
-    await onRefresh();
   }
 
   // ── New folder ────────────────────────────────────────────────────────────
@@ -156,10 +286,12 @@
   async function handleNewFolder() {
     if (!newFolderName) { newFolderMode = false; return; }
     const base = path.replace(/[/\\]?$/, '/');
-    await onMkDir(base + newFolderName);
+    try {
+      await onMkDir(base + newFolderName);
+      await onRefresh();
+    } catch {}
     newFolderName = '';
     newFolderMode = false;
-    await onRefresh();
   }
 
   // ── Transfer ──────────────────────────────────────────────────────────────
@@ -189,15 +321,20 @@
       e.preventDefault();
       startRename(selected[0]);
     }
+    if (e.key === 'Delete' && selected.length > 0 && !renamingEntry) {
+      e.preventDefault();
+      handleDelete(selected[0]);
+    }
   }
 
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
   function handleDragStart(e, entry) {
     e.dataTransfer.effectAllowed = 'copy';
+    const isInSelection = selected.some(s => s.path === entry.path);
+    const dragEntries = (isInSelection && selected.length > 1) ? selected : [entry];
     e.dataTransfer.setData('application/glideftp', JSON.stringify({
-      path: entry.path,
-      name: entry.name,
+      entries: dragEntries.map(en => ({ path: en.path, name: en.name })),
       fromSide: side,
     }));
   }
@@ -218,11 +355,13 @@
     const raw = e.dataTransfer.getData('application/glideftp');
     if (!raw) return;
     try {
-      const { path: srcPath, name, fromSide } = JSON.parse(raw);
+      const { entries: dragEntries, fromSide } = JSON.parse(raw);
       if (fromSide === side) return;
-      const dest = path.replace(/[/\\]?$/, '/') + name;
-      if (side === 'remote') QueueUpload(srcPath, dest);
-      else QueueDownload(srcPath, dest);
+      for (const { path: srcPath, name } of dragEntries) {
+        const dest = path.replace(/[/\\]?$/, '/') + name;
+        if (side === 'remote') QueueUpload(srcPath, dest);
+        else QueueDownload(srcPath, dest);
+      }
       queueVisible.set(true);
     } catch {}
   }
@@ -248,18 +387,35 @@
       <button class="icon-btn" on:click={onNavigateUp} title="Parent folder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
-      {#if editingPath}
-        <input
-          class="path-edit"
-          type="text"
-          bind:value={editPathValue}
-          on:keydown={handlePathKeydown}
-          on:blur={confirmEditPath}
-          autofocus
-        />
-      {:else}
-        <div class="path-display" title={path} on:click={startEditPath}>{path}</div>
-      {/if}
+      <div class="path-edit-wrap">
+        {#if editingPath}
+          <input
+            class="path-edit"
+            type="text"
+            bind:value={editPathValue}
+            on:keydown={handlePathKeydown}
+            on:input={(e) => onPathInput(e.target.value)}
+            on:blur={() => { if (pathSuggestions.length === 0) confirmEditPath(); }}
+            autofocus
+          />
+          {#if pathSuggestions.length > 0}
+            <div class="path-autocomplete">
+              {#each pathSuggestions as s, i}
+                <div
+                  class="path-sugg"
+                  class:highlighted={i === highlightedSugg}
+                  on:mousedown|preventDefault={() => selectSuggestion(s)}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sugg-icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                  {s}
+                </div>
+              {/each}
+            </div>
+          {/if}
+        {:else}
+          <div class="path-display" title={path} on:click={startEditPath}>{path}</div>
+        {/if}
+      </div>
     </div>
     <div class="browser-actions">
       <button class="icon-btn" on:click={onRefresh} title={$t('refresh')}>
@@ -280,6 +436,10 @@
     </div>
   </div>
 
+  {#if deleteError}
+    <div class="error-bar">{deleteError}</div>
+  {/if}
+
   {#if newFolderMode}
     <div class="new-folder-row" on:contextmenu|stopPropagation>
       <input
@@ -294,7 +454,11 @@
     </div>
   {/if}
 
-  <div class="file-list">
+  <div
+    class="file-list"
+    bind:this={fileListEl}
+    on:mousedown={handleListMouseDown}
+  >
     <div class="file-list-header" on:contextmenu|stopPropagation>
       <span class="col-name col-sortable" on:click={() => toggleSort('name')}>
         {$t('name')}{#if sortKey === 'name'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
@@ -307,7 +471,7 @@
       </span>
     </div>
 
-    <!-- ".." parent folder row -->
+    <!-- ".." parent row -->
     <div
       class="file-row is-dir parent-row"
       on:click={onNavigateUp}
@@ -361,6 +525,7 @@
   </div>
 </div>
 
+<!-- Context menu -->
 {#if contextMenu}
   <div
     class="context-menu"
@@ -392,6 +557,33 @@
       </button>
     {/if}
   </div>
+{/if}
+
+<!-- Delete confirmation dialog -->
+{#if confirmDeleteEntry}
+  <div class="confirm-overlay" on:click|self={() => confirmDeleteEntry = null}>
+    <div class="confirm-box" on:click|stopPropagation>
+      <div class="confirm-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </div>
+      <div class="confirm-msg">{$t('confirmDeleteFile')}</div>
+      <div class="confirm-name">{confirmDeleteEntry.name}</div>
+      <div class="confirm-actions">
+        <button class="confirm-del-btn" on:click={() => doDelete(confirmDeleteEntry)}>{$t('deleteConfirm')}</button>
+        <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntry = null}>{$t('cancel')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Rubber-band selection rectangle -->
+{#if rubberBand}
+  <div class="rubber-band" style="
+    left: {Math.min(rubberBand.x1, rubberBand.x2)}px;
+    top: {Math.min(rubberBand.y1, rubberBand.y2)}px;
+    width: {Math.abs(rubberBand.x2 - rubberBand.x1)}px;
+    height: {Math.abs(rubberBand.y2 - rubberBand.y1)}px;
+  "></div>
 {/if}
 
 <style>
@@ -436,26 +628,29 @@
   min-width: 0;
 }
 
+.path-edit-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
 .path-display {
   font-size: 12px;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1;
   cursor: text;
   border-radius: 3px;
   padding: 2px 4px;
 }
-
 .path-display:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .path-edit {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
   background: var(--bg-input);
   border: 1px solid var(--accent);
   border-radius: 4px;
@@ -464,6 +659,44 @@
   padding: 2px 6px;
   outline: none;
   height: 24px;
+}
+
+.path-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 200;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 2px;
+}
+
+.path-sugg {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.path-sugg:hover, .path-sugg.highlighted {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+.sugg-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .browser-actions {
@@ -486,19 +719,19 @@
   transition: background 0.12s, color 0.12s;
   padding: 0;
 }
-
-.icon-btn:hover {
-  background: var(--bg-button-hover);
-  color: var(--text-primary);
-}
-
-.icon-btn svg {
-  width: 15px;
-  height: 15px;
-}
+.icon-btn:hover { background: var(--bg-button-hover); color: var(--text-primary); }
+.icon-btn svg { width: 15px; height: 15px; }
 
 .transfer-btn { color: var(--accent); }
 .transfer-btn:hover { background: var(--accent-subtle); color: var(--accent); }
+
+.error-bar {
+  background: var(--danger);
+  color: white;
+  font-size: 12px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
 
 .new-folder-row {
   display: flex;
@@ -508,7 +741,6 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-
 .new-folder-row input {
   flex: 1;
   background: var(--bg-input);
@@ -519,7 +751,6 @@
   font-size: 12px;
   outline: none;
 }
-
 .new-folder-row button {
   background: var(--bg-button);
   border: 1px solid var(--border);
@@ -534,6 +765,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  user-select: none;
 }
 
 .file-list-header {
@@ -552,19 +784,9 @@
   z-index: 1;
 }
 
-.col-sortable {
-  cursor: pointer;
-  user-select: none;
-}
-
-.col-sortable:hover {
-  color: var(--text-primary);
-}
-
-.sort-arr {
-  color: var(--accent);
-  font-size: 10px;
-}
+.col-sortable { cursor: pointer; user-select: none; }
+.col-sortable:hover { color: var(--text-primary); }
+.sort-arr { color: var(--accent); font-size: 10px; }
 
 .col-name { flex: 1; min-width: 0; }
 .col-size { width: 80px; text-align: right; flex-shrink: 0; }
@@ -584,26 +806,14 @@
   user-select: none;
   transition: background 0.08s;
 }
-
 .file-row:hover { background: var(--bg-hover); }
 .file-row.selected { background: var(--accent-subtle); }
 
 .parent-row { color: var(--text-muted); }
 .parent-row:hover { color: var(--text-primary); }
 
-.file-icon {
-  font-size: 14px;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-
-.file-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
+.file-icon { font-size: 14px; margin-right: 4px; flex-shrink: 0; }
+.file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .is-dir .file-name { font-weight: 500; }
 
 .rename-input {
@@ -624,6 +834,7 @@
   font-size: 13px;
 }
 
+/* ── Context menu ── */
 .context-menu {
   position: fixed;
   background: var(--bg-secondary);
@@ -634,29 +845,72 @@
   overflow: hidden;
   min-width: 160px;
 }
-
 .context-menu button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  padding: 8px 14px;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; background: none; border: none;
+  color: var(--text-primary); padding: 8px 14px;
+  font-size: 13px; text-align: left; cursor: pointer;
   transition: background 0.1s;
 }
-
 .context-menu button:hover { background: var(--bg-hover); }
 .context-menu button svg { width: 14px; height: 14px; flex-shrink: 0; }
 .context-menu button.danger { color: var(--danger); }
+.menu-sep { border: none; border-top: 1px solid var(--border); margin: 3px 0; }
 
-.menu-sep {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 3px 0;
+/* ── Delete confirmation ── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+.confirm-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  min-width: 280px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+}
+.confirm-icon svg { width: 36px; height: 36px; color: var(--danger); }
+.confirm-msg { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.confirm-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  border-radius: 4px;
+  padding: 3px 8px;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.confirm-actions { display: flex; gap: 8px; margin-top: 4px; }
+.confirm-del-btn {
+  background: var(--danger); border: none; border-radius: 5px;
+  color: white; padding: 7px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.confirm-del-btn:hover { background: var(--danger-hover); }
+.confirm-cancel-btn {
+  background: var(--bg-button); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-secondary); padding: 7px 18px; font-size: 13px; cursor: pointer;
+}
+.confirm-cancel-btn:hover { background: var(--bg-button-hover); }
+
+/* ── Rubber band ── */
+.rubber-band {
+  position: fixed;
+  border: 1px solid var(--accent);
+  background: var(--accent-subtle);
+  pointer-events: none;
+  z-index: 200;
 }
 </style>

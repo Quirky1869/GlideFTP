@@ -2,6 +2,7 @@
   import { t } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
   import { BrowseLocalDir } from '../../wailsjs/go/main/App.js';
+  import ColorPicker from './ColorPicker.svelte';
 
   export let onClose = () => {};
   export let onSaved = (_settings) => {};
@@ -9,8 +10,8 @@
   let form = {};
   let saved = false;
   let formReady = false;
+  let showColorPicker = false;
 
-  // Only init form once when settings first load, then leave user edits alone
   $: if ($settings && !formReady) {
     form = { ...$settings };
     formReady = true;
@@ -28,16 +29,19 @@
     if (dir) form = { ...form, defaultLocalDir: dir };
   }
 
-  // Button-based toggle — avoids WebKit-GTK label+checkbox bug
   function toggle(key) {
     form = { ...form, [key]: !form[key] };
   }
 
-  // Number stepper helpers
   function step(key, delta, min, max) {
     const current = Number(form[key]) || 0;
     const next = Math.max(min, Math.min(max, current + delta));
     form = { ...form, [key]: next };
+  }
+
+  function onColorApply(hex) {
+    form = { ...form, accentColor: hex };
+    showColorPicker = false;
   }
 </script>
 
@@ -76,6 +80,17 @@
           </button>
         </div>
       </div>
+      <div class="setting-row">
+        <label>{$t('accentColor')}</label>
+        <div class="color-row">
+          <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
+          <span class="color-hex">{form.accentColor || '#5B8AF5'}</span>
+          <button class="color-pick-btn" on:click={() => showColorPicker = true}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+            {$t('accentColor')}
+          </button>
+        </div>
+      </div>
     </section>
 
     <div class="divider"></div>
@@ -89,6 +104,14 @@
           <button class="num-btn" on:click={() => step('maxConcurrentTransfers', -1, 1, 10)}>−</button>
           <input type="number" bind:value={form.maxConcurrentTransfers} min="1" max="10" />
           <button class="num-btn" on:click={() => step('maxConcurrentTransfers', 1, 1, 10)}>+</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <label>{$t('transferSpeedLimit')}</label>
+        <div class="num-input">
+          <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', -100, 0, 100000)}>−</button>
+          <input type="number" bind:value={form.maxTransferSpeedKBps} min="0" max="100000" style="width: 80px" />
+          <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', 100, 0, 100000)}>+</button>
         </div>
       </div>
       <div class="setting-row">
@@ -183,6 +206,14 @@
     <button class="btn-primary" on:click={save}>{$t('saveSettings')}</button>
   </div>
 </div>
+
+{#if showColorPicker}
+  <ColorPicker
+    value={form.accentColor || '#5B8AF5'}
+    onClose={() => showColorPicker = false}
+    onApply={onColorApply}
+  />
+{/if}
 
 <style>
 .panel-backdrop {
@@ -279,14 +310,50 @@ h3 {
   cursor: pointer;
   transition: all 0.12s;
 }
-
 .toggle-btn.active {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
 }
 
-/* ── Toggle switch (button-based, no hidden checkbox) ── */
+/* ── Color row ── */
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.color-hex {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.color-pick-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.color-pick-btn:hover { background: var(--bg-button-hover); color: var(--text-primary); }
+.color-pick-btn svg { width: 13px; height: 13px; }
+
+/* ── Toggle switch ── */
 .sw {
   position: relative;
   width: 42px;
@@ -320,7 +387,6 @@ h3 {
 .num-input {
   display: flex;
   align-items: center;
-  gap: 0;
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
@@ -337,7 +403,6 @@ h3 {
   padding: 5px 4px;
   font-size: 13px;
   outline: none;
-  /* hide native spinners */
   -moz-appearance: textfield;
 }
 .num-input input::-webkit-inner-spin-button,

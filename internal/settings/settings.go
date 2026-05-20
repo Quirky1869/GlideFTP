@@ -18,6 +18,8 @@ type Settings struct {
 	AutoReconnect          bool   `json:"autoReconnect"`
 	ConfirmOnDelete        bool   `json:"confirmOnDelete"`
 	DateFormat             string `json:"dateFormat"`
+	MaxTransferSpeedKBps   int    `json:"maxTransferSpeedKBps"`
+	AccentColor            string `json:"accentColor"`
 }
 
 func Default() *Settings {
@@ -34,6 +36,8 @@ func Default() *Settings {
 		AutoReconnect:          false,
 		ConfirmOnDelete:        true,
 		DateFormat:             "2006-01-02 15:04",
+		MaxTransferSpeedKBps:   0,
+		AccentColor:            "#5B8AF5",
 	}
 }
 

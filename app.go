@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"GlideFTP/internal/connection"
 	localfs "GlideFTP/internal/fs"
@@ -37,6 +39,7 @@ func (a *App) startup(ctx context.Context) {
 		runtime.EventsEmit(ctx, name, data)
 	}
 	a.queue = transfer.NewQueue(a.appSettings.MaxConcurrentTransfers, emitter)
+	a.queue.SetSpeedLimit(a.appSettings.MaxTransferSpeedKBps)
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -47,6 +50,7 @@ func (a *App) GetSettings() *settings.Settings {
 
 func (a *App) SaveSettings(s settings.Settings) error {
 	a.appSettings = &s
+	a.queue.SetSpeedLimit(s.MaxTransferSpeedKBps)
 	return s.Save()
 }
 
@@ -66,6 +70,52 @@ func (a *App) UpdateSite(s sites.Site) error {
 
 func (a *App) DeleteSite(id string) error {
 	return a.siteMgr.Delete(id)
+}
+
+func (a *App) ExportSites() error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export sites",
+		DefaultFilename: "glideftp-sites.json",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	data, err := json.MarshalIndent(a.siteMgr.GetAll(), "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+func (a *App) ImportSites() (int, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Import sites",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return 0, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, err
+	}
+	var imported []sites.Site
+	if err := json.Unmarshal(data, &imported); err != nil {
+		return 0, fmt.Errorf("invalid file format: %w", err)
+	}
+	count := 0
+	for _, s := range imported {
+		s.ID = ""
+		if _, err := a.siteMgr.Create(s); err == nil {
+			count++
+		}
+	}
+	return count, nil
 }
 
 // ─── Connection ───────────────────────────────────────────────────────────────
@@ -94,6 +144,30 @@ func (a *App) ConnectToSite(id string) error {
 		Password:   site.Password,
 		Encryption: connection.EncryptionType(site.Encryption),
 		AuthType:   connection.AuthType(site.AuthType),
+		SSHKeyPath: site.SSHKeyPath,
+		TimeoutSec: a.appSettings.ConnectionTimeoutSec,
+		Passive:    a.appSettings.PassiveMode,
+	}
+	err := a.connMgr.Connect(cfg)
+	if err == nil {
+		a.queue.SetExecutor(a.connMgr.GetClient())
+	}
+	return err
+}
+
+func (a *App) ConnectWithPassword(id, password string) error {
+	site, ok := a.siteMgr.GetByID(id)
+	if !ok {
+		return fmt.Errorf("site not found")
+	}
+	cfg := connection.Config{
+		Protocol:   connection.Protocol(site.Protocol),
+		Host:       site.Host,
+		Port:       site.Port,
+		User:       site.User,
+		Password:   password,
+		Encryption: connection.EncryptionType(site.Encryption),
+		AuthType:   connection.AuthPassword,
 		SSHKeyPath: site.SSHKeyPath,
 		TimeoutSec: a.appSettings.ConnectionTimeoutSec,
 		Passive:    a.appSettings.PassiveMode,

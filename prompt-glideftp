@@ -81,7 +81,7 @@ _____
 
 20 = Peut tu rajouter un input "note" pour que l'utilisateur puisse noter ce qu'il veux sur chaque sites renseignée --- regarde dans ./_images/issues/issue-6.png
 
-21 = Le bouton "suppr" ne fonctionne pas pour supprimer un fichier ou dossier ni en local ni sur l'hote distant, de plus fait en sorte de mettre un paramtre suplémentaire avec un bouton on/off pour donner le choix à l'utilisateur s'il veux une confirmation avant la suppression  d'un élément, pour la confirmation tu doit générer un pop-up qui sera présent si l'option est coché par l'utilisateur
+21 = Le bouton "suppr" ne fonctionne pas pour supprimer un fichier ou dossier ni en local ni sur l'hote distant, de plus fait en sorte de mettre un paramtre suplémentaire avec un bouton on/off pour donner le choix à l'utilisateur s'il veux une confirmation avant la suppression  d'un élément, pour la confirmation tu doit générer un pop-up qui sera présent si l'option est coché par l'utilisateur ; car pour le moment l'option est disponible dans les paramètres mais ne fonctionne pas
 
 22 = Dans les options il faut ajouter une limite de transfert en Mo (cest au cas où un user n'a pas une bonne connexion)
 
@@ -89,4 +89,22 @@ _____
 
 24 = Peut ton faire ne sorte de générer un export des sites enregistrés pour par exemple les importer sur un autre ordinateur sur GlideFTP ? (en json par exemple ?)
 
+25 = Dans les paramètres dans l'onglet apparence est-ce qu'on peut faire ne sorte de générer un selecteur rgb pour que l'utilisateur puisse changer la couleur bleu qu'il y a par defaut, il faut que les valeurs rgb soit visible et changeable ainsi que hexadecimal, il faudra aussi un bouton "defaut" pour remmettre le bleu actuel, il faut que le nom soit "Couleur" ou "Color" en anglais et une fois qu'on clique sur l'icone un nouveau volet doit venir par dessus celui des parametres pour venir selectionner sa couleur et l'enregistrer --- regarde dans ./_images/issues/issue-rgb.png
 
+26 = quand je reste appuyer sur le clic gauche de ma souris pour selectionner plusieurs fichiers/dossiers cela ne fonctionne pas
+
+27 = J'ai vu que pour l'hote distant quand je clique sur les ".." que tu as créé avant, on dirait que la connexion entre l'hote et le serveur distant se coupe ; en tout cas je ne peux plus cliquer sur une dossier ou fichier comme si l'application ne répondait plus (si j me déco/reco ca refonctionne), pour info meme en cochant l'option "reconnexion automatique" cela ne fonctionne pas
+
+_____
+
+28 = Quand je selectionne plusieurs fichiers soit avec shift + clic soit avec ctrl + clic soit directement avec la souris en maintenant le clic gauche et que je drag and drop ma selection je n'ai que 1 seul fichiers qui est téléversé + quand je selectionne plusieurs fichiers et que je clique sur le bouton "transférer" (la petite fleche vers la droite) tout les fichiers se mettent en erreurs et si je les reprend 1 par 1 ensuite dans la laiste de transfert echoués et que je clique sur "réésayer" là ca fonctionne comme si plusieurs fichiers ne pouvais pas être transférés
+
+29 = Pour le pop-up de mot de passe requis lorsuq'on se connecte est-ce qu'on peut rajouter un petit oeil pour pouvoir voir le mdp ou le caché
+
+30 = quand je clique sur "annuler" dans la file d'attente j'ai l'impression que cela ne fait rien --- regarde dans ./_images/issues/issue-7.png
+
+31 = J'ai vu que quand On selectionne SFTP il faut choisir le l'authentification "interactif" pour avoir la possibilité de choisir le clé ssh que l'on veut importer -> alors c'est très bien mais j'aimerais améliorer cela ; je veux que quand on selectionne l'authentification interactif alors le protocole se change automatiquement par du SFTP tout le reste selectionnera automatiquement FTP et si jamais l'utilisateur selectionne SFTP alors c'est l'authentification qui se changera automatiquement sur Interactif ainsi l'input de clé SSH apparaitra sans que l'utilisateur ne cherche le bon paramètre :) (je te laisse aussi gérer le backend comme il faut si cela n'est pas déjà fait)
+
+_____
+
+32 = Lorsque je selectionne plusieurs fichiers et que je veux les supprimer il n'y en a qu'un fichier qui est supprimer après avoir confirmer oui dans le pop-up

@@ -1,6 +1,7 @@
 package connection
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -207,7 +208,7 @@ func (c *SFTPClient) CurrentDir() (string, error) {
 	return c.client.Getwd()
 }
 
-func (c *SFTPClient) Upload(localPath, remotePath string, progress func(sent, total int64)) error {
+func (c *SFTPClient) Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error {
 	if c.client == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -232,12 +233,12 @@ func (c *SFTPClient) Upload(localPath, remotePath string, progress func(sent, to
 	}
 	defer dst.Close()
 
-	pr := &progressReader{r: f, total: info.Size(), cb: progress}
+	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), cb: progress}
 	_, err = io.Copy(dst, pr)
 	return err
 }
 
-func (c *SFTPClient) Download(remotePath, localPath string, progress func(received, total int64)) error {
+func (c *SFTPClient) Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error {
 	if c.client == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -261,7 +262,7 @@ func (c *SFTPClient) Download(remotePath, localPath string, progress func(receiv
 	}
 	defer dst.Close()
 
-	pw := &progressWriter{w: dst, total: info.Size(), cb: progress}
+	pw := &progressWriter{ctx: ctx, w: dst, total: info.Size(), cb: progress}
 	_, err = io.Copy(pw, src)
 	return err
 }

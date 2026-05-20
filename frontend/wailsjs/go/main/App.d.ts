@@ -18,11 +18,15 @@ export function Connect(arg1:connection.Config):Promise<void>;
 
 export function ConnectToSite(arg1:string):Promise<void>;
 
+export function ConnectWithPassword(arg1:string,arg2:string):Promise<void>;
+
 export function CreateSite(arg1:sites.Site):Promise<sites.Site>;
 
 export function DeleteSite(arg1:string):Promise<void>;
 
 export function Disconnect():Promise<void>;
+
+export function ExportSites():Promise<void>;
 
 export function GetConnectionStatus():Promise<string>;
 
@@ -39,6 +43,8 @@ export function GetSettings():Promise<settings.Settings>;
 export function GetSites():Promise<Array<sites.Site>>;
 
 export function GetTransfers():Promise<Array<transfer.Job>>;
+
+export function ImportSites():Promise<number>;
 
 export function LocalDelete(arg1:string):Promise<void>;
 

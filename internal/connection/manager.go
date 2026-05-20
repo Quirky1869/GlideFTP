@@ -3,6 +3,7 @@ package connection
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type Status string
@@ -102,11 +103,40 @@ func (m *Manager) SetCwd(path string) {
 func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	m.mu.Lock()
 	client := m.client
+	timeout := m.cfg.TimeoutSec
 	m.mu.Unlock()
 	if client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
-	return client.ListDir(path)
+
+	if timeout <= 0 {
+		timeout = 30
+	}
+
+	type res struct {
+		entries []RemoteFileEntry
+		err     error
+	}
+	ch := make(chan res, 1)
+	go func() {
+		entries, err := client.ListDir(path)
+		ch <- res{entries, err}
+	}()
+
+	select {
+	case r := <-ch:
+		return r.entries, r.err
+	case <-time.After(time.Duration(timeout) * time.Second):
+		// Connection appears hung — force disconnect so the UI becomes responsive
+		m.mu.Lock()
+		if m.client == client {
+			go client.Disconnect()
+			m.client = nil
+			m.status = StatusDisconnected
+		}
+		m.mu.Unlock()
+		return nil, fmt.Errorf("operation timed out, please reconnect")
+	}
 }
 
 func (m *Manager) MkDir(path string) error {

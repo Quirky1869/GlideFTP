@@ -134,6 +134,8 @@ export namespace settings {
 	    autoReconnect: boolean;
 	    confirmOnDelete: boolean;
 	    dateFormat: string;
+	    maxTransferSpeedKBps: number;
+	    accentColor: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -152,6 +154,8 @@ export namespace settings {
 	        this.autoReconnect = source["autoReconnect"];
 	        this.confirmOnDelete = source["confirmOnDelete"];
 	        this.dateFormat = source["dateFormat"];
+	        this.maxTransferSpeedKBps = source["maxTransferSpeedKBps"];
+	        this.accentColor = source["accentColor"];
 	    }
 	}
 
@@ -171,6 +175,7 @@ export namespace sites {
 	    password: string;
 	    sshKeyPath: string;
 	    remoteDir: string;
+	    note: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Site(source);
@@ -189,6 +194,7 @@ export namespace sites {
 	        this.password = source["password"];
 	        this.sshKeyPath = source["sshKeyPath"];
 	        this.remoteDir = source["remoteDir"];
+	        this.note = source["note"];
 	    }
 	}
 

@@ -26,6 +26,10 @@ export function ConnectToSite(arg1) {
   return window['go']['main']['App']['ConnectToSite'](arg1);
 }
 
+export function ConnectWithPassword(arg1, arg2) {
+  return window['go']['main']['App']['ConnectWithPassword'](arg1, arg2);
+}
+
 export function CreateSite(arg1) {
   return window['go']['main']['App']['CreateSite'](arg1);
 }
@@ -36,6 +40,10 @@ export function DeleteSite(arg1) {
 
 export function Disconnect() {
   return window['go']['main']['App']['Disconnect']();
+}
+
+export function ExportSites() {
+  return window['go']['main']['App']['ExportSites']();
 }
 
 export function GetConnectionStatus() {
@@ -68,6 +76,10 @@ export function GetSites() {
 
 export function GetTransfers() {
   return window['go']['main']['App']['GetTransfers']();
+}
+
+export function ImportSites() {
+  return window['go']['main']['App']['ImportSites']();
 }
 
 export function LocalDelete(arg1) {

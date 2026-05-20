@@ -1,11 +1,13 @@
 package connection
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	goftp "github.com/jlaffaye/ftp"
@@ -13,6 +15,7 @@ import (
 
 type FTPClient struct {
 	cfg  Config
+	mu   sync.Mutex
 	conn *goftp.ServerConn
 }
 
@@ -66,6 +69,8 @@ func (c *FTPClient) Disconnect() error {
 }
 
 func (c *FTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -96,6 +101,8 @@ func (c *FTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
 }
 
 func (c *FTPClient) MkDir(path string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -103,6 +110,8 @@ func (c *FTPClient) MkDir(path string) error {
 }
 
 func (c *FTPClient) Delete(path string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -114,6 +123,8 @@ func (c *FTPClient) Delete(path string) error {
 }
 
 func (c *FTPClient) Rename(oldPath, newPath string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -121,13 +132,17 @@ func (c *FTPClient) Rename(oldPath, newPath string) error {
 }
 
 func (c *FTPClient) CurrentDir() (string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return "", fmt.Errorf("not connected")
 	}
 	return c.conn.CurrentDir()
 }
 
-func (c *FTPClient) Upload(localPath, remotePath string, progress func(sent, total int64)) error {
+func (c *FTPClient) Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -143,11 +158,13 @@ func (c *FTPClient) Upload(localPath, remotePath string, progress func(sent, tot
 	}
 	total := info.Size()
 
-	pr := &progressReader{r: f, total: total, cb: progress}
+	pr := &progressReader{ctx: ctx, r: f, total: total, cb: progress}
 	return c.conn.Stor(remotePath, pr)
 }
 
-func (c *FTPClient) Download(remotePath, localPath string, progress func(received, total int64)) error {
+func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -167,12 +184,13 @@ func (c *FTPClient) Download(remotePath, localPath string, progress func(receive
 	defer f.Close()
 
 	size, _ := c.conn.FileSize(remotePath)
-	pw := &progressWriter{w: f, total: size, cb: progress}
+	pw := &progressWriter{ctx: ctx, w: f, total: size, cb: progress}
 	_, err = io.Copy(pw, resp)
 	return err
 }
 
 type progressReader struct {
+	ctx   context.Context
 	r     io.Reader
 	total int64
 	sent  int64
@@ -180,6 +198,11 @@ type progressReader struct {
 }
 
 func (p *progressReader) Read(buf []byte) (int, error) {
+	if p.ctx != nil {
+		if err := p.ctx.Err(); err != nil {
+			return 0, err
+		}
+	}
 	n, err := p.r.Read(buf)
 	p.sent += int64(n)
 	if p.cb != nil {
@@ -189,6 +212,7 @@ func (p *progressReader) Read(buf []byte) (int, error) {
 }
 
 type progressWriter struct {
+	ctx      context.Context
 	w        io.Writer
 	total    int64
 	received int64
@@ -196,6 +220,11 @@ type progressWriter struct {
 }
 
 func (p *progressWriter) Write(buf []byte) (int, error) {
+	if p.ctx != nil {
+		if err := p.ctx.Err(); err != nil {
+			return 0, err
+		}
+	}
 	n, err := p.w.Write(buf)
 	p.received += int64(n)
 	if p.cb != nil {

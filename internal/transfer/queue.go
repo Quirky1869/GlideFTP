@@ -2,6 +2,7 @@ package transfer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,35 +27,37 @@ const (
 )
 
 type Job struct {
-	ID         string    `json:"id"`
-	Direction  Direction `json:"direction"`
-	LocalPath  string    `json:"localPath"`
-	RemotePath string    `json:"remotePath"`
-	Name       string    `json:"name"`
-	Size       int64     `json:"size"`
-	BytesDone  int64     `json:"bytesDone"`
-	Status     JobStatus `json:"status"`
-	Error      string    `json:"error"`
-	CreatedAt  time.Time `json:"createdAt"`
-	FinishedAt time.Time `json:"finishedAt"`
+	ID         string             `json:"id"`
+	Direction  Direction          `json:"direction"`
+	LocalPath  string             `json:"localPath"`
+	RemotePath string             `json:"remotePath"`
+	Name       string             `json:"name"`
+	Size       int64              `json:"size"`
+	BytesDone  int64              `json:"bytesDone"`
+	Status     JobStatus          `json:"status"`
+	Error      string             `json:"error"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	FinishedAt time.Time          `json:"finishedAt"`
+	cancelFn   context.CancelFunc `json:"-"`
 }
 
 type Executor interface {
-	Upload(localPath, remotePath string, progress func(sent, total int64)) error
-	Download(remotePath, localPath string, progress func(received, total int64)) error
+	Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error
+	Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error
 }
 
 type EventEmitter func(eventName string, data interface{})
 
 type Queue struct {
-	mu       sync.Mutex
-	jobs     []*Job
-	workers  int
-	sem      chan struct{}
-	emitter  EventEmitter
-	executor Executor
-	ctx      context.Context
-	cancel   context.CancelFunc
+	mu            sync.Mutex
+	jobs          []*Job
+	workers       int
+	sem           chan struct{}
+	emitter       EventEmitter
+	executor      Executor
+	ctx           context.Context
+	cancel        context.CancelFunc
+	speedLimitBps int64 // bytes/sec, 0 = unlimited
 }
 
 func NewQueue(workers int, emitter EventEmitter) *Queue {
@@ -72,6 +75,12 @@ func (q *Queue) SetExecutor(e Executor) {
 	q.mu.Lock()
 	q.executor = e
 	q.mu.Unlock()
+}
+
+func (q *Queue) SetSpeedLimit(kbps int) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	q.speedLimitBps = int64(kbps) * 1024
 }
 
 func (q *Queue) Add(dir Direction, localPath, remotePath string) *Job {
@@ -106,6 +115,12 @@ func (q *Queue) run(job *Job) {
 	}
 	defer func() { <-q.sem }()
 
+	jobCtx, jobCancel := context.WithCancel(q.ctx)
+	q.mu.Lock()
+	job.cancelFn = jobCancel
+	q.mu.Unlock()
+	defer jobCancel()
+
 	q.setStatus(job, StatusRunning, "")
 
 	q.mu.Lock()
@@ -118,11 +133,22 @@ func (q *Queue) run(job *Job) {
 	}
 
 	var err error
+	jobStart := time.Now()
 	progress := func(done, total int64) {
 		q.mu.Lock()
 		job.BytesDone = done
 		job.Size = total
+		limitBps := q.speedLimitBps
 		q.mu.Unlock()
+
+		if limitBps > 0 && done > 0 {
+			elapsed := time.Since(jobStart).Seconds()
+			expected := float64(done) / float64(limitBps)
+			if expected > elapsed {
+				time.Sleep(time.Duration((expected - elapsed) * float64(time.Second)))
+			}
+		}
+
 		q.emitter("transfer:progress", job)
 	}
 
@@ -133,13 +159,17 @@ func (q *Queue) run(job *Job) {
 			job.Size = info.Size()
 			q.mu.Unlock()
 		}
-		err = executor.Upload(job.LocalPath, job.RemotePath, progress)
+		err = executor.Upload(jobCtx, job.LocalPath, job.RemotePath, progress)
 	} else {
-		err = executor.Download(job.RemotePath, job.LocalPath, progress)
+		err = executor.Download(jobCtx, job.RemotePath, job.LocalPath, progress)
 	}
 
 	if err != nil {
-		q.setStatus(job, StatusFailed, err.Error())
+		if errors.Is(err, context.Canceled) {
+			q.setStatus(job, StatusCancelled, "")
+		} else {
+			q.setStatus(job, StatusFailed, err.Error())
+		}
 	} else {
 		q.mu.Lock()
 		job.BytesDone = job.Size
@@ -172,11 +202,17 @@ func (q *Queue) Cancel(id string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for _, job := range q.jobs {
-		if job.ID == id && job.Status == StatusPending {
-			job.Status = StatusCancelled
-			job.FinishedAt = time.Now()
-			q.emitter("transfer:update", job)
-			return nil
+		if job.ID == id {
+			if job.Status == StatusPending {
+				job.Status = StatusCancelled
+				job.FinishedAt = time.Now()
+				q.emitter("transfer:update", job)
+				return nil
+			}
+			if job.Status == StatusRunning && job.cancelFn != nil {
+				job.cancelFn()
+				return nil
+			}
 		}
 	}
 	return fmt.Errorf("job not found or not cancellable")
