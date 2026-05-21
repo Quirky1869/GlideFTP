@@ -45,7 +45,8 @@ GlideFTP/
 │   │   ├── types.go               # Shared types: Config, RemoteFileEntry, Client interface
 │   │   ├── manager.go             # Thread-safe connection manager (Connect/Disconnect/ListDir…)
 │   │   ├── ftp.go                 # FTP client (github.com/jlaffaye/ftp)
-│   │   └── sftp.go                # SFTP client (github.com/pkg/sftp + golang.org/x/crypto/ssh)
+│   │   ├── sftp.go                # SFTP client (github.com/pkg/sftp + golang.org/x/crypto/ssh)
+│   │   └── ppk.go                 # PuTTY .ppk key parser (v2/v3, RSA + Ed25519, unencrypted)
 │   ├── transfer/
 │   │   └── queue.go               # Worker-pool transfer queue; emits Wails events for progress
 │   ├── sites/
@@ -79,7 +80,7 @@ GlideFTP/
 - **Accent color** is applied via `applyAccentColor(hex)` in `settings.js` which sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars on `document.documentElement`.
 - **i18n** is a Svelte `derived` store — `$t('key')` reactively switches language with no page reload.
 - **Config files** are stored in the OS user config dir (`os.UserConfigDir()`): cross-platform without hardcoding paths.
-- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Selecting SFTP auto-sets authType to `interactive`; selecting `interactive` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`).
+- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Auth type `key` (= `AuthSSHKey`) handles both OpenSSH PEM keys and PuTTY `.ppk` format (v2/v3, RSA & Ed25519) — detection is automatic via `isPPKFile()` in `ppk.go`; encrypted PPK keys return a clear error asking to convert with PuTTYgen. Selecting SFTP auto-sets authType to `interactive` (preserves `key` if already set); selecting `interactive` or `key` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`).
 - **FTP passive mode** is the default (configurable in settings).
 - **FTP thread-safety**: `FTPClient` has a `sync.Mutex` — all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
 - **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
