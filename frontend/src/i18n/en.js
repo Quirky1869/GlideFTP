@@ -68,6 +68,7 @@ export default {
   authAskPassword: 'Ask password',
   authInteractive: 'Interactive',
   authNormal: 'Normal',
+  authSSHKey: 'SSH Key',
 
   // Encryption types
   encNone: 'None',

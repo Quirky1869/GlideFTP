@@ -160,4 +160,4 @@ _____
 
 45 = le ctrl + z ne fonctionne pas quand j'enregistre un site par exemple, peut tu faire en sorte que le ctrl + z annule la derniere action dans les inputs de GlideFTP stp
 
-
+46 = j'ai remarqué que quand j'essai de me connecter en sftp via une clé .ppk cela ne fonctionne pas --- regarde dans ./_images/issues/issue-14.jpg et issue-15.jpg (ca cest la procédure que j'ai) je t'ai mis aussi la "key private.ppk" dans ./_images/issues

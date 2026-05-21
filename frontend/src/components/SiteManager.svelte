@@ -62,10 +62,10 @@
     let authType = form.authType;
     let port = form.port;
     if (p === 'sftp') {
-      authType = 'interactive';
+      if (authType !== 'interactive' && authType !== 'key') authType = 'interactive';
       if (port === 21) port = 22;
     } else {
-      if (authType === 'interactive') authType = 'normal';
+      if (authType === 'interactive' || authType === 'key') authType = 'normal';
       if (port === 22) port = 21;
     }
     form = { ...form, protocol: p, authType, port };
@@ -74,7 +74,7 @@
   function setAuthType(a) {
     let protocol = form.protocol;
     let port = form.port;
-    if (a === 'interactive') {
+    if (a === 'interactive' || a === 'key') {
       protocol = 'sftp';
       if (port === 21) port = 22;
     } else {
@@ -198,6 +198,7 @@
     { value: 'account', label: t('authAccount') },
     { value: 'ask_password', label: t('authAskPassword') },
     { value: 'interactive', label: t('authInteractive') },
+    { value: 'key', label: t('authSSHKey') },
   ];
 
   const encryptionTypes = (t) => [
@@ -315,7 +316,7 @@
               {/if}
             {/if}
 
-            {#if form.protocol === 'sftp' && (form.authType === 'key' || form.authType === 'interactive')}
+            {#if form.protocol === 'sftp' && form.authType === 'key'}
               <div class="form-row">
                 <label>{$t('sshKey')}</label>
                 <div class="input-with-btn">

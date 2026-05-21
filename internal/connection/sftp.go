@@ -73,15 +73,17 @@ func (c *SFTPClient) buildAuthMethods() ([]gossh.AuthMethod, error) {
 		if c.cfg.SSHKeyPath == "" {
 			return nil, fmt.Errorf("SSH key path required for key authentication")
 		}
-		key, err := os.ReadFile(c.cfg.SSHKeyPath)
+		keyData, err := os.ReadFile(c.cfg.SSHKeyPath)
 		if err != nil {
 			return nil, fmt.Errorf("cannot read SSH key: %w", err)
 		}
 		var signer gossh.Signer
-		if c.cfg.Password != "" {
-			signer, err = gossh.ParsePrivateKeyWithPassphrase(key, []byte(c.cfg.Password))
+		if isPPKFile(keyData) {
+			signer, err = parsePPKSigner(keyData, c.cfg.Password)
+		} else if c.cfg.Password != "" {
+			signer, err = gossh.ParsePrivateKeyWithPassphrase(keyData, []byte(c.cfg.Password))
 		} else {
-			signer, err = gossh.ParsePrivateKey(key)
+			signer, err = gossh.ParsePrivateKey(keyData)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse SSH key: %w", err)

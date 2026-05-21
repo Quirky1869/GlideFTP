@@ -260,7 +260,7 @@ func (a *App) BrowseSSHKey() (string, error) {
 	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select SSH key",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "SSH Keys", Pattern: "*.pem;*.key;id_rsa;id_ed25519;id_ecdsa"},
+			{DisplayName: "SSH Keys", Pattern: "*.pem;*.key;*.ppk;id_rsa;id_ed25519;id_ecdsa"},
 			{DisplayName: "All Files", Pattern: "*"},
 		},
 	})
