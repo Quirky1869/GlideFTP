@@ -168,6 +168,10 @@ func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, 
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
+	// SIZE must be sent on the control connection BEFORE RETR opens the data transfer.
+	// Calling FileSize after Retr violates FTP protocol and corrupts the response stream.
+	size, _ := c.conn.FileSize(remotePath)
+
 	resp, err := c.conn.Retr(remotePath)
 	if err != nil {
 		return err
@@ -183,7 +187,6 @@ func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, 
 	}
 	defer f.Close()
 
-	size, _ := c.conn.FileSize(remotePath)
 	pw := &progressWriter{ctx: ctx, w: f, total: size, cb: progress}
 	_, err = io.Copy(pw, resp)
 	return err

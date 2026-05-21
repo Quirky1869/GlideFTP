@@ -341,9 +341,9 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 32px 32px 24px;
+  padding: 32px 36px 24px;
   width: 100%;
-  max-width: 700px;
+  max-width: 860px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
   display: flex;
   flex-direction: column;
@@ -375,7 +375,7 @@
 }
 
 .connect-bar-wrap :global(.conn-fields) {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 10px;
 }
 
