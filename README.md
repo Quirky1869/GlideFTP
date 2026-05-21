@@ -10,20 +10,20 @@
 
 ### Features
 
-- **FTP & SFTP support** — connect to any FTP or SFTP server
-- **SSH key authentication** — supports key files, interactive auth, and SSH agent
-- **Dark & Light themes** — dark by default, switchable in settings
-- **Custom accent color** — full RGB/HEX color picker to personalize the interface
-- **English & French interface** — English by default, switchable in settings
-- **Dual-panel file browser** — local files on the left, remote files on the right
-- **Transfer queue** — with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
-- **Multi-file operations** — select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
-- **Site manager** — save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON
-- **Ask-password auth** — password is never saved; prompted at connect time
-- **SFTP auto-coupling** — selecting SFTP automatically sets authentication to Interactive and vice versa
-- **Path autocomplete** — dropdown suggestions while typing in the path bar
-- **Full settings panel** — passive mode, timeout, concurrent transfers, speed limit, hidden files, and more
-- **Encryption support** — None, TLS (implicit), FTPES (explicit)
+- **FTP & SFTP support** - connect to any FTP or SFTP server
+- **SSH key authentication** - supports key files, interactive auth, and SSH agent
+- **Dark & Light themes** - dark by default, switchable in settings
+- **Custom accent color** - full RGB/HEX color picker to personalize the interface
+- **English & French interface** - English by default, switchable in settings
+- **Dual-panel file browser** - local files on the left, remote files on the right
+- **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
+- **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
+- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON
+- **Ask-password auth** - password is never saved; prompted at connect time
+- **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive and vice versa
+- **Path autocomplete** - dropdown suggestions while typing in the path bar
+- **Full settings panel** - passive mode, timeout, concurrent transfers, speed limit, hidden files, and more
+- **Encryption support** - None, TLS (implicit), FTPES (explicit)
 
 ### Screenshots
 
@@ -87,7 +87,7 @@ The binary will be generated in `build/bin/`.
 
 | Layer | Technology |
 |---|---|
-| Backend | Go — FTP (`jlaffaye/ftp`), SFTP (`pkg/sftp`, `x/crypto/ssh`) |
+| Backend | Go - FTP (`jlaffaye/ftp`), SFTP (`pkg/sftp`, `x/crypto/ssh`) |
 | UI Framework | Wails v2 |
 | Frontend | Svelte + Vite |
 | Config storage | JSON files in OS user config directory |
@@ -100,20 +100,20 @@ The binary will be generated in `build/bin/`.
 
 ### Fonctionnalités
 
-- **Support FTP & SFTP** — connexion à n'importe quel serveur FTP ou SFTP
-- **Authentification par clé SSH** — fichiers de clé, auth interactive, et SSH agent
-- **Thèmes sombre & clair** — sombre par défaut, modifiable dans les paramètres
-- **Couleur d'accentuation personnalisable** — sélecteur de couleur RGB/HEX pour personnaliser l'interface
-- **Interface en anglais & français** — anglais par défaut, modifiable dans les paramètres
-- **Explorateur double panneau** — fichiers locaux à gauche, fichiers distants à droite
-- **File de transfert** — avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
-- **Opérations multi-fichiers** — sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
-- **Gestionnaire de sites** — enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON
-- **Auth demande de mot de passe** — le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
-- **Couplage automatique SFTP** — sélectionner SFTP active automatiquement l'authentification Interactive et inversement
-- **Autocomplétion de chemin** — suggestions dans la barre de chemin lors de la saisie
-- **Panneau de paramètres complet** — mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés, et plus encore
-- **Support du chiffrement** — Aucun, TLS (implicite), FTPES (explicite)
+- **Support FTP & SFTP** - connexion à n'importe quel serveur FTP ou SFTP
+- **Authentification par clé SSH** - fichiers de clé, auth interactive, et SSH agent
+- **Thèmes sombre & clair** - sombre par défaut, modifiable dans les paramètres
+- **Couleur d'accentuation personnalisable** - sélecteur de couleur RGB/HEX pour personnaliser l'interface
+- **Interface en anglais & français** - anglais par défaut, modifiable dans les paramètres
+- **Explorateur double panneau** - fichiers locaux à gauche, fichiers distants à droite
+- **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
+- **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
+- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON
+- **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
+- **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive et inversement
+- **Autocomplétion de chemin** - suggestions dans la barre de chemin lors de la saisie
+- **Panneau de paramètres complet** - mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés, et plus encore
+- **Support du chiffrement** - Aucun, TLS (implicite), FTPES (explicite)
 
 ### Screenshots
 
@@ -177,7 +177,7 @@ Le binaire sera généré dans `build/bin/`.
 
 | Couche | Technologie |
 |---|---|
-| Backend | Go — FTP (`jlaffaye/ftp`), SFTP (`pkg/sftp`, `x/crypto/ssh`) |
+| Backend | Go - FTP (`jlaffaye/ftp`), SFTP (`pkg/sftp`, `x/crypto/ssh`) |
 | Framework UI | Wails v2 |
 | Frontend | Svelte + Vite |
 | Stockage config | Fichiers JSON dans le répertoire de config utilisateur |
