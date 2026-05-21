@@ -107,6 +107,8 @@ export default {
 
   // Site note
   siteNote: 'Note',
+  copyNote: 'Copier la note',
+  copied: 'Copié !',
 
   // Ask password prompt
   passwordPromptTitle: 'Mot de passe requis',

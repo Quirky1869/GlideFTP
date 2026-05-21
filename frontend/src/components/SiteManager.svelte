@@ -157,6 +157,16 @@
     }
   }
 
+  let noteCopied = false;
+
+  async function copyNote(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      noteCopied = true;
+      setTimeout(() => noteCopied = false, 1500);
+    } catch {}
+  }
+
   async function browseSshKey() {
     const path = await BrowseSSHKey();
     if (path) form = { ...form, sshKeyPath: path };
@@ -338,7 +348,16 @@
               <span class="view-name">{selectedSite.name}</span>
               <span class="view-sub">{selectedSite.protocol.toUpperCase()} — {selectedSite.host}:{selectedSite.port}</span>
               {#if selectedSite.note}
-                <p class="view-note">{selectedSite.note}</p>
+                <div class="view-note-wrap">
+                  <p class="view-note">{selectedSite.note}</p>
+                  <button class="copy-note-btn" title={noteCopied ? $t('copied') : $t('copyNote')} on:click={() => copyNote(selectedSite.note)}>
+                    {#if noteCopied}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    {:else}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    {/if}
+                  </button>
+                </div>
               {/if}
             </div>
             <div class="view-actions">
@@ -677,6 +696,32 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   white-space: pre-wrap;
   border-left: 3px solid var(--border);
 }
+
+.view-note-wrap {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+.view-note-wrap .view-note {
+  flex: 1;
+  padding-right: 32px;
+}
+.copy-note-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  transition: color 0.12s;
+}
+.copy-note-btn:hover { color: var(--accent); }
+.copy-note-btn svg { width: 14px; height: 14px; }
 
 .view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .confirm-text { font-size: 12px; color: var(--danger); }

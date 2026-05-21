@@ -149,4 +149,13 @@ _____
 
 41 = J'ai essayer de lancer le binaire qui est actuellement dans le dossier de build bin sur windows mais impossible de le lancer, comment on peut faire pour avoir un .exe de l'application comme GlideFTP.exe pour windows ? en terme d'arboresence il faudrait avoir ./build/bin/linux/GlideFTP et un autre dossier pour windows ./build/bin/windows/GlideFTP.exe ; je viens de voir qu'il y a une dossier windows dans ./build mais je ne sais pas à quoi il sert --- regarde dans ./_images/issues/issue-10.jpg
 
+42 = Dans la file d'attente lorsque je transfert un fichier (ou dossier) on voit la taille du fichier et combien on été transféré mais on ne voit pas à combien de Mo/s on envoi (en temps réél) peut -on le faire apparaitre --- regarde dans ./_images/issues/issue-11.jpg
 
+43 = est-ce qu'on peut ajouter un petit logo de copier au niveau des notes
+  quand on veux se connecter via un site enregistrés stp --- regarde
+  dans ./_images/issues/issue-12.jpg
+
+44 = J'ai vu que tu avait bien implémenté le bouton copié mais il est mal centré --- regarde
+  dans ./_images/issues/issue-13.jpg
+
+45 = le ctrl + z ne fonctionne pas quand j'enregistre un site par exemple, peut tu faire en sorte que le ctrl + z annule la derniere action dans les inputs de GlideFTP stp

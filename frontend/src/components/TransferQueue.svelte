@@ -8,6 +8,38 @@
   let startY = 0;
   let startHeight = 0;
 
+  // ── Speed tracking ────────────────────────────────────────────────────────
+  let prevBytes = {}; // id → { bytes, time }
+  let speeds = {};    // id → bytes/sec
+
+  $: {
+    const now = Date.now();
+    $transfers.forEach(job => {
+      if (job.status === 'running') {
+        const prev = prevBytes[job.id];
+        if (prev && (now - prev.time) > 250) {
+          const dt = (now - prev.time) / 1000;
+          const db = job.bytesDone - prev.bytes;
+          if (db >= 0 && dt > 0) speeds[job.id] = db / dt;
+          prevBytes[job.id] = { bytes: job.bytesDone, time: now };
+        } else if (!prev) {
+          prevBytes[job.id] = { bytes: job.bytesDone, time: now };
+          speeds[job.id] = speeds[job.id] || 0;
+        }
+      } else {
+        delete prevBytes[job.id];
+      }
+    });
+    speeds = speeds;
+  }
+
+  function formatSpeed(bps) {
+    if (!bps || bps <= 0) return '';
+    if (bps >= 1024 * 1024) return (bps / (1024 * 1024)).toFixed(1) + ' MB/s';
+    if (bps >= 1024) return Math.round(bps / 1024) + ' KB/s';
+    return Math.round(bps) + ' B/s';
+  }
+
   function startResize(e) {
     resizing = true;
     startY = e.clientY;
@@ -84,7 +116,10 @@
             <div class="progress-bar">
               <div class="progress-fill" style="width: {progressPct(job)}%"></div>
             </div>
-            <span class="progress-label">{progressPct(job)}% — {formatBytes(job.bytesDone)} / {formatBytes(job.size)}</span>
+            <span class="progress-label">
+              {progressPct(job)}% — {formatBytes(job.bytesDone)} / {formatBytes(job.size)}
+              {#if speeds[job.id] > 0}<span class="speed-label">• {formatSpeed(speeds[job.id])}</span>{/if}
+            </span>
           {/if}
           {#if job.error}
             <div class="job-error">{job.error}</div>
@@ -301,6 +336,11 @@
   color: var(--text-muted);
   margin-top: 2px;
   display: block;
+}
+
+.speed-label {
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .job-error {
