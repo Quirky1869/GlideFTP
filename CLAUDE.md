@@ -11,18 +11,28 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 ## Build & Run
 
 ```bash
-# Linux — system has webkit2gtk-4.1 (not 4.0), the tag is mandatory
-wails build -tags webkit2_41        # → build/bin/GlideFTP
+# Recommended — use the build script at project root
+./build.sh            # builds both Linux and Windows
+./build.sh linux      # Linux only  → build/bin/linux/GlideFTP
+./build.sh windows    # Windows only → build/bin/windows/GlideFTP.exe
+
+# Manual — Linux (system has webkit2gtk-4.1, the tag is mandatory)
+wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
 wails dev   -tags webkit2_41        # dev mode with hot reload
+
+# Manual — Windows cross-compile from Linux (requires mingw-w64-gcc)
+# Install: sudo pacman -S mingw-w64-gcc
+CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
 
 # Frontend only
 cd frontend && npm install && npm run build
 
 # Run the compiled binary
-./build/bin/GlideFTP
+./build/bin/linux/GlideFTP
 ```
 
 > **Note:** `wails` must be on PATH — install with `go install github.com/wailsapp/wails/v2/cmd/wails@latest` then `export PATH="$PATH:$(go env GOPATH)/bin"`.
+> Windows builds use WebView2 (built into Windows 10/11) — do NOT add `-tags webkit2_41` for Windows.
 
 ## Architecture
 

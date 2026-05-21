@@ -67,20 +67,37 @@ sudo apt install libwebkit2gtk-4.1-dev
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
-
-# Linux
-wails build -tags webkit2_41
-
-# Windows
-wails build
 ```
 
-The binary will be generated in `build/bin/`.
+**Using the build script (recommended):**
+
+```bash
+./build.sh            # builds both Linux and Windows
+./build.sh linux      # Linux only  → build/bin/linux/GlideFTP
+./build.sh windows    # Windows only → build/bin/windows/GlideFTP.exe
+```
+
+**Manual commands:**
+
+```bash
+# Linux (requires webkit2gtk-4.1)
+wails build -tags webkit2_41
+
+# Windows cross-compile from Linux (requires mingw-w64-gcc)
+# Install on Arch/Manjaro: sudo pacman -S mingw-w64-gcc
+CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
+```
+
+> **Note:** Windows uses WebView2 (built into Windows 10/11), so the `-tags webkit2_41` flag is not needed for Windows builds.
 
 #### Run
 
 ```bash
-./build/bin/GlideFTP
+# Linux
+./build/bin/linux/GlideFTP
+
+# Windows
+build\bin\windows\GlideFTP.exe
 ```
 
 ### Tech Stack
@@ -157,20 +174,37 @@ sudo apt install libwebkit2gtk-4.1-dev
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
-
-# Linux
-wails build -tags webkit2_41
-
-# Windows
-wails build
 ```
 
-Le binaire sera généré dans `build/bin/`.  
+**Via le script de build (recommandé) :**
+
+```bash
+./build.sh            # compile Linux et Windows
+./build.sh linux      # Linux seulement  → build/bin/linux/GlideFTP
+./build.sh windows    # Windows seulement → build/bin/windows/GlideFTP.exe
+```
+
+**Commandes manuelles :**
+
+```bash
+# Linux (nécessite webkit2gtk-4.1)
+wails build -tags webkit2_41
+
+# Cross-compilation Windows depuis Linux (nécessite mingw-w64-gcc)
+# Installation sur Arch/Manjaro : sudo pacman -S mingw-w64-gcc
+CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
+```
+
+> **Note :** Windows utilise WebView2 (intégré à Windows 10/11), le flag `-tags webkit2_41` n'est donc pas nécessaire pour les builds Windows.
 
 #### Lancer
 
 ```bash
-./build/bin/GlideFTP
+# Linux
+./build/bin/linux/GlideFTP
+
+# Windows
+build\bin\windows\GlideFTP.exe
 ```
 
 ### Stack technique

@@ -34,16 +34,27 @@ fish_add_path (go env GOPATH)/bin
 
 --- Build ---
 
-# Build production (Linux — nécessite webkit2gtk-4.1 sur ce système)
+# Build production Linux (nécessite webkit2gtk-4.1 sur ce système)
 wails build -tags webkit2_41
+# Binaire généré : build/bin/GlideFTP
 
-# Le binaire est généré ici :
-#   build/bin/GlideFTP
+# Build production Windows (nécessite mingw-w64-gcc installé)
+CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows \
+  wails build -platform windows/amd64
+# Binaire généré : build/bin/GlideFTP.exe
+
+# Installer le compilateur croisé Windows (Arch/Manjaro)
+sudo pacman -S mingw-w64-gcc
+
+# Script tout-en-un (Linux + Windows) — voir build.sh à la racine
+./build.sh            # compile les deux plateformes
+./build.sh linux      # Linux seulement  → build/bin/linux/GlideFTP
+./build.sh windows    # Windows seulement → build/bin/windows/GlideFTP.exe
 
 
 --- Lancer l'application ---
 
-./build/bin/GlideFTP
+./build/bin/linux/GlideFTP
 
 
 --- Développement (hot reload) ---

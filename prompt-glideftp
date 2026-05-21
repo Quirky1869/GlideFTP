@@ -137,6 +137,16 @@ _____
 
 _____
 
+1.5
+
 39 = J'ai constater un problème c'est que le transfert de mon hote vers mon nas fonctionne mais par contre quand j'essai de transférer de mon nas (serveur distant) vers mon hote alors le transfert reste à 0% --- regarde dans ./_images/issues/issue-8.png
 
 40 = Alors tu as bien augmenter la taille de l'hote mais maintenant regarde dans ./_images/issues/issue-9.png tu verra que le port et la fleche de connexion sont passé en desous il faudrai qu'il soit toujours sur la même ligne comme avant, il faudrait que tu augmente légerement la taille du rectangle autour des inputs 
+
+_____
+
+1.6
+
+41 = J'ai essayer de lancer le binaire qui est actuellement dans le dossier de build bin sur windows mais impossible de le lancer, comment on peut faire pour avoir un .exe de l'application comme GlideFTP.exe pour windows ? en terme d'arboresence il faudrait avoir ./build/bin/linux/GlideFTP et un autre dossier pour windows ./build/bin/windows/GlideFTP.exe ; je viens de voir qu'il y a une dossier windows dans ./build mais je ne sais pas à quoi il sert --- regarde dans ./_images/issues/issue-10.jpg
+
+
