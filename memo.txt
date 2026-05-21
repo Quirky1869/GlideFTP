@@ -75,3 +75,9 @@ npm run dev       # serveur de dev Vite (sans le backend Go)
 # Sans ce tag, le build échoue avec "webkit2gtk-4.0 not found"
 # Vérifier les versions webkit disponibles :
 pkg-config --list-all | grep -i webkit
+
+
+--- Tags ---
+git tag -a v1.6.1 -m "Stable version"
+git push origin v1.6.1
+GOPROXY=https://proxy.golang.org go list -m github.com/Quirky1869/GlideFTP@v1.6.1

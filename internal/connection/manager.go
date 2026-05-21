@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Status string
@@ -14,32 +16,123 @@ const (
 	StatusConnected    Status = "connected"
 )
 
-type Manager struct {
-	mu     sync.Mutex
+type connEntry struct {
+	id     string
+	name   string
 	client Client
 	cfg    Config
-	status Status
 	cwd    string
 }
 
-func NewManager() *Manager {
-	return &Manager{status: StatusDisconnected}
+type Manager struct {
+	mu           sync.Mutex
+	conns        []*connEntry
+	activeID     string
+	isConnecting bool
 }
 
-func (m *Manager) Connect(cfg Config) error {
+func NewManager() *Manager {
+	return &Manager{}
+}
+
+// getActive returns the active entry. Caller must hold m.mu.
+func (m *Manager) getActive() *connEntry {
+	for _, c := range m.conns {
+		if c.id == m.activeID {
+			return c
+		}
+	}
+	return nil
+}
+
+// getActiveClient returns the active client. Caller must hold m.mu.
+func (m *Manager) getActiveClient() Client {
+	if c := m.getActive(); c != nil {
+		return c.client
+	}
+	return nil
+}
+
+func removeEntries(conns []*connEntry, id string) []*connEntry {
+	var result []*connEntry
+	for _, c := range conns {
+		if c.id != id {
+			result = append(result, c)
+		}
+	}
+	return result
+}
+
+// Connect establishes a connection, replacing the currently active one.
+// Other connections (if any) remain open. Returns the new connection ID.
+func (m *Manager) Connect(cfg Config, name string) (string, error) {
+	if name == "" {
+		name = cfg.Host
+	}
+
 	m.mu.Lock()
-	if m.status == StatusConnecting {
+	if m.isConnecting {
 		m.mu.Unlock()
-		return fmt.Errorf("already connecting, please wait")
+		return "", fmt.Errorf("already connecting, please wait")
 	}
-	if m.status == StatusConnected && m.client != nil {
-		m.client.Disconnect()
-		m.client = nil
+	// Grab and remove the active connection entry.
+	active := m.getActive()
+	var oldClient Client
+	if active != nil {
+		oldClient = active.client
+		m.conns = removeEntries(m.conns, active.id)
 	}
-	m.status = StatusConnecting
-	m.cfg = cfg
+	m.isConnecting = true
 	m.mu.Unlock()
 
+	if oldClient != nil {
+		go oldClient.Disconnect()
+	}
+
+	id, err := m.doConnect(cfg, name)
+
+	m.mu.Lock()
+	m.isConnecting = false
+	if err != nil {
+		m.mu.Unlock()
+		return "", err
+	}
+	m.activeID = id
+	m.mu.Unlock()
+	return id, nil
+}
+
+// ConnectNew adds a new connection alongside existing ones.
+// The new connection becomes the active one. Returns the new connection ID.
+func (m *Manager) ConnectNew(cfg Config, name string) (string, error) {
+	if name == "" {
+		name = cfg.Host
+	}
+
+	m.mu.Lock()
+	if m.isConnecting {
+		m.mu.Unlock()
+		return "", fmt.Errorf("already connecting, please wait")
+	}
+	m.isConnecting = true
+	m.mu.Unlock()
+
+	id, err := m.doConnect(cfg, name)
+
+	m.mu.Lock()
+	m.isConnecting = false
+	if err != nil {
+		m.mu.Unlock()
+		return "", err
+	}
+	m.activeID = id
+	m.mu.Unlock()
+	return id, nil
+}
+
+// doConnect creates the client, connects, and appends the entry to m.conns.
+// Must NOT be called with m.mu held.
+func (m *Manager) doConnect(cfg Config, name string) (string, error) {
 	var client Client
 	switch cfg.Protocol {
 	case ProtocolSFTP:
@@ -49,10 +142,7 @@ func (m *Manager) Connect(cfg Config) error {
 	}
 
 	if err := client.Connect(); err != nil {
-		m.mu.Lock()
-		m.status = StatusDisconnected
-		m.mu.Unlock()
-		return err
+		return "", err
 	}
 
 	cwd, _ := client.CurrentDir()
@@ -60,55 +150,166 @@ func (m *Manager) Connect(cfg Config) error {
 		cwd = "/"
 	}
 
+	id := uuid.New().String()
+	entry := &connEntry{
+		id:     id,
+		name:   name,
+		client: client,
+		cfg:    cfg,
+		cwd:    cwd,
+	}
+
 	m.mu.Lock()
-	m.client = client
-	m.status = StatusConnected
-	m.cwd = cwd
+	m.conns = append(m.conns, entry)
 	m.mu.Unlock()
+	return id, nil
+}
+
+// Disconnect closes ALL connections.
+func (m *Manager) Disconnect() error {
+	m.mu.Lock()
+	conns := m.conns
+	m.conns = nil
+	m.activeID = ""
+	m.mu.Unlock()
+
+	var lastErr error
+	for _, c := range conns {
+		if c.client != nil {
+			if err := c.client.Disconnect(); err != nil {
+				lastErr = err
+			}
+		}
+	}
+	return lastErr
+}
+
+// CloseOne closes a specific connection by ID.
+// If it was the active connection, the most-recently-added remaining one becomes active.
+func (m *Manager) CloseOne(id string) error {
+	m.mu.Lock()
+	var found *connEntry
+	for _, c := range m.conns {
+		if c.id == id {
+			found = c
+			break
+		}
+	}
+	if found == nil {
+		m.mu.Unlock()
+		return fmt.Errorf("connection not found")
+	}
+	m.conns = removeEntries(m.conns, id)
+	if m.activeID == id {
+		if len(m.conns) > 0 {
+			m.activeID = m.conns[len(m.conns)-1].id
+		} else {
+			m.activeID = ""
+		}
+	}
+	m.mu.Unlock()
+
+	if found.client != nil {
+		return found.client.Disconnect()
+	}
 	return nil
 }
 
-func (m *Manager) Disconnect() error {
+// SwitchTo makes a connection the active one (does not reconnect).
+func (m *Manager) SwitchTo(id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.client == nil {
-		m.status = StatusDisconnected
-		return nil
+	for _, c := range m.conns {
+		if c.id == id {
+			m.activeID = id
+			return nil
+		}
 	}
-	err := m.client.Disconnect()
-	m.client = nil
-	m.status = StatusDisconnected
-	m.cwd = ""
-	return err
+	return fmt.Errorf("connection not found: %s", id)
+}
+
+// GetConnections returns info about all active connections.
+func (m *Manager) GetConnections() []ConnInfo {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	infos := make([]ConnInfo, 0, len(m.conns))
+	for _, c := range m.conns {
+		infos = append(infos, ConnInfo{
+			ID:       c.id,
+			Name:     c.name,
+			Host:     c.cfg.Host,
+			Protocol: string(c.cfg.Protocol),
+			Port:     c.cfg.Port,
+			User:     c.cfg.User,
+		})
+	}
+	return infos
+}
+
+// ActiveID returns the ID of the currently active connection.
+func (m *Manager) ActiveID() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.activeID
+}
+
+// ConnectionCount returns the total number of open connections.
+func (m *Manager) ConnectionCount() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.conns)
 }
 
 func (m *Manager) GetStatus() Status {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.status
+	if m.isConnecting {
+		return StatusConnecting
+	}
+	if m.activeID != "" && len(m.conns) > 0 {
+		return StatusConnected
+	}
+	return StatusDisconnected
 }
 
 func (m *Manager) GetCwd() string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.cwd
+	if c := m.getActive(); c != nil {
+		return c.cwd
+	}
+	return ""
 }
 
 func (m *Manager) SetCwd(path string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.cwd = path
+	if c := m.getActive(); c != nil {
+		c.cwd = path
+	}
+}
+
+func (m *Manager) GetClient() Client {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.getActiveClient()
 }
 
 func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	m.mu.Lock()
-	client := m.client
-	timeout := m.cfg.TimeoutSec
+	active := m.getActive()
+	if active == nil {
+		m.mu.Unlock()
+		return nil, fmt.Errorf("not connected")
+	}
+	client := active.client
+	entryID := active.id
+	timeout := active.cfg.TimeoutSec
 	m.mu.Unlock()
+
 	if client == nil {
 		return nil, fmt.Errorf("not connected")
 	}
-
 	if timeout <= 0 {
 		timeout = 30
 	}
@@ -127,12 +328,20 @@ func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	case r := <-ch:
 		return r.entries, r.err
 	case <-time.After(time.Duration(timeout) * time.Second):
-		// Connection appears hung — force disconnect so the UI becomes responsive
 		m.mu.Lock()
-		if m.client == client {
-			go client.Disconnect()
-			m.client = nil
-			m.status = StatusDisconnected
+		for _, c := range m.conns {
+			if c.id == entryID && c.client == client {
+				go c.client.Disconnect()
+				c.client = nil
+				m.conns = removeEntries(m.conns, entryID)
+				if m.activeID == entryID {
+					m.activeID = ""
+					if len(m.conns) > 0 {
+						m.activeID = m.conns[len(m.conns)-1].id
+					}
+				}
+				break
+			}
 		}
 		m.mu.Unlock()
 		return nil, fmt.Errorf("operation timed out, please reconnect")
@@ -141,7 +350,7 @@ func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 
 func (m *Manager) MkDir(path string) error {
 	m.mu.Lock()
-	client := m.client
+	client := m.getActiveClient()
 	m.mu.Unlock()
 	if client == nil {
 		return fmt.Errorf("not connected")
@@ -151,7 +360,7 @@ func (m *Manager) MkDir(path string) error {
 
 func (m *Manager) Delete(path string) error {
 	m.mu.Lock()
-	client := m.client
+	client := m.getActiveClient()
 	m.mu.Unlock()
 	if client == nil {
 		return fmt.Errorf("not connected")
@@ -161,16 +370,10 @@ func (m *Manager) Delete(path string) error {
 
 func (m *Manager) Rename(oldPath, newPath string) error {
 	m.mu.Lock()
-	client := m.client
+	client := m.getActiveClient()
 	m.mu.Unlock()
 	if client == nil {
 		return fmt.Errorf("not connected")
 	}
 	return client.Rename(oldPath, newPath)
-}
-
-func (m *Manager) GetClient() Client {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.client
 }

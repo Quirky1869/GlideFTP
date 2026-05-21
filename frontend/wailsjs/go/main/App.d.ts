@@ -14,11 +14,15 @@ export function CancelTransfer(arg1:string):Promise<void>;
 
 export function ClearTransfers(arg1:string):Promise<void>;
 
-export function Connect(arg1:connection.Config):Promise<void>;
+export function CloseConnection(arg1:string):Promise<void>;
 
-export function ConnectToSite(arg1:string):Promise<void>;
+export function Connect(arg1:connection.Config):Promise<connection.ConnInfo>;
 
-export function ConnectWithPassword(arg1:string,arg2:string):Promise<void>;
+export function ConnectToSite(arg1:string):Promise<connection.ConnInfo>;
+
+export function ConnectToSiteAdditional(arg1:string,arg2:string):Promise<connection.ConnInfo>;
+
+export function ConnectWithPassword(arg1:string,arg2:string):Promise<connection.ConnInfo>;
 
 export function CreateSite(arg1:sites.Site):Promise<sites.Site>;
 
@@ -28,7 +32,11 @@ export function Disconnect():Promise<void>;
 
 export function ExportSites():Promise<void>;
 
+export function GetActiveConnectionID():Promise<string>;
+
 export function GetConnectionStatus():Promise<string>;
+
+export function GetConnections():Promise<Array<connection.ConnInfo>>;
 
 export function GetLocalHome():Promise<string>;
 
@@ -71,5 +79,7 @@ export function RemoveTransfer(arg1:string):Promise<void>;
 export function RetryTransfer(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
+
+export function SwitchConnection(arg1:string):Promise<void>;
 
 export function UpdateSite(arg1:sites.Site):Promise<void>;

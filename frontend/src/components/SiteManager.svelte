@@ -1,7 +1,8 @@
 <script>
   import { t } from '../i18n/index.js';
   import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, ExportSites, ImportSites } from '../../wailsjs/go/main/App.js';
-  import { connectBySite, connectBySiteWithPassword, refreshRemote } from '../stores/connection.js';
+  import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
+  import { settings } from '../stores/settings.js';
 
   export let onClose = () => {};
 
@@ -10,6 +11,14 @@
   let editMode = false;
   let confirmDeleteId = null;
 
+  // Keep-or-replace dialog (shown when already connected)
+  let showKeepOrReplace = false;
+  let pendingSiteId = null;
+  let pendingConfig = null;
+  let keepOrReplaceMode = 'normal'; // 'normal' | 'ask_password'
+
+  $: canAddConnection = $connections.length < ($settings?.maxConnections ?? 3);
+
   // Password prompt for ask_password sites
   let showPasswordPrompt = false;
   let promptSiteId = null;
@@ -17,6 +26,7 @@
   let promptPassword = '';
   let promptError = '';
   let showPwd = false;
+  let promptIsAdd = false;
 
   // Paste context menu
   let pasteMenu = null;
@@ -127,11 +137,19 @@
 
   async function connectToSite(id) {
     const site = sites.find(s => s.id === id);
+    if ($connectionStatus === 'connected') {
+      pendingSiteId = id;
+      pendingConfig = site ? siteConfig(site) : null;
+      keepOrReplaceMode = site?.authType === 'ask_password' ? 'ask_password' : 'normal';
+      showKeepOrReplace = true;
+      return;
+    }
     if (site?.authType === 'ask_password') {
       promptSiteId = id;
-      promptSiteName = site.name;
+      promptSiteName = site.name || site.host;
       promptPassword = '';
       promptError = '';
+      promptIsAdd = false;
       showPasswordPrompt = true;
       return;
     }
@@ -144,11 +162,57 @@
     }
   }
 
+  async function doKeepAndAdd() {
+    showKeepOrReplace = false;
+    const site = sites.find(s => s.id === pendingSiteId);
+    if (keepOrReplaceMode === 'ask_password') {
+      promptSiteId = pendingSiteId;
+      promptSiteName = site?.name || site?.host || '';
+      promptPassword = '';
+      promptError = '';
+      promptIsAdd = true;
+      showPasswordPrompt = true;
+      return;
+    }
+    try {
+      await addConnection(pendingSiteId, '');
+      await refreshRemote(site?.remoteDir || '/');
+      onClose();
+    } catch (e) {
+      alert(e?.toString() || 'Connection failed');
+    }
+  }
+
+  async function doReplace() {
+    showKeepOrReplace = false;
+    const site = sites.find(s => s.id === pendingSiteId);
+    if (keepOrReplaceMode === 'ask_password') {
+      promptSiteId = pendingSiteId;
+      promptSiteName = site?.name || site?.host || '';
+      promptPassword = '';
+      promptError = '';
+      promptIsAdd = false;
+      showPasswordPrompt = true;
+      return;
+    }
+    try {
+      await connectBySite(pendingSiteId, pendingConfig);
+      await refreshRemote(site?.remoteDir || '/');
+      onClose();
+    } catch (e) {
+      alert(e?.toString() || 'Connection failed');
+    }
+  }
+
   async function confirmPasswordConnect() {
     promptError = '';
     const site = sites.find(s => s.id === promptSiteId);
     try {
-      await connectBySiteWithPassword(promptSiteId, promptPassword, site ? siteConfig(site) : null);
+      if (promptIsAdd) {
+        await addConnection(promptSiteId, promptPassword);
+      } else {
+        await connectBySiteWithPassword(promptSiteId, promptPassword, site ? siteConfig(site) : null);
+      }
       await refreshRemote(site?.remoteDir || '/');
       showPasswordPrompt = false;
       onClose();
@@ -404,6 +468,36 @@
     on:click|stopPropagation
   >
     <button on:click={doPaste}>{$t('paste')}</button>
+  </div>
+{/if}
+
+<!-- Keep-or-replace overlay -->
+{#if showKeepOrReplace}
+  <div class="pwd-overlay">
+    <div class="pwd-box" style="width: 380px">
+      <div class="pwd-title">{$t('keepOrReplaceTitle')}</div>
+      <div class="pwd-site">{$t('keepOrReplaceMsg')}</div>
+      <div class="pwd-actions" style="flex-direction: column; gap: 8px; margin-top: 4px;">
+        <button
+          class="btn-primary"
+          style="width: 100%; justify-content: center;"
+          disabled={!canAddConnection}
+          title={!canAddConnection ? $t('maxConnectionsReached') : ''}
+          on:click={doKeepAndAdd}
+        >
+          {$t('keepConnection')}
+          {#if !canAddConnection}
+            <span style="font-size: 11px; opacity: 0.7; margin-left: 4px;">({$t('maxConnectionsReached')})</span>
+          {/if}
+        </button>
+        <button class="btn-secondary" style="width: 100%; justify-content: center;" on:click={doReplace}>
+          {$t('replaceConnection')}
+        </button>
+        <button class="btn-secondary" style="width: 100%; justify-content: center;" on:click={() => showKeepOrReplace = false}>
+          {$t('cancel')}
+        </button>
+      </div>
+    </div>
   </div>
 {/if}
 

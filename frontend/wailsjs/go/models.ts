@@ -30,6 +30,28 @@ export namespace connection {
 	        this.passive = source["passive"];
 	    }
 	}
+	export class ConnInfo {
+	    id: string;
+	    name: string;
+	    host: string;
+	    protocol: string;
+	    port: number;
+	    user: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConnInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.host = source["host"];
+	        this.protocol = source["protocol"];
+	        this.port = source["port"];
+	        this.user = source["user"];
+	    }
+	}
 	export class RemoteFileEntry {
 	    name: string;
 	    path: string;
@@ -136,6 +158,7 @@ export namespace settings {
 	    dateFormat: string;
 	    maxTransferSpeedKBps: number;
 	    accentColor: string;
+	    maxConnections: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -156,6 +179,7 @@ export namespace settings {
 	        this.dateFormat = source["dateFormat"];
 	        this.maxTransferSpeedKBps = source["maxTransferSpeedKBps"];
 	        this.accentColor = source["accentColor"];
+	        this.maxConnections = source["maxConnections"];
 	    }
 	}
 

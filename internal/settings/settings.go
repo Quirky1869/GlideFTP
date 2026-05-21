@@ -20,6 +20,7 @@ type Settings struct {
 	DateFormat             string `json:"dateFormat"`
 	MaxTransferSpeedKBps   int    `json:"maxTransferSpeedKBps"`
 	AccentColor            string `json:"accentColor"`
+	MaxConnections         int    `json:"maxConnections"`
 }
 
 func Default() *Settings {
@@ -38,6 +39,7 @@ func Default() *Settings {
 		DateFormat:             "2006-01-02 15:04",
 		MaxTransferSpeedKBps:   0,
 		AccentColor:            "#5B8AF5",
+		MaxConnections:         3,
 	}
 }
 

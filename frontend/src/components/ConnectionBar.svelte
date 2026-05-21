@@ -1,6 +1,8 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, refreshRemote, remotePath } from '../stores/connection.js';
+  import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, connections } from '../stores/connection.js';
+
+  export let onMultiDisconnect = null;
 
   let host = '';
   let user = '';
@@ -31,6 +33,10 @@
 
   async function handleConnect() {
     if (isConnected) {
+      if ($connections.length > 1 && onMultiDisconnect) {
+        onMultiDisconnect();
+        return;
+      }
       password = '';
       await disconnect();
       return;

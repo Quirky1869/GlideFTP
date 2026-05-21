@@ -42,8 +42,8 @@ GlideFTP/
 ├── app.go                         # All Go→JS bindings (the only Wails-bound struct)
 ├── internal/
 │   ├── connection/
-│   │   ├── types.go               # Shared types: Config, RemoteFileEntry, Client interface
-│   │   ├── manager.go             # Thread-safe connection manager (Connect/Disconnect/ListDir…)
+│   │   ├── types.go               # Shared types: Config, ConnInfo, RemoteFileEntry, Client interface
+│   │   ├── manager.go             # Thread-safe multi-connection manager (Connect/ConnectNew/CloseOne/SwitchTo…)
 │   │   ├── ftp.go                 # FTP client (github.com/jlaffaye/ftp)
 │   │   ├── sftp.go                # SFTP client (github.com/pkg/sftp + golang.org/x/crypto/ssh)
 │   │   └── ppk.go                 # PuTTY .ppk key parser (v2/v3, RSA + Ed25519, unencrypted)
@@ -52,11 +52,11 @@ GlideFTP/
 │   ├── sites/
 │   │   └── sites.go               # Saved sites — persisted to ~/.config/GlideFTP/sites.json
 │   ├── settings/
-│   │   └── settings.go            # App settings — persisted to ~/.config/GlideFTP/settings.json
+│   │   └── settings.go            # App settings — persisted to ~/.config/GlideFTP/settings.json (includes MaxConnections)
 │   └── fs/
 │       └── local.go               # Local filesystem helpers (ListDir, MkDir, Delete, Rename)
 └── frontend/src/
-    ├── App.svelte                  # Root: disconnected (centered form) vs connected (dual panel)
+    ├── App.svelte                  # Root: disconnected (centered form) vs connected (tabs strip + dual panel)
     ├── style.css                   # Global CSS vars (themes: dark/light), html/body/app layout
     ├── i18n/{en,fr,index}.js       # EN/FR i18n via Svelte derived store
     ├── stores/
@@ -85,6 +85,7 @@ GlideFTP/
 - **FTP thread-safety**: `FTPClient` has a `sync.Mutex` — all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
 - **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
 - **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting — no "already connected" error.
+- **Multi-connection tabs**: `manager.ConnectNew()` adds a connection alongside existing ones. The frontend tracks open connections in the `connections` writable store (`[{id, name, host, protocol, port, user, remotePath}]`). Tabs appear in `App.svelte` between the topbar and dual-browser only when `$connections.length > 1`. `switchTab(id)` saves the current remotePath before switching. `closeTab(id)` cleans up and auto-activates the next tab. When the disconnect button is clicked with 2+ open connections, a confirmation overlay asks to close all. `MaxConnections` (1–5, default 3) is a setting that controls how many can be kept open; `SiteManager` checks this before offering the "keep and open new" option.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
 
@@ -120,7 +121,9 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 ## App.svelte Layout
 
 - **Disconnected**: centered `.connect-card` with `ConnectionBar` and a link to open `SiteManager`
-- **Connected**: dual-panel `FileBrowser` layout with a draggable `.browser-splitter` (20–80% range via `leftWidth` percent)
+- **Connected**: optional `.conn-tabs` strip (only when `$connections.length > 1`), then dual-panel `FileBrowser` layout with a draggable `.browser-splitter` (20–80% range via `leftWidth` percent)
+- **Connection tabs**: tab per open connection, min-width 160px; active tab has accent underline; ✕ button calls `closeTab(id)`; clicking a tab calls `switchTab(id)` which saves the current path and refreshes the remote panel for the new active connection
+- **Disconnect-all overlay**: triggered via `onMultiDisconnect` prop on `ConnectionBar`; confirms closing all open connections
 - **Auto-refresh**: `$: if ($completedTransfer)` triggers `refreshLocal` + `refreshRemote` after any finished transfer
 - **Settings saved**: `handleSettingsSaved()` refreshes file lists so changes (e.g. showHiddenFiles) take effect immediately
 
@@ -130,6 +133,11 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 |---|---|---|
 | `completedTransfer` | transfers.js | Writable; set to `{ ...job, _ts }` when a transfer finishes; used to trigger auto-refresh |
 | `removeTransfer(id)` | transfers.js | Calls `RemoveTransfer` Go binding; frontend removes via `transfer:removed` event |
+| `connections` | connection.js | Writable array of `{id, name, host, protocol, port, user, remotePath}` for all open connections |
+| `activeConnectionId` | connection.js | Writable; UUID of the currently active connection tab |
+| `addConnection(siteId, overridePassword?)` | connection.js | Calls `ConnectToSiteAdditional`; adds a connection without closing existing ones |
+| `switchTab(id)` | connection.js | Saves current remotePath, calls `SwitchConnection`, refreshes remote panel for the new active connection |
+| `closeTab(id)` | connection.js | Calls `CloseConnection`, removes from store; if last tab, clears all state; if was active, switches to last remaining |
 | `connectBySite(id, config?)` | connection.js | Sets `connectionStatus` store correctly; optional `config` param populates `activeConnectionConfig` |
 | `connectBySiteWithPassword(id, pwd, config?)` | connection.js | Like `connectBySite` but passes runtime password (for `ask_password` auth sites) |
 | `activeConnectionConfig` | connection.js | Writable; set on every connect with `{ protocol, host, port, user }`; used by `ConnectionBar` to show real values when connected |
@@ -142,9 +150,17 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `queue.RemoveJob(id)` — removes a finished/cancelled/failed job; emits `transfer:removed` event
 - `app.RemoveTransfer(id)` — JS-callable wrapper around `queue.RemoveJob`
 - `app.ConnectWithPassword(id, password)` — connects to a saved site but overrides its stored password (for `ask_password` sites)
+- `app.ConnectToSiteAdditional(siteID, overridePassword)` — adds a new connection alongside existing ones (multi-tab); calls `manager.ConnectNew()`
+- `app.GetConnections()` — returns `[]ConnInfo` for all currently open connections
+- `app.SwitchConnection(id)` — switches the active connection and calls `queue.SetExecutor` with the new client
+- `app.CloseConnection(id)` — closes a specific connection and calls `queue.SetExecutor` with the updated active client
+- `app.GetActiveConnectionID()` — returns the UUID of the currently active connection
+- `manager.ConnectNew()` — adds a connection without removing existing ones; new connection becomes active
+- `manager.CloseOne(id)` — closes specific connection; if it was active, switches to the most-recently-added remaining one
+- `manager.SwitchTo(id)` — makes a connection active without reconnecting
 - `app.ExportSites()` / `app.ImportSites()` — file-dialog based JSON export/import of all saved sites
 - `app.shutdown(ctx)` — registered as `OnShutdown` in `main.go`; calls `connMgr.Disconnect()` for clean teardown on window close
-- `manager.Connect()` — disconnects existing client first if already connected (enables reconnection from SiteManager)
+- `manager.Connect()` — disconnects existing active client first; other connections remain open (enables reconnection from SiteManager)
 - `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
 - `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
 - **FTP Download order**: `FileSize` MUST be called BEFORE `Retr` in `ftp.go`. Calling it after opens a command on the control connection mid-transfer, which violates FTP protocol and causes Synology (and others) to return 0 bytes.

@@ -16,10 +16,12 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title:            "GlideFTP",
-		Width:            1280,
-		Height:           800,
+		Width:            1400,
+		Height:           900,
 		MinWidth:         900,
 		MinHeight:        600,
+		MaxWidth:         0,
+		MaxHeight:        0,
 		BackgroundColour: &options.RGBA{R: 18, G: 18, B: 23, A: 1},
 		AssetServer: &assetserver.Options{
 			Assets: assets,

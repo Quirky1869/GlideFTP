@@ -121,6 +121,17 @@ export default {
   importSites: 'Importer des sites',
   importedCount: 'sites importés',
 
+  // Multi-connection
+  maxConnections: 'Connexions simultanées max',
+  keepOrReplaceTitle: 'Connexion active',
+  keepOrReplaceMsg: 'Une connexion est déjà active. Que souhaitez-vous faire ?',
+  keepConnection: 'Garder et ouvrir une nouvelle',
+  replaceConnection: 'Interrompre et remplacer',
+  maxConnectionsReached: 'Limite de connexions atteinte',
+  multiDisconnectTitle: 'Plusieurs connexions actives',
+  multiDisconnectMsg: 'connexions sont ouvertes. Fermer toutes ?',
+  disconnectAll: 'Tout déconnecter',
+
   // Delete confirmation
   confirmDeleteFile: 'Supprimer cet élément ?',
   deleteConfirm: 'Supprimer',

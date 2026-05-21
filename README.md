@@ -18,6 +18,7 @@
 - **Dual-panel file browser** - local files on the left, remote files on the right
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
+- **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
 - **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON
 - **Ask-password auth** - password is never saved; prompted at connect time
 - **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive (or SSH Key) and vice versa
@@ -125,6 +126,7 @@ build\bin\windows\GlideFTP.exe
 - **Explorateur double panneau** - fichiers locaux à gauche, fichiers distants à droite
 - **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
 - **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
+- **Onglets multi-connexion** - ouvrez plusieurs serveurs simultanément ; des onglets style navigateur apparaissent entre la barre d'outils et les panneaux de fichiers ; limite configurable (1 à 5) dans les paramètres
 - **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON
 - **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
 - **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive (ou Clé SSH) et inversement

@@ -161,3 +161,21 @@ _____
 45 = le ctrl + z ne fonctionne pas quand j'enregistre un site par exemple, peut tu faire en sorte que le ctrl + z annule la derniere action dans les inputs de GlideFTP stp
 
 46 = j'ai remarqué que quand j'essai de me connecter en sftp via une clé .ppk cela ne fonctionne pas --- regarde dans ./_images/issues/issue-14.jpg et issue-15.jpg (ca cest la procédure que j'ai) je t'ai mis aussi la "key private.ppk" dans ./_images/issues
+
+47 = J'ai remarqué que la taille de l'application ne pouvais pas excéder
+  une certaine taille, par exemple je suis sur un ecran de 3440 * 1440
+  (pixels) et l'application ne grandit pas autant elle est incapable de se
+  mettre en grand écran --- regarde dans ./_images/issues/issue-16.jpg ========== NON OK sur Hyprland
+
+____
+
+1.7
+
+48 = J'ai remarqué que quand on été connecté on pouvait aller dans "gérer les sites" et se connecter à un autre site, sauf que pour le moment si je ne me trompe pas lorsqu'on se connecte à un nouveau site alors on coupe la connexion avec le premier site sur lesquel on été connecté, il me semble ? Peut t'on faire en sorte lorsque l'utilisateur fait cette manipulation de proposer 2 choix : soit interrompre la connexion en cours soit de garder la connexion en cours et d'en rouvrir une par dessus ?
+Si cela est possible je veux qu'on ajoute un paramètre fonctionnel qui permettra à l'utilisateur de choisir combien de connexion il peut laisser "en attente" en en ouvrant une nouvel (limité à 5 maximum et 1 minimum)
+Lorque l'utilisateur choisira de laissé la 1ere connexion ouverte et d'en ouvrir une autre il faudra alors ajouter des onglet (comme sur le web avec une croix en haute à droite de l'onglet), pour le nom de l'onglet il faudra que ca soit soit le nom qui est renseigné dans "gérer les sites" (l'input "nom du site") ou alors si aucun nom n'est renseigné ici il faudra que ca soit le nom de l'hote ATTENTION fait des onglet "assez grand" pour acceuillir une IP de 4 octets
+L'endroit exact de l'emplacement de ces onglets doit être entre le "carré" de l'hote et le serveur distant et la barre tout en haut avec les input hote, user,mdp, port, le bouton de déconnexion etc... (regarde l'emplacement de la fleche rouge sur le screen ./_images/issues/issue-17.jpg) il faudra que les onglet apparaisse uniquement que lorsque l'utilisateur fait la manipulation en temps normal l'interface devra resté la meme 
+ATTENTION : lorsque 2 connexions sont ouvertes en simultané et que on clique sur le bouton rouge "Déconnecter" il faut un pop-up à l'utilisateur lui spécifiant qu'il à x connexion d'ouverte et que s'il clique sur oui alors il fermera toutes les connexion active sinon il faudra qu'il clique sur annuler
+
+
+

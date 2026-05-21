@@ -36,6 +36,16 @@ type Config struct {
 	Passive    bool           `json:"passive"`
 }
 
+// ConnInfo is the public representation of an active connection, returned to the frontend.
+type ConnInfo struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Host     string `json:"host"`
+	Protocol string `json:"protocol"`
+	Port     int    `json:"port"`
+	User     string `json:"user"`
+}
+
 type RemoteFileEntry struct {
 	Name    string    `json:"name"`
 	Path    string    `json:"path"`

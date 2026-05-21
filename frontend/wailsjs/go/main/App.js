@@ -18,12 +18,20 @@ export function ClearTransfers(arg1) {
   return window['go']['main']['App']['ClearTransfers'](arg1);
 }
 
+export function CloseConnection(arg1) {
+  return window['go']['main']['App']['CloseConnection'](arg1);
+}
+
 export function Connect(arg1) {
   return window['go']['main']['App']['Connect'](arg1);
 }
 
 export function ConnectToSite(arg1) {
   return window['go']['main']['App']['ConnectToSite'](arg1);
+}
+
+export function ConnectToSiteAdditional(arg1, arg2) {
+  return window['go']['main']['App']['ConnectToSiteAdditional'](arg1, arg2);
 }
 
 export function ConnectWithPassword(arg1, arg2) {
@@ -46,8 +54,16 @@ export function ExportSites() {
   return window['go']['main']['App']['ExportSites']();
 }
 
+export function GetActiveConnectionID() {
+  return window['go']['main']['App']['GetActiveConnectionID']();
+}
+
 export function GetConnectionStatus() {
   return window['go']['main']['App']['GetConnectionStatus']();
+}
+
+export function GetConnections() {
+  return window['go']['main']['App']['GetConnections']();
 }
 
 export function GetLocalHome() {
@@ -132,6 +148,10 @@ export function RetryTransfer(arg1) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SwitchConnection(arg1) {
+  return window['go']['main']['App']['SwitchConnection'](arg1);
 }
 
 export function UpdateSite(arg1) {

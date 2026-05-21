@@ -5,12 +5,14 @@
   import { loadSettings } from './stores/settings.js';
   import {
     connectionStatus,
+    connections, activeConnectionId, switchTab, closeTab,
     localPath, localEntries, localSelected,
     remotePath, remoteEntries, remoteSelected,
     initLocalDir, refreshLocal, navigateLocalUp,
     refreshRemote,
     localMkDir, localDelete, localRename,
     remoteMkDir, remoteDelete, remoteRename,
+    disconnect,
   } from './stores/connection.js';
   import { transfers, queueVisible, initTransfers, completedTransfer } from './stores/transfers.js';
   import ConnectionBar from './components/ConnectionBar.svelte';
@@ -21,6 +23,7 @@
 
   let showSettings = false;
   let showSiteManager = false;
+  let showDisconnectConfirm = false;
 
   // Resizable split pane
   let leftWidth = 50; // percent
@@ -101,7 +104,7 @@
     </div>
     <div class="topbar-center">
       {#if isConnected}
-        <ConnectionBar />
+        <ConnectionBar onMultiDisconnect={() => showDisconnectConfirm = true} />
       {/if}
     </div>
     <div class="topbar-right">
@@ -137,6 +140,27 @@
       </button>
     </div>
   </div>
+
+  <!-- ── Connection tabs (visible only when 2+ connections open) ── -->
+  {#if $connections.length > 1}
+    <div class="conn-tabs">
+      {#each $connections as conn (conn.id)}
+        <div
+          class="conn-tab"
+          class:active={conn.id === $activeConnectionId}
+          on:click={() => switchTab(conn.id)}
+          title={conn.host}
+        >
+          <span class="conn-tab-name">{conn.name || conn.host}</span>
+          <button
+            class="conn-tab-close"
+            on:click|stopPropagation={() => closeTab(conn.id)}
+            title="Fermer"
+          >✕</button>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <!-- ── Main content ───────────────────────────────────────────── -->
   <div class="main-content">
@@ -216,6 +240,24 @@
 
   {#if showSiteManager}
     <SiteManager onClose={() => showSiteManager = false} />
+  {/if}
+
+  <!-- ── Disconnect-all confirmation ───────────────────────────── -->
+  {#if showDisconnectConfirm}
+    <div class="dc-overlay" on:click|self={() => showDisconnectConfirm = false}>
+      <div class="dc-box">
+        <div class="dc-title">{$t('multiDisconnectTitle')}</div>
+        <div class="dc-msg">{$connections.length} {$t('multiDisconnectMsg')}</div>
+        <div class="dc-actions">
+          <button class="btn-danger-full" on:click={async () => { showDisconnectConfirm = false; await disconnect(); }}>
+            {$t('disconnectAll')}
+          </button>
+          <button class="btn-cancel" on:click={() => showDisconnectConfirm = false}>
+            {$t('cancel')}
+          </button>
+        </div>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -328,6 +370,131 @@
 }
 
 .queue-btn.has-activity { color: var(--accent); }
+
+/* ── Connection tabs ─────────────────────────────────────────────── */
+.conn-tabs {
+  display: flex;
+  align-items: stretch;
+  height: 36px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.conn-tabs::-webkit-scrollbar { display: none; }
+
+.conn-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 160px;
+  max-width: 240px;
+  padding: 0 10px 0 14px;
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.1s, color 0.1s;
+  user-select: none;
+  flex-shrink: 0;
+}
+.conn-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
+.conn-tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--accent);
+}
+
+.conn-tab-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conn-tab-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 3px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+}
+.conn-tab-close:hover { background: var(--danger); color: white; }
+
+/* ── Disconnect-all confirmation overlay ─────────────────────────── */
+.dc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+}
+
+.dc-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 28px;
+  width: 340px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+.dc-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dc-msg {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.dc-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.btn-danger-full {
+  background: var(--danger);
+  border: none;
+  border-radius: 5px;
+  color: white;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.btn-danger-full:hover { filter: brightness(1.1); }
+
+.btn-cancel {
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  padding: 7px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-cancel:hover { background: var(--bg-button-hover); }
 
 /* ── Main content ────────────────────────────────────────────────── */
 .main-content {

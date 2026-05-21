@@ -124,63 +124,137 @@ func (a *App) ImportSites() (int, error) {
 
 // ─── Connection ───────────────────────────────────────────────────────────────
 
-func (a *App) Connect(cfg connection.Config) error {
-	if cfg.TimeoutSec == 0 {
-		cfg.TimeoutSec = a.appSettings.ConnectionTimeoutSec
+func (a *App) buildSiteConfig(site sites.Site, password string) connection.Config {
+	if password == "" {
+		password = site.Password
 	}
-	err := a.connMgr.Connect(cfg)
-	if err == nil {
-		a.queue.SetExecutor(a.connMgr.GetClient())
-	}
-	return err
-}
-
-func (a *App) ConnectToSite(id string) error {
-	site, ok := a.siteMgr.GetByID(id)
-	if !ok {
-		return fmt.Errorf("site not found")
-	}
-	cfg := connection.Config{
-		Protocol:   connection.Protocol(site.Protocol),
-		Host:       site.Host,
-		Port:       site.Port,
-		User:       site.User,
-		Password:   site.Password,
-		Encryption: connection.EncryptionType(site.Encryption),
-		AuthType:   connection.AuthType(site.AuthType),
-		SSHKeyPath: site.SSHKeyPath,
-		TimeoutSec: a.appSettings.ConnectionTimeoutSec,
-		Passive:    a.appSettings.PassiveMode,
-	}
-	err := a.connMgr.Connect(cfg)
-	if err == nil {
-		a.queue.SetExecutor(a.connMgr.GetClient())
-	}
-	return err
-}
-
-func (a *App) ConnectWithPassword(id, password string) error {
-	site, ok := a.siteMgr.GetByID(id)
-	if !ok {
-		return fmt.Errorf("site not found")
-	}
-	cfg := connection.Config{
+	return connection.Config{
 		Protocol:   connection.Protocol(site.Protocol),
 		Host:       site.Host,
 		Port:       site.Port,
 		User:       site.User,
 		Password:   password,
 		Encryption: connection.EncryptionType(site.Encryption),
-		AuthType:   connection.AuthPassword,
+		AuthType:   connection.AuthType(site.AuthType),
 		SSHKeyPath: site.SSHKeyPath,
 		TimeoutSec: a.appSettings.ConnectionTimeoutSec,
 		Passive:    a.appSettings.PassiveMode,
 	}
-	err := a.connMgr.Connect(cfg)
-	if err == nil {
-		a.queue.SetExecutor(a.connMgr.GetClient())
+}
+
+func (a *App) connInfoFrom(cfg connection.Config, id, name string) connection.ConnInfo {
+	return connection.ConnInfo{
+		ID:       id,
+		Name:     name,
+		Host:     cfg.Host,
+		Protocol: string(cfg.Protocol),
+		Port:     cfg.Port,
+		User:     cfg.User,
 	}
-	return err
+}
+
+// Connect is called by the ConnectionBar (direct connect, not via a saved site).
+func (a *App) Connect(cfg connection.Config) (connection.ConnInfo, error) {
+	if cfg.TimeoutSec == 0 {
+		cfg.TimeoutSec = a.appSettings.ConnectionTimeoutSec
+	}
+	name := cfg.Host
+	id, err := a.connMgr.Connect(cfg, name)
+	if err != nil {
+		return connection.ConnInfo{}, err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return a.connInfoFrom(cfg, id, name), nil
+}
+
+// ConnectToSite connects to a saved site, replacing the currently active connection.
+func (a *App) ConnectToSite(siteID string) (connection.ConnInfo, error) {
+	site, ok := a.siteMgr.GetByID(siteID)
+	if !ok {
+		return connection.ConnInfo{}, fmt.Errorf("site not found")
+	}
+	name := site.Name
+	if name == "" {
+		name = site.Host
+	}
+	cfg := a.buildSiteConfig(site, "")
+	id, err := a.connMgr.Connect(cfg, name)
+	if err != nil {
+		return connection.ConnInfo{}, err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return a.connInfoFrom(cfg, id, name), nil
+}
+
+// ConnectWithPassword connects to an ask_password site with a runtime password.
+func (a *App) ConnectWithPassword(siteID, password string) (connection.ConnInfo, error) {
+	site, ok := a.siteMgr.GetByID(siteID)
+	if !ok {
+		return connection.ConnInfo{}, fmt.Errorf("site not found")
+	}
+	name := site.Name
+	if name == "" {
+		name = site.Host
+	}
+	cfg := a.buildSiteConfig(site, password)
+	cfg.AuthType = connection.AuthPassword
+	id, err := a.connMgr.Connect(cfg, name)
+	if err != nil {
+		return connection.ConnInfo{}, err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return a.connInfoFrom(cfg, id, name), nil
+}
+
+// ConnectToSiteAdditional adds a new connection while keeping existing ones active.
+// overridePassword is used for ask_password sites; pass "" otherwise.
+func (a *App) ConnectToSiteAdditional(siteID, overridePassword string) (connection.ConnInfo, error) {
+	site, ok := a.siteMgr.GetByID(siteID)
+	if !ok {
+		return connection.ConnInfo{}, fmt.Errorf("site not found")
+	}
+	name := site.Name
+	if name == "" {
+		name = site.Host
+	}
+	cfg := a.buildSiteConfig(site, overridePassword)
+	if overridePassword != "" {
+		cfg.AuthType = connection.AuthPassword
+	}
+	id, err := a.connMgr.ConnectNew(cfg, name)
+	if err != nil {
+		return connection.ConnInfo{}, err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return a.connInfoFrom(cfg, id, name), nil
+}
+
+// GetConnections returns info about all currently open connections.
+func (a *App) GetConnections() []connection.ConnInfo {
+	return a.connMgr.GetConnections()
+}
+
+// SwitchConnection makes a different connection the active one.
+func (a *App) SwitchConnection(id string) error {
+	if err := a.connMgr.SwitchTo(id); err != nil {
+		return err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return nil
+}
+
+// CloseConnection disconnects and removes a specific connection.
+func (a *App) CloseConnection(id string) error {
+	if err := a.connMgr.CloseOne(id); err != nil {
+		return err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return nil
+}
+
+// GetActiveConnectionID returns the ID of the currently active connection.
+func (a *App) GetActiveConnectionID() string {
+	return a.connMgr.ActiveID()
 }
 
 func (a *App) Disconnect() error {

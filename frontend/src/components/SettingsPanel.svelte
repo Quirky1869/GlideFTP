@@ -164,6 +164,14 @@
           aria-pressed={form.autoReconnect}
         ><span class="sw-knob"></span></button>
       </div>
+      <div class="setting-row">
+        <label>{$t('maxConnections')}</label>
+        <div class="num-input">
+          <button class="num-btn" on:click={() => step('maxConnections', -1, 1, 5)}>−</button>
+          <input type="number" bind:value={form.maxConnections} min="1" max="5" />
+          <button class="num-btn" on:click={() => step('maxConnections', 1, 1, 5)}>+</button>
+        </div>
+      </div>
     </section>
 
     <div class="divider"></div>
