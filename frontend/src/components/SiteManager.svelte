@@ -18,6 +18,22 @@
   let promptError = '';
   let showPwd = false;
 
+  // Paste context menu
+  let pasteMenu = null;
+
+  function handlePwdContextMenu(e) {
+    e.preventDefault();
+    pasteMenu = { x: e.clientX, y: e.clientY };
+  }
+
+  async function doPaste() {
+    pasteMenu = null;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) promptPassword = (promptPassword || '') + text;
+    } catch {}
+  }
+
   let form = emptyForm();
 
   function emptyForm() {
@@ -105,6 +121,10 @@
     await loadSites();
   }
 
+  function siteConfig(site) {
+    return { protocol: site.protocol, host: site.host, port: site.port, user: site.user };
+  }
+
   async function connectToSite(id) {
     const site = sites.find(s => s.id === id);
     if (site?.authType === 'ask_password') {
@@ -116,7 +136,7 @@
       return;
     }
     try {
-      await connectBySite(id);
+      await connectBySite(id, siteConfig(site));
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
@@ -126,9 +146,9 @@
 
   async function confirmPasswordConnect() {
     promptError = '';
+    const site = sites.find(s => s.id === promptSiteId);
     try {
-      await connectBySiteWithPassword(promptSiteId, promptPassword);
-      const site = sites.find(s => s.id === promptSiteId);
+      await connectBySiteWithPassword(promptSiteId, promptPassword, site ? siteConfig(site) : null);
       await refreshRemote(site?.remoteDir || '/');
       showPasswordPrompt = false;
       onClose();
@@ -354,6 +374,19 @@
   </div>
 </div>
 
+<svelte:window on:click={() => pasteMenu = null} />
+
+<!-- Paste context menu -->
+{#if pasteMenu}
+  <div
+    class="paste-ctx-menu"
+    style="left: {pasteMenu.x}px; top: {pasteMenu.y}px"
+    on:click|stopPropagation
+  >
+    <button on:click={doPaste}>{$t('paste')}</button>
+  </div>
+{/if}
+
 <!-- Password prompt overlay -->
 {#if showPasswordPrompt}
   <div class="pwd-overlay">
@@ -369,6 +402,7 @@
             bind:value={promptPassword}
             autofocus
             on:keydown={(e) => { if (e.key === 'Enter') confirmPasswordConnect(); if (e.key === 'Escape') showPasswordPrompt = false; }}
+            on:contextmenu={handlePwdContextMenu}
           />
         {:else}
           <input
@@ -377,6 +411,7 @@
             bind:value={promptPassword}
             autofocus
             on:keydown={(e) => { if (e.key === 'Enter') confirmPasswordConnect(); if (e.key === 'Escape') showPasswordPrompt = false; }}
+            on:contextmenu={handlePwdContextMenu}
           />
         {/if}
         <button type="button" class="eye-btn" on:click={() => showPwd = !showPwd} tabindex="-1">
@@ -719,4 +754,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .pwd-error { font-size: 12px; color: var(--danger); }
 
 .pwd-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── Paste context menu ── */
+.paste-ctx-menu {
+  position: fixed;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  z-index: 700;
+  overflow: hidden;
+  min-width: 100px;
+}
+.paste-ctx-menu button {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; background: none; border: none;
+  color: var(--text-primary); padding: 8px 14px;
+  font-size: 13px; text-align: left; cursor: pointer;
+  transition: background 0.1s;
+}
+.paste-ctx-menu button:hover { background: var(--bg-hover); }
 </style>

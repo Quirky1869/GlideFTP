@@ -88,6 +88,7 @@ export default {
   accentColor: 'Color',
   colorPickerTitle: 'Color picker',
   resetColor: 'Reset to default',
+  colorHistory: 'Recent',
   transfers: 'Transfers',
   maxConcurrent: 'Max concurrent transfers',
   transferSpeedLimit: 'Speed limit (KB/s, 0 = unlimited)',
@@ -110,6 +111,7 @@ export default {
   // Ask password prompt
   passwordPromptTitle: 'Password required',
   passwordPromptLabel: 'Password for',
+  paste: 'Paste',
 
   // Export / import
   exportSites: 'Export sites',

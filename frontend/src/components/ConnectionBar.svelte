@@ -1,7 +1,6 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { connectionStatus, connectionError, connect, disconnect, refreshRemote, remotePath } from '../stores/connection.js';
-  import { GetSites, ConnectToSite } from '../../wailsjs/go/main/App.js';
+  import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, refreshRemote, remotePath } from '../stores/connection.js';
 
   let host = '';
   let user = '';
@@ -18,11 +17,21 @@
   $: isConnected = $connectionStatus === 'connected';
   $: isConnecting = $connectionStatus === 'connecting';
 
-  $: if (protocol === 'sftp' && port === 21) port = 22;
-  $: if (protocol === 'ftp' && port === 22) port = 21;
+  $: if (!isConnected && protocol === 'sftp' && port === 21) port = 22;
+  $: if (!isConnected && protocol === 'ftp' && port === 22) port = 21;
+
+  // Fill fields from active connection config when connected
+  $: if (isConnected && $activeConnectionConfig) {
+    protocol = $activeConnectionConfig.protocol || 'ftp';
+    host = $activeConnectionConfig.host || '';
+    user = $activeConnectionConfig.user || '';
+    port = $activeConnectionConfig.port || 21;
+    password = '············';
+  }
 
   async function handleConnect() {
     if (isConnected) {
+      password = '';
       await disconnect();
       return;
     }
@@ -146,6 +155,7 @@
 
 .flex1 {
   flex: 1;
+  min-width: 150px;
 }
 
 label {

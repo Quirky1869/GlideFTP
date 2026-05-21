@@ -16,11 +16,16 @@
   let hex = '#5B8AF5';
   let hexInput = '#5B8AF5';
   let initialized = false;
+  let colorHistory = [];
 
   onMount(() => {
     initFromHex(value || DEFAULT_COLOR);
     initialized = true;
     drawCanvas();
+    try {
+      const stored = localStorage.getItem('glideftp_color_history');
+      if (stored) colorHistory = JSON.parse(stored);
+    } catch {}
   });
 
   $: if (initialized && canvas) drawCanvas();
@@ -132,7 +137,13 @@
     drawCanvas();
   }
 
+  function addToHistory(h) {
+    colorHistory = [h, ...colorHistory.filter(c => c !== h)].slice(0, 8);
+    try { localStorage.setItem('glideftp_color_history', JSON.stringify(colorHistory)); } catch {}
+  }
+
   function apply() {
+    addToHistory(hex);
     onApply(hex);
   }
 
@@ -235,6 +246,24 @@
       <div class="rgb-field">
         <label class="input-label">B</label>
         <input type="number" min="0" max="255" bind:value={b} on:change={onRgbChange} />
+      </div>
+    </div>
+
+    <!-- Color history -->
+    <div class="history-section">
+      <label class="input-label history-label">{$t('colorHistory')}</label>
+      <div class="history-swatches">
+        {#each colorHistory as c}
+          <button
+            class="history-swatch"
+            style="background: {c}"
+            title={c}
+            on:click={() => { initFromHex(c); drawCanvas(); }}
+          ></button>
+        {/each}
+        {#each { length: 8 - colorHistory.length } as _}
+          <div class="history-swatch-empty"></div>
+        {/each}
       </div>
     </div>
 
@@ -411,6 +440,47 @@
 .rgb-field input::-webkit-inner-spin-button,
 .rgb-field input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .rgb-field input:focus { border-color: var(--accent); }
+
+.history-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-label {
+  display: block;
+  width: auto;
+}
+
+.history-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.history-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.1s, transform 0.1s;
+  flex-shrink: 0;
+}
+.history-swatch:hover {
+  border-color: var(--accent);
+  transform: scale(1.15);
+}
+
+.history-swatch-empty {
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  border: 2px dashed var(--border);
+  flex-shrink: 0;
+  opacity: 0.4;
+}
 
 .cp-footer {
   display: flex;

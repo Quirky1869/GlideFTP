@@ -10,6 +10,7 @@ import {
 // 'disconnected' | 'connecting' | 'connected'
 export const connectionStatus = writable('disconnected');
 export const connectionError = writable('');
+export const activeConnectionConfig = writable(null);
 
 export const localPath = writable('');
 export const localEntries = writable([]);
@@ -70,6 +71,7 @@ export async function connect(cfg) {
   try {
     await Connect(cfg);
     connectionStatus.set('connected');
+    activeConnectionConfig.set({ protocol: cfg.protocol, host: cfg.host, port: cfg.port, user: cfg.user });
     await refreshRemote('/');
   } catch (e) {
     connectionStatus.set('disconnected');
@@ -86,12 +88,13 @@ export async function disconnect() {
   remoteSelected.set([]);
 }
 
-export async function connectBySite(id) {
+export async function connectBySite(id, config = null) {
   connectionStatus.set('connecting');
   connectionError.set('');
   try {
     await ConnectToSite(id);
     connectionStatus.set('connected');
+    if (config) activeConnectionConfig.set(config);
   } catch (e) {
     connectionStatus.set('disconnected');
     connectionError.set(e?.toString() || 'Connection failed');
@@ -99,12 +102,13 @@ export async function connectBySite(id) {
   }
 }
 
-export async function connectBySiteWithPassword(id, password) {
+export async function connectBySiteWithPassword(id, password, config = null) {
   connectionStatus.set('connecting');
   connectionError.set('');
   try {
     await ConnectWithPassword(id, password);
     connectionStatus.set('connected');
+    if (config) activeConnectionConfig.set(config);
   } catch (e) {
     connectionStatus.set('disconnected');
     connectionError.set(e?.toString() || 'Connection failed');

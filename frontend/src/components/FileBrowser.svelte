@@ -168,6 +168,7 @@
   // ── Selection ─────────────────────────────────────────────────────────────
 
   function handleClick(e, entry) {
+    parentFocused = false;
     if (e.ctrlKey || e.metaKey) {
       selected = selected.some(s => s.path === entry.path)
         ? selected.filter(s => s.path !== entry.path)
@@ -320,16 +321,81 @@
     closeContext();
   }
 
-  // ── Keyboard (F2 rename) ──────────────────────────────────────────────────
+  // ── Keyboard navigation ───────────────────────────────────────────────────
+
+  let parentFocused = false;
+  $: if (path) parentFocused = false;
+
+  function scrollEntryIntoView(idx) {
+    const rows = fileListEl?.querySelectorAll('.file-row:not(.parent-row)');
+    if (rows && rows[idx]) rows[idx].scrollIntoView({ block: 'nearest' });
+  }
 
   function handlePanelKeydown(e) {
-    if (e.key === 'F2' && selected.length === 1 && !renamingEntry) {
+    if (renamingEntry || editingPath) return;
+
+    if (e.key === 'F2' && selected.length === 1) {
       e.preventDefault();
       startRename(selected[0]);
+      return;
     }
-    if (e.key === 'Delete' && selected.length > 0 && !renamingEntry) {
+    if (e.key === 'Delete' && selected.length > 0) {
       e.preventDefault();
       handleDelete(selected);
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (e.key === 'ArrowDown') {
+        if (parentFocused) {
+          parentFocused = false;
+          if (sortedEntries.length > 0) {
+            selected = [sortedEntries[0]];
+            scrollEntryIntoView(0);
+          }
+        } else if (selected.length > 0) {
+          const idx = sortedEntries.findIndex(en => en.path === selected[0].path);
+          if (idx < sortedEntries.length - 1) {
+            selected = [sortedEntries[idx + 1]];
+            scrollEntryIntoView(idx + 1);
+          }
+        } else {
+          if (sortedEntries.length > 0) {
+            selected = [sortedEntries[0]];
+            scrollEntryIntoView(0);
+          }
+        }
+      } else {
+        if (parentFocused) {
+          // already at top
+        } else if (selected.length > 0) {
+          const idx = sortedEntries.findIndex(en => en.path === selected[0].path);
+          if (idx > 0) {
+            selected = [sortedEntries[idx - 1]];
+            scrollEntryIntoView(idx - 1);
+          } else {
+            selected = [];
+            parentFocused = true;
+            fileListEl?.querySelector('.parent-row')?.scrollIntoView({ block: 'nearest' });
+          }
+        } else {
+          parentFocused = true;
+          fileListEl?.querySelector('.parent-row')?.scrollIntoView({ block: 'nearest' });
+        }
+      }
+      panelEl?.focus({ preventScroll: true });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (parentFocused) {
+        parentFocused = false;
+        onNavigateUp();
+      } else if (selected.length === 1 && selected[0].isDir) {
+        onNavigate(selected[0].path);
+      }
     }
   }
 
@@ -480,7 +546,8 @@
     <!-- ".." parent row -->
     <div
       class="file-row is-dir parent-row"
-      on:click={onNavigateUp}
+      class:focused={parentFocused}
+      on:click={() => { parentFocused = false; onNavigateUp(); }}
       on:dblclick={onNavigateUp}
       on:contextmenu|stopPropagation
     >
@@ -823,6 +890,7 @@
 
 .parent-row { color: var(--text-muted); }
 .parent-row:hover { color: var(--text-primary); }
+.parent-row.focused { background: var(--accent-subtle); color: var(--accent); }
 
 .file-icon { font-size: 14px; margin-right: 4px; flex-shrink: 0; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }

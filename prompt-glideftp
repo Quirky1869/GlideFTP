@@ -120,3 +120,23 @@ _____
 32 = Lorsque je selectionne plusieurs fichiers et que je veux les supprimer il n'y en a qu'un fichier qui est supprimer après avoir confirmer oui dans le pop-up
 
 _____
+
+1.4
+
+33 = Les flèches et le bouton entrée ne fonctionne pas pour parcourir les dossiers/fichiers et entrée dedans
+
+34 = Sur le 1er écran de connexion l'input hôte n'est pas assez grands il faudrait qu'il acceuil une IP v4 comme 192.168.124.155 (actuellement il n'acceuil que 3 octets)
+
+35 = Pour le champs mot de passe requis quand j'essaye de me connecter via un site enregistré il faudrait avoir la possibilité de faire un clic droit puis coller
+
+36 = Une fois connecter, en haut on peut voir les input hôte, user, mdp et port mais il on tous les valeurs par défaut, vil faut que ça soit rempli avec les vrais valeurs de l'utilisateur, sauf le mdp ou tu mettra 12 points qu'importe le mdp 
+
+37 = Je ne sait pas si c'est déjà le cas mais il faut penser que si l'application est interrompu ou que l'utilisateur ferme la fenêtre alors que la connexion est toujours en cours il faut lancer une déconnexion comme si on avait déjà cliquer sur "déconnecter" 
+
+38 = Il faudrait ajouter un historique de couleur de 8 couleurs 
+
+_____
+
+39 = J'ai constater un problème c'est que le transfert de mon hote vers mon nas fonctionne mais par contre quand j'essai de transférer de mon nas (serveur distant) vers mon hote alors le transfert reste à 0% --- regarde dans ./_images/issues/issue-8.png
+
+40 = Alors tu as bien augmenter la taille de l'hote mais maintenant regarde dans ./_images/issues/issue-9.png tu verra que le port et la fleche de connexion sont passé en desous il faudrai qu'il soit toujours sur la même ligne comme avant, il faudrait que tu augmente légerement la taille du rectangle autour des inputs 

@@ -42,6 +42,10 @@ func (a *App) startup(ctx context.Context) {
 	a.queue.SetSpeedLimit(a.appSettings.MaxTransferSpeedKBps)
 }
 
+func (a *App) shutdown(ctx context.Context) {
+	a.connMgr.Disconnect()
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 
 func (a *App) GetSettings() *settings.Settings {
