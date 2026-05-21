@@ -48,6 +48,16 @@
     if (e.key === 'Escape') {
       showSettings = false;
       showSiteManager = false;
+      return;
+    }
+    // WebKit-GTK doesn't fire native undo in bound inputs — force it
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        e.preventDefault();
+        document.execCommand('undo');
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
     }
   }
 

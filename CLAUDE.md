@@ -97,11 +97,16 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 3. **Dynamic `type` on `<input bind:value>`** — Svelte 3 compile error: `'type' attribute cannot be dynamic if input uses two-way binding`. **Use two separate inputs in `{#if}`/`{:else}` blocks** — one `type="text"`, one `type="password"`, both bound to the same variable. See `SiteManager.svelte` password prompt for reference.
 
+4. **Ctrl+Z (undo) in inputs** — WebKit-GTK does not fire native undo in Svelte-bound inputs. Fixed globally in `App.svelte` `handleKeydown`: intercept `Ctrl+Z` on `INPUT`/`TEXTAREA`, call `document.execCommand('undo')`, then dispatch a synthetic `input` event so Svelte re-syncs its variable.
+
+5. **Right-click context menu in inputs** — WebKit-GTK disables the native context menu in the WebView. Implement a custom paste menu via `on:contextmenu` + `navigator.clipboard.readText()`. See `SiteManager.svelte` password prompt for reference.
+
 ## FileBrowser Features
 
 `FileBrowser.svelte` receives `side` ('local'|'remote'), `path`, `entries`, `selected`, `otherPath`, and action callbacks.
 
-- **".." entry**: always shown at the top; click/dblclick calls `onNavigateUp`
+- **".." entry**: always shown at the top; click/dblclick calls `onNavigateUp`; focused via `parentFocused` state when ArrowUp is pressed from first entry
+- **Keyboard navigation**: ArrowDown/ArrowUp moves selection through entries; ArrowUp from first entry sets `parentFocused = true` (highlights ".." row); Enter on dir navigates in; Enter when `parentFocused` calls `onNavigateUp`; `$: if (path) parentFocused = false` resets on navigation
 - **Editable path bar**: click the path display to enter edit mode; Enter navigates, Esc cancels; debounced autocomplete dropdown shows matching subdirs
 - **Column sort**: click Name/Size/Date headers; dirs always listed first; second click reverses order
 - **Multi-select**: Ctrl+click toggles, Shift+click range-selects, rubber-band (click-drag on empty area)
@@ -124,8 +129,9 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 |---|---|---|
 | `completedTransfer` | transfers.js | Writable; set to `{ ...job, _ts }` when a transfer finishes; used to trigger auto-refresh |
 | `removeTransfer(id)` | transfers.js | Calls `RemoveTransfer` Go binding; frontend removes via `transfer:removed` event |
-| `connectBySite(id)` | connection.js | Sets `connectionStatus` store correctly (connecting→connected/disconnected); use instead of calling `ConnectToSite` Go binding directly |
-| `connectBySiteWithPassword(id, pwd)` | connection.js | Like `connectBySite` but passes runtime password (for `ask_password` auth sites) |
+| `connectBySite(id, config?)` | connection.js | Sets `connectionStatus` store correctly; optional `config` param populates `activeConnectionConfig` |
+| `connectBySiteWithPassword(id, pwd, config?)` | connection.js | Like `connectBySite` but passes runtime password (for `ask_password` auth sites) |
+| `activeConnectionConfig` | connection.js | Writable; set on every connect with `{ protocol, host, port, user }`; used by `ConnectionBar` to show real values when connected |
 | `initLocalDir(startDir?)` | connection.js | Initializes local panel; pass `defaultLocalDir` from settings on startup |
 | `loadSettings()` | settings.js | Returns the loaded settings object (in addition to updating the store) |
 | `applyAccentColor(hex)` | settings.js | Sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars; called on load and save |
@@ -136,6 +142,13 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `app.RemoveTransfer(id)` — JS-callable wrapper around `queue.RemoveJob`
 - `app.ConnectWithPassword(id, password)` — connects to a saved site but overrides its stored password (for `ask_password` sites)
 - `app.ExportSites()` / `app.ImportSites()` — file-dialog based JSON export/import of all saved sites
+- `app.shutdown(ctx)` — registered as `OnShutdown` in `main.go`; calls `connMgr.Disconnect()` for clean teardown on window close
 - `manager.Connect()` — disconnects existing client first if already connected (enables reconnection from SiteManager)
 - `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
 - `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
+- **FTP Download order**: `FileSize` MUST be called BEFORE `Retr` in `ftp.go`. Calling it after opens a command on the control connection mid-transfer, which violates FTP protocol and causes Synology (and others) to return 0 bytes.
+
+## TransferQueue
+
+- Speed is computed in `TransferQueue.svelte` from deltas of `bytesDone` between store updates (250 ms window minimum to avoid noise). Stored in `speeds` map (`id → bytes/sec`), displayed as `KB/s` or `MB/s` in accent color next to the progress label.
+- `ColorPicker.svelte` stores last 8 applied colors in `localStorage` key `glideftp_color_history`; displayed as swatches above the footer; click to select.

@@ -708,7 +708,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .copy-note-btn {
   position: absolute;
-  top: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   right: 8px;
   background: none;
   border: none;
