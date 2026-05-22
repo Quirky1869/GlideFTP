@@ -27,6 +27,20 @@ build_windows() {
     echo "       Install with: sudo pacman -S mingw-w64-gcc"
     exit 1
   fi
+
+  # Regenerate icon.ico from appicon.png if the PNG is newer or the ico is missing
+  if [ build/appicon.png -nt build/windows/icon.ico ] || [ ! -f build/windows/icon.ico ]; then
+    if command -v magick &>/dev/null; then
+      echo "   ↻ Regenerating build/windows/icon.ico from appicon.png…"
+      magick build/appicon.png \
+        -define icon:auto-resize="256,128,64,48,32,16" \
+        build/windows/icon.ico
+    else
+      echo "WARNING: magick (ImageMagick) not found — icon.ico not updated."
+      echo "         Install with: sudo pacman -S imagemagick"
+    fi
+  fi
+
   mkdir -p build/bin/windows
   CC=x86_64-w64-mingw32-gcc \
   CGO_ENABLED=1 \
