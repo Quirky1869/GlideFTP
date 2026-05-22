@@ -56,7 +56,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 On **Linux**, the following system dependency is required:
 
 ```bash
-# Arch / Manjaro
+# Arch
 sudo pacman -S webkit2gtk-4.1
 
 # Ubuntu / Debian
@@ -164,7 +164,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 Sur **Linux**, la dépendance système suivante est nécessaire :
 
 ```bash
-# Arch / Manjaro
+# Arch
 sudo pacman -S webkit2gtk-4.1
 
 # Ubuntu / Debian
@@ -178,7 +178,7 @@ git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
 ```
 
-**Via le script de build (recommandé) :**
+**Via le script de build (recommandé) :**  
 
 ```bash
 ./build.sh            # compile Linux et Windows
@@ -186,7 +186,7 @@ cd GlideFTP
 ./build.sh windows    # Windows seulement → build/bin/windows/GlideFTP.exe
 ```
 
-**Commandes manuelles :**
+**Commandes manuelles :**  
 
 ```bash
 # Linux (nécessite webkit2gtk-4.1)

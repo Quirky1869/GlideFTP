@@ -165,15 +165,37 @@
   async function doKeepAndAdd() {
     showKeepOrReplace = false;
     const site = sites.find(s => s.id === pendingSiteId);
+
+    // If an identical connection (same host/port/protocol/user) is already open,
+    // reconnect to it instead of opening a duplicate tab.
+    const isDuplicate = $connections.some(c =>
+      c.host === site?.host &&
+      Number(c.port) === Number(site?.port) &&
+      c.protocol === site?.protocol &&
+      c.user === site?.user
+    );
+
     if (keepOrReplaceMode === 'ask_password') {
       promptSiteId = pendingSiteId;
       promptSiteName = site?.name || site?.host || '';
       promptPassword = '';
       promptError = '';
-      promptIsAdd = true;
+      promptIsAdd = !isDuplicate;
       showPasswordPrompt = true;
       return;
     }
+
+    if (isDuplicate) {
+      try {
+        await connectBySite(pendingSiteId, pendingConfig);
+        await refreshRemote(site?.remoteDir || '/');
+        onClose();
+      } catch (e) {
+        alert(e?.toString() || 'Connection failed');
+      }
+      return;
+    }
+
     try {
       await addConnection(pendingSiteId, '');
       await refreshRemote(site?.remoteDir || '/');
