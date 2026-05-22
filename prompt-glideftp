@@ -179,3 +179,5 @@ ATTENTION : lorsque 2 connexions sont ouvertes en simultané et que on clique su
 
 49 = J'ai remarqué que quand on créé une nouvelle connexion en gardant la session en cours cela fonctionne cependant lorsqu'on demande d'ouvrir 2 fois la même connexion -> cela fonctionne aussi ce qui nous ouvre 2 onglet qui sont exactement pareil alors que aucun paramètre de connexion ne change ni le nom renseigné dans glideftp dans les sites enregistrés, ni l'adresse ip (ou nom d'hote), ni l'utilisateur, ni le port ; a mon sens il faudrait faire en sorte de comparer ses information quand l'utilisateur choisi de garder la session en cours et si une informations est differente alors on fait comme maintenant on ouvre un nouvel onglet, en revanche si en comparant les données on voit que toutes les données sont pareil et que l'utilisateur essai de se connecter à la même ressource on déconnecte la session en cours et on reconnecte l'utilisateur à la session qu'il a sélectionnée mais sans nouvel onglet --- regarde dans ./_images/issues/issue-18.jpg (je suis connecté sur ce screen 2 fois à la même ressource avec les mêmes infos)
 
+
+

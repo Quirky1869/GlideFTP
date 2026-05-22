@@ -1,0 +1,1015 @@
+GlideFTP – Issues to create on GitHub (1 → 48)
+================================================
+Format: Title / Labels / Description / Solution (closing comment)
+================================================
+
+---
+
+#1
+Title: [UI] Connection screen layout does not match the design spec
+Labels: bug, ui
+Version fixed: v1.1
+Description:
+The connection screen layout is incorrect. The host, user, password, port inputs
+and connect button should be centered on the page when no connection is active,
+and move to the top bar once connected.
+Ref: _images/issues/issue-1.png
+
+Solution (closing comment):
+Fixed in v1.1.
+App.svelte was restructured with two distinct layout states:
+- Disconnected → centered `.connect-card` containing ConnectionBar and the
+  link to SiteManager.
+- Connected → inputs move to the top bar and the dual file-browser panel is
+  shown below.
+CSS in style.css updated to use full-height flexbox so each state fills the
+viewport correctly.
+
+---
+
+#2
+Title: [Bug] "Already connected or connecting" JS error when connecting via Site Manager on fresh launch
+Labels: bug
+Version fixed: v1.1
+Description:
+On a fresh app start, opening Site Manager → creating a site → clicking "Connect"
+leaves the app stuck on the connection screen with the error:
+"already connected or connecting" (wails://wails/).
+Ref: _images/issues/issue-2.png / issue-2.1.png
+
+Solution (closing comment):
+Fixed in v1.1.
+Root cause: manager.Connect() returned an error if a stale connection state was
+still set from the previous session.
+Fix applied in internal/connection/manager.go: Connect() now unconditionally
+disconnects the existing active client before establishing a new one, so the
+"already connected" guard can never be hit from the UI.
+The connection flow in App.svelte was also adjusted so the state machine always
+resets to "disconnected" before a new connect attempt.
+
+---
+
+#3
+Title: [UI] Application window does not adapt when maximized or resized
+Labels: bug, ui
+Version fixed: v1.1
+Description:
+When the window is maximized or manually enlarged, the UI stays locked at a fixed
+maximum size leaving empty space around it.
+Ref: _images/issues/issue-3.png
+
+Solution (closing comment):
+Fixed in v1.1.
+All layout containers in App.svelte and style.css were converted to flexbox with
+percentage-based sizing (height: 100%, flex: 1). The html/body/app wrapper chain
+was set to height: 100vh so the layout expands to fill the full window regardless
+of its size.
+
+---
+
+#4
+Title: [UI] Top bar misaligned after connection — some buttons hidden behind the banner
+Labels: bug, ui
+Version fixed: v1.1
+Description:
+Once connected the top bar is not correctly aligned. Some action buttons are
+partially or fully hidden behind an overlapping banner element.
+Ref: _images/issues/issue-4.png
+
+Solution (closing comment):
+Fixed in v1.1.
+The top bar container in App.svelte was given explicit `flex-shrink: 0` and
+correct padding so it never collapses or overlaps the content beneath it.
+ConnectionBar.svelte internal layout was also realigned with flexbox so all
+buttons remain visible on a single row.
+
+---
+
+#5
+Title: [Feature] Add "Default remote directory" field to saved sites
+Labels: enhancement
+Version fixed: v1.1
+Description:
+When connecting to a saved site the remote panel always opens at the server root.
+Users should be able to configure a default remote directory per site.
+
+Solution (closing comment):
+Implemented in v1.1.
+- internal/sites/sites.go: added `RemoteDir string` field to the Site struct.
+- SiteManager.svelte: new text input bound to form.remoteDir (placeholder "/").
+- connection.js connectBySite() and connectBySiteWithPassword(): after a
+  successful connect, refreshRemote(site.remoteDir || '/') is called so the
+  remote panel opens directly at the configured path.
+
+---
+
+#6
+Title: [Feature] Show ".." entry in file browser for parent directory navigation
+Labels: enhancement
+Version fixed: v1.1
+Description:
+There is no ".." row in the file browser to navigate to the parent directory.
+
+Solution (closing comment):
+Implemented in v1.1 in FileBrowser.svelte.
+A ".." row is always rendered at the top of the file list. Click or double-click
+calls the onNavigateUp callback. Keyboard: pressing Arrow Up from the first
+regular entry sets `parentFocused = true` (the ".." row is highlighted); pressing
+Enter while parentFocused calls onNavigateUp. Navigation resets parentFocused via
+a reactive statement `$: if (path) parentFocused = false`.
+
+---
+
+#7
+Title: [Bug] Drag-and-drop file transfer does not work
+Labels: bug
+Version fixed: v1.2
+Description:
+Dragging a file or folder from one panel and dropping it on the other panel does
+not trigger a transfer.
+
+Solution (closing comment):
+Fixed in v1.2 in FileBrowser.svelte.
+Each file row now has `draggable="true"` and sets drag data as JSON:
+`{ entries: [{path, name}], fromSide }`. If the dragged row is already part of
+the current selection, all selected entries are packed into the entries array.
+The drop zone on the opposite panel iterates the full entries array and queues a
+transfer for each item. A visual `drag-over` CSS class was added for feedback.
+
+---
+
+#8
+Title: [Feature] Resizable splitters for local/remote panels and transfer queue
+Labels: enhancement, ui
+Version fixed: v1.1
+Description:
+There is no way to resize the left/right panel split or the transfer queue height.
+
+Solution (closing comment):
+Implemented in v1.1.
+- App.svelte: a `.browser-splitter` div sits between the two FileBrowser panels.
+  mousedown → mousemove computes a percentage (clamped 20–80 %) stored in
+  `leftWidth`; both panels use `style="width: {leftWidth}%"` /
+  `style="width: {100-leftWidth}%"`.
+- TransferQueue.svelte: a resize handle at the top triggers a similar
+  mousedown/mousemove loop that adjusts the queue height in pixels.
+
+---
+
+#9
+Title: [Bug] File lists do not auto-refresh after a transfer completes
+Labels: bug
+Version fixed: v1.1
+Description:
+After a transfer finishes, the file panels are not refreshed automatically.
+
+Solution (closing comment):
+Fixed in v1.1.
+- internal/transfer/queue.go: at job completion, emits the Wails event
+  `transfer:progress` with the final status, and the job data is exposed via
+  the `completedTransfer` mechanism.
+- frontend/src/stores/transfers.js: exports a `completedTransfer` writable store;
+  the EventsOn('transfer:progress') handler sets it to `{ ...job, _ts: Date.now() }`
+  on each completion (the _ts ensures the reactive trigger fires even if the same
+  job ID completes twice).
+- App.svelte: `$: if ($completedTransfer) { refreshLocal(); refreshRemote(); }`
+  re-lists both panels automatically after every finished transfer.
+
+---
+
+#10
+Title: [Feature] Right-click context menu in file browser (new folder, transfer, rename, delete)
+Labels: enhancement
+Version fixed: v1.2
+Description:
+No context menu is available on right-click in the file browser panels.
+
+Solution (closing comment):
+Implemented in v1.2 in FileBrowser.svelte.
+An `on:contextmenu` handler on file rows and on the panel background builds a
+positioned menu:
+- Right-click on a file/folder → Rename / Transfer / Delete (deletes the full
+  selection if the right-clicked item is already selected).
+- Right-click on empty area → New Folder.
+The menu is dismissed on the next click via a svelte:window on:click handler.
+
+---
+
+#11
+Title: [Feature] Column sorting in file browser (name, size, date)
+Labels: enhancement
+Version fixed: v1.1
+Description:
+Files and folders cannot be sorted; the listing order is whatever the server
+or OS returns.
+
+Solution (closing comment):
+Implemented in v1.1 in FileBrowser.svelte.
+Each column header (Name, Size, Date) is a clickable button. State variables
+`sortKey` and `sortDir` ('asc'/'desc') drive a reactive sort on the entries
+array. A second click on the same header reverses the order. Directories are
+always grouped before files regardless of the active sort key.
+
+---
+
+#12
+Title: [Bug] Multi-file selection not working (Shift+click, Ctrl+click, rubber-band)
+Labels: bug
+Version fixed: v1.1
+Description:
+Only single-file selection works. Shift+click, Ctrl+click, and click-drag
+rubber-band selection are all broken.
+
+Solution (closing comment):
+Fixed in v1.1 in FileBrowser.svelte.
+- Ctrl+click: toggles the clicked entry in the `selected` set.
+- Shift+click: selects all entries between the last clicked index and the
+  current one (range selection).
+- Rubber-band: mousedown on empty area starts a drag-select state; mousemove
+  updates a selection rectangle drawn as an SVG overlay; mouseup finalizes the
+  selection by checking which rows intersect the rectangle.
+
+---
+
+#13
+Title: [Bug] F2 shortcut does not trigger rename on the selected file/folder
+Labels: bug
+Version fixed: v1.1
+Description:
+Pressing F2 on a selected entry does not open the rename input.
+
+Solution (closing comment):
+Fixed in v1.1 in FileBrowser.svelte.
+The panel wrapper div was given `tabindex="-1"` so it can receive keyboard focus.
+A click on any file row calls `panelEl.focus()`. The panel's `on:keydown` handler
+checks `e.key === 'F2'` and triggers the rename inline input for the focused
+entry. Escape cancels; Enter confirms and calls onRename.
+
+---
+
+#14
+Title: [Bug] Settings panel inaccessible while connected; "Show hidden files" toggle broken
+Labels: bug
+Version fixed: v1.1
+Description:
+Once connected the settings gear button does nothing. The "Show hidden files"
+toggle in settings has no effect.
+
+Solution (closing comment):
+Fixed in v1.1.
+- App.svelte: the settings panel visibility (`showSettings`) was incorrectly
+  gated on the connection state. The gate was removed so the panel can always
+  be opened.
+- SettingsPanel.svelte: all on/off toggles were rewritten as
+  `<button class="sw" class:on={val} on:click={() => toggle(key)}>` — WebKit-GTK
+  does not fire click events on hidden checkboxes (see project patterns). Custom
+  `−`/`+` buttons were added for number inputs for the same reason.
+- handleSettingsSaved() in App.svelte calls refreshLocal() + refreshRemote() so
+  showHiddenFiles changes take effect immediately without reconnecting.
+
+---
+
+#15
+Title: [Feature] Allow manual path entry in the path bar of each panel
+Labels: enhancement
+Version fixed: v1.1
+Description:
+The path bar at the top of each panel is read-only; users cannot type a path
+manually.
+
+Solution (closing comment):
+Implemented in v1.1 in FileBrowser.svelte.
+Clicking the path display switches it to an `<input type="text">` bound to an
+`editPath` variable. Pressing Enter calls navigate(editPath); pressing Escape
+reverts to display mode without navigating. The input auto-focuses via
+`use:focus` on render.
+
+---
+
+#16
+Title: [UI] Top bar slightly clipped after connection — disconnect button partially hidden
+Labels: bug, ui
+Version fixed: v1.1
+Description:
+The top bar is visually cut off on one side; the red disconnect button is
+partially hidden behind the edge of the bar.
+Ref: _images/issues/issue-5.png
+
+Solution (closing comment):
+Fixed in v1.1.
+The `.topbar` container in App.svelte was given `overflow: visible` and correct
+horizontal padding so no child element is clipped. The disconnect button in
+ConnectionBar.svelte was also given `flex-shrink: 0` to prevent it from being
+squeezed off-screen on narrow windows.
+
+---
+
+#17
+Title: [Feature] Allow removing individual completed transfers from the queue
+Labels: enhancement
+Version fixed: v1.1
+Description:
+The "Completed" tab only has a global "Clear all" button; individual entries
+cannot be removed one by one.
+
+Solution (closing comment):
+Implemented in v1.1.
+- internal/transfer/queue.go: RemoveJob(id) removes a job by ID and emits the
+  Wails event `transfer:removed`.
+- app.go: RemoveTransfer(id) is the JS-callable wrapper.
+- frontend/src/stores/transfers.js: removeTransfer(id) calls the binding;
+  the EventsOn('transfer:removed') handler filters the local store.
+- TransferQueue.svelte: each completed row now has a ✕ button that calls
+  removeTransfer(job.id).
+
+---
+
+#18
+Title: [Bug] Most settings are non-functional (port spinners, default local dir, all toggles)
+Labels: bug
+Version fixed: v1.1
+Description:
+Only language and dark/light theme work. Port arrows do nothing, default local
+directory is ignored on reconnect, all on/off toggle buttons have no effect.
+
+Solution (closing comment):
+Fixed in v1.1 — complete rework of SettingsPanel.svelte and related stores.
+- Toggle buttons: replaced hidden-checkbox pattern with WebKit-GTK compatible
+  `<button class="sw" class:on={val}>` (native checkbox click events are broken
+  under WebKit-GTK when the input is hidden).
+- Number steppers: replaced native `<input type="number">` spinners (invisible
+  under WebKit-GTK) with custom `−`/`+` buttons calling a step(key, delta, min, max)
+  helper. Native spinners are hidden via `-webkit-appearance: none`.
+- Default local dir: initLocalDir(startDir) in connection.js now receives the
+  saved defaultLocalDir from loadSettings() at startup (passed from App.svelte).
+- All settings are persisted via settings.js saveSettings() and re-read on load.
+
+---
+
+#19
+Title: [Feature] Path bar autocomplete when typing a directory path
+Labels: enhancement
+Version fixed: v1.2
+Description:
+When typing manually in the path bar there are no suggestions for matching
+subdirectories.
+
+Solution (closing comment):
+Implemented in v1.2 in FileBrowser.svelte.
+While the path bar is in edit mode, an `on:input` handler debounces (150 ms)
+then calls LocalListDir or RemoteListDir on the parent of the currently typed
+path, filters the returned entries to directories whose names start with the
+last segment typed, and renders a dropdown below the input. Clicking a suggestion
+completes the path and navigates immediately.
+
+---
+
+#20
+Title: [Feature] Add a freeform "Note" field to saved sites
+Labels: enhancement
+Version fixed: v1.2
+Description:
+Users have no way to attach notes (credentials reminder, server description,
+etc.) to a saved site.
+Ref: _images/issues/issue-6.png
+
+Solution (closing comment):
+Implemented in v1.2.
+- internal/sites/sites.go: `Note string` field added to the Site struct.
+- SiteManager.svelte form: `<textarea class="note-area" bind:value={form.note}>`
+  added below the other fields.
+- Site detail view: note text is displayed in a styled block with a left border.
+  A copy-to-clipboard button was added alongside it (see also issue #43).
+
+---
+
+#21
+Title: [Bug] Delete key does not delete selected files; confirmation popup not implemented
+Labels: bug
+Version fixed: v1.2
+Description:
+Pressing Delete on a selected file/folder does nothing. The "Confirm before
+delete" setting exists in the UI but the popup is never shown.
+
+Solution (closing comment):
+Fixed in v1.2 in FileBrowser.svelte.
+- The panel's keydown handler now calls handleDelete(selected) on the Delete key.
+- handleDelete populates a `confirmDeleteEntries` array. If the ConfirmOnDelete
+  setting is on, a popup is shown listing the file name (single item) or
+  "N elements" (multiple). The user confirms or cancels.
+- doDeleteAll() iterates the full array, calls onDelete for each entry, then
+  triggers a single panel refresh at the end.
+- The right-click context menu "Delete" option follows the same flow.
+
+---
+
+#22
+Title: [Feature] Add transfer speed limit setting (MB/s)
+Labels: enhancement
+Version fixed: v1.2
+Description:
+Users on slow or metered connections cannot cap the upload/download speed.
+
+Solution (closing comment):
+Implemented in v1.2.
+- internal/settings/settings.go: MaxTransferSpeedKBps int field added (0 = unlimited).
+- internal/transfer/queue.go: Queue.SetSpeedLimit(kbps int) stores speedLimitBps.
+  The progressReader and progressWriter check the elapsed time after each chunk
+  and sleep to enforce the cap.
+- app.go: queue.SetSpeedLimit(appSettings.MaxTransferSpeedKBps) called on startup
+  and on every settings save.
+- SettingsPanel.svelte: number input (with custom −/+ steppers) for the speed
+  limit value, labeled in KB/s (0 = no limit).
+
+---
+
+#23
+Title: [Bug] "Ask for password" auth type still persists the password to disk
+Labels: bug
+Version fixed: v1.2
+Description:
+When creating a site with "Ask for password" auth, the password entered during
+setup is saved to disk. It must never be stored for this auth type.
+
+Solution (closing comment):
+Fixed in v1.2 in SiteManager.svelte.
+saveSite() now clears the password field before persisting when
+`toSave.authType === 'ask_password'`:
+  `if (toSave.authType === 'ask_password') toSave.password = '';`
+At connect time, if the site has ask_password auth, a modal password prompt is
+shown (showPasswordPrompt state). The entered password is passed directly to
+app.ConnectWithPassword() and never written to the site file.
+
+---
+
+#24
+Title: [Feature] Export and import saved sites as JSON
+Labels: enhancement
+Version fixed: v1.2
+Description:
+Users cannot back up their saved sites or transfer them to another machine.
+
+Solution (closing comment):
+Implemented in v1.2.
+- app.go: ExportSites() opens a Wails save-file dialog, marshals all sites to
+  indented JSON, and writes the file. ImportSites() opens an open-file dialog,
+  reads and parses the JSON, merges entries (skipping duplicates by ID), and
+  returns the count of imported sites.
+- SiteManager.svelte: "Export" and "Import" buttons added to the modal header.
+  After a successful import, loadSites() is called and an alert shows the count.
+
+---
+
+#25
+Title: [Feature] Accent color picker (RGB / HEX / HSV) in Appearance settings
+Labels: enhancement, ui
+Version fixed: v1.2
+Description:
+The blue accent color is hardcoded. Users cannot customise it.
+Ref: _images/issues/issue-rgb.png
+
+Solution (closing comment):
+Implemented in v1.2.
+- frontend/src/components/ColorPicker.svelte created: HSV canvas (mousedown drag
+  moves the saturation/value cursor), hue slider, editable RGB and HEX inputs
+  that stay in sync, "Default" button restoring #5B8AF5, and an 8-color history
+  strip (see also issue #38). The component opens as a z-500 overlay on top of
+  the settings panel.
+- frontend/src/stores/settings.js: applyAccentColor(hex) sets --accent,
+  --accent-hover, and --accent-subtle CSS custom properties on
+  document.documentElement. Called on startup and on every save.
+- internal/settings/settings.go: AccentColor string field persisted to
+  ~/.config/GlideFTP/settings.json.
+
+---
+
+#26
+Title: [Bug] Rubber-band (click-and-drag) multi-selection does not work
+Labels: bug
+Version fixed: v1.2
+Description:
+Holding the left mouse button and dragging over the file list does not draw a
+selection rectangle or select any files.
+(Related to #12.)
+
+Solution (closing comment):
+Fixed in v1.2 in FileBrowser.svelte.
+mousedown on the empty panel background (not on a file row) sets a rubber-band
+start coordinate. mousemove updates rubberRect (top, left, width, height) drawn
+as an SVG `<rect>` overlay at pointer-events: none. mouseup computes which row
+DOM rects intersect rubberRect via getBoundingClientRect() and adds them to the
+selected set. The overlay is cleared after mouseup.
+
+---
+
+#27
+Title: [Bug] Clicking ".." on remote panel freezes the UI / drops the connection
+Labels: bug, critical
+Version fixed: v1.2
+Description:
+After navigating via ".." on the remote panel the UI becomes unresponsive:
+clicks on files have no effect. Disconnecting and reconnecting restores it.
+Auto-reconnect does not help.
+
+Solution (closing comment):
+Fixed in v1.2 in internal/connection/manager.go.
+manager.ListDir() now wraps the blocking client.List() call in a goroutine and
+uses a select with time.After(30 s) as a timeout. If the listing doesn't return
+in time, the manager calls Disconnect() on the active client and returns a
+descriptive error. The UI in App.svelte / FileBrowser.svelte catches this error,
+sets connectionStatus to 'disconnected', and clears the remote panel — instead
+of hanging indefinitely.
+
+---
+
+#28
+Title: [Bug] Multi-file transfer broken — drag-and-drop sends only 1 file; transfer button fails all
+Labels: bug, critical
+Version fixed: v1.2
+Description:
+With multiple files selected:
+- Drag-and-drop only transfers the first file; the rest are silently ignored.
+- The "Transfer" button queues all files but all fail. Retrying individually works.
+
+Solution (closing comment):
+Fixed in v1.2.
+Two separate root causes:
+1. Drag-and-drop (FileBrowser.svelte): the dragstart handler now checks if the
+   dragged row is part of the current selection; if so it packs ALL selected
+   entries into the drag data JSON array. The drop handler iterates the full
+   array and queues a transfer per entry.
+2. Concurrent FTP transfers (internal/connection/ftp.go): FTPClient gained a
+   sync.Mutex protecting every method. The jlaffaye/ftp library is not
+   thread-safe; without the mutex, concurrent queue workers corrupt the control
+   connection, causing all parallel jobs to fail. With the mutex, each job
+   acquires the lock for its operation in sequence.
+
+---
+
+#29
+Title: [Feature] Password visibility toggle (eye icon) in the "Password required" prompt
+Labels: enhancement, ui
+Version fixed: v1.2
+Description:
+The password prompt when connecting to an "ask_password" site has no way to
+reveal the typed password.
+
+Solution (closing comment):
+Implemented in v1.2 in SiteManager.svelte.
+A `showPwd` boolean drives two separate `<input>` blocks inside an `{#if}/{:else}`
+— one type="text", one type="password", both bound to the same `promptPassword`
+variable. (Svelte 3 does not allow a dynamic `type` attribute on a two-way-bound
+input under WebKit-GTK.) An eye SVG button toggles showPwd. The icon switches
+between "open eye" and "crossed eye" variants.
+
+---
+
+#30
+Title: [Bug] Cancel button in transfer queue has no effect
+Labels: bug
+Version fixed: v1.2
+Description:
+Clicking "Cancel" on a pending or in-progress transfer in the queue does nothing.
+Ref: _images/issues/issue-7.png
+
+Solution (closing comment):
+Fixed in v1.2 in internal/transfer/queue.go.
+Each Job now holds a `cancelFn context.CancelFunc` that is set when queue.run()
+starts the job's goroutine. progressReader.Read() and progressWriter.Write() both
+call `ctx.Err()` before processing each chunk and return an error if the context
+is cancelled, cleanly aborting the in-progress I/O. The exported Cancel(id)
+method handles both cases: pending jobs are removed from the queue directly;
+running jobs have their cancelFn() called.
+
+---
+
+#31
+Title: [Feature] Auto-couple SFTP protocol ↔ Interactive / Key auth type in Site Manager
+Labels: enhancement
+Version fixed: v1.2
+Description:
+Selecting SFTP doesn't automatically set the right auth type and vice-versa,
+making the SSH key input hard to discover.
+
+Solution (closing comment):
+Implemented in v1.2 in SiteManager.svelte.
+Two helper functions were added:
+- setProtocol(p): if p === 'sftp' and authType is not already 'interactive' or
+  'key', switches authType to 'interactive' and port to 22. If p === 'ftp',
+  resets to 'normal' auth and port 21.
+- setAuthType(a): if a is 'interactive' or 'key', switches protocol to 'sftp'
+  and port to 22. Otherwise switches to 'ftp' and port 21.
+Both functions update form immutably with a spread. The SSH key file input is
+shown with `{#if form.protocol === 'sftp' && form.authType === 'key'}`.
+
+---
+
+#32
+Title: [Bug] Deleting multiple selected files only deletes one
+Labels: bug
+Version fixed: v1.3
+Description:
+When multiple files are selected and deletion is confirmed, only the first item
+in the selection is actually deleted.
+
+Solution (closing comment):
+Fixed in v1.3 in FileBrowser.svelte.
+doDeleteAll() was calling onDelete once with the full array, but the backend
+expected individual calls. The function now iterates the full confirmDeleteEntries
+array, calls onDelete(entry) for each item sequentially, and triggers a single
+refreshLocal/refreshRemote at the very end to avoid one listing call per file.
+
+---
+
+#33
+Title: [Bug] Arrow keys and Enter do not navigate the file browser
+Labels: bug
+Version fixed: v1.4
+Description:
+Arrow Up/Down don't move the selection; Enter doesn't open a directory. Keyboard
+navigation is completely absent.
+
+Solution (closing comment):
+Fixed in v1.4 in FileBrowser.svelte.
+The panel div (tabindex="-1") keydown handler was extended:
+- ArrowDown: increments focusedIndex (clamped to entries length), scrolls the
+  row into view.
+- ArrowUp: decrements focusedIndex; when at index 0 it sets parentFocused=true
+  which highlights the ".." row.
+- Enter on a directory entry: calls the navigate callback.
+- Enter while parentFocused: calls onNavigateUp.
+A `$: if (path) parentFocused = false` reactive resets focus state on navigation.
+
+---
+
+#34
+Title: [UI] Host input on connection screen too narrow for a full IPv4 address
+Labels: bug, ui
+Version fixed: v1.4
+Description:
+The host input field is too short — a full four-octet IPv4 like 192.168.124.155
+is visually truncated.
+
+Solution (closing comment):
+Fixed in v1.4 in ConnectionBar.svelte.
+The host input min-width was increased (from ~120 px to 200 px) and the overall
+connection bar container was given a slightly larger max-width so the port field
+and connect button remain on the same row (see also issue #40).
+
+---
+
+#35
+Title: [Feature] Right-click → Paste in the "Password required" prompt
+Labels: enhancement
+Version fixed: v1.4
+Description:
+WebKit-GTK suppresses the native browser context menu inside the WebView. The
+password input in the connection prompt has no paste option.
+
+Solution (closing comment):
+Implemented in v1.4 in SiteManager.svelte.
+`on:contextmenu={handlePwdContextMenu}` on both password inputs (show/hide
+variants) records the click coordinates in `pasteMenu`. A positioned div is
+rendered at those coordinates with a single "Paste" button. The handler calls
+`navigator.clipboard.readText()` and appends the result to promptPassword.
+A `<svelte:window on:click={() => pasteMenu = null}>` dismisses the menu on
+any outside click.
+
+---
+
+#36
+Title: [Bug] Top bar inputs show placeholder values instead of the active connection values
+Labels: bug
+Version fixed: v1.4
+Description:
+Once connected, the host, user, and port inputs in the top bar still show their
+empty default values instead of the real connection parameters.
+
+Solution (closing comment):
+Fixed in v1.4.
+- frontend/src/stores/connection.js: activeConnectionConfig writable store
+  (initially null). Set to { protocol, host, port, user } on every successful
+  connect (connectBySite, connectBySiteWithPassword, connect, addConnection).
+  Cleared to null on disconnect.
+- ConnectionBar.svelte: inputs read from activeConnectionConfig when it is not
+  null, falling back to the user-typed values otherwise. The password field
+  always displays the string "············" (12 dots) when connected, regardless
+  of the actual password.
+
+---
+
+#37
+Title: [Feature] Graceful disconnect when the application window is closed or interrupted
+Labels: enhancement
+Version fixed: v1.4
+Description:
+Closing the window while connected leaves the session open server-side.
+
+Solution (closing comment):
+Implemented in v1.4.
+main.go registers an OnShutdown hook with the Wails runtime:
+  `wails.OnShutdown(ctx, func() { app.shutdown(ctx) })`
+app.shutdown() in app.go calls connMgr.Disconnect() which closes the active FTP
+or SFTP connection cleanly. This ensures the server receives a proper BYE/QUIT
+or SSH channel close regardless of how the window is dismissed.
+
+---
+
+#38
+Title: [Feature] Accent color history (last 8 colors) in the color picker
+Labels: enhancement
+Version fixed: v1.4
+Description:
+The color picker has no memory of previously used colors.
+
+Solution (closing comment):
+Implemented in v1.4 in ColorPicker.svelte.
+On each color application, the hex value is prepended to an array stored in
+localStorage under the key `glideftp_color_history`. Duplicates are removed and
+the array is trimmed to 8 entries before saving. On component mount the history
+is loaded and rendered as clickable circular swatches above the footer row.
+Clicking a swatch instantly populates all color inputs and applies the color.
+
+---
+
+#39
+Title: [Bug] Download from remote server stays at 0% and never completes
+Labels: bug, critical
+Version fixed: v1.5
+Description:
+Uploading from local → remote works. Downloading remote → local shows 0% progress
+and no bytes are ever written.
+Ref: _images/issues/issue-8.png
+
+Solution (closing comment):
+Fixed in v1.5 in internal/connection/ftp.go.
+Root cause: FileSize() was called AFTER Retr() had already opened the data
+connection. On Synology NAS (and some other FTP servers) issuing a SIZE command
+on the control connection while a data transfer is in flight violates the FTP
+state machine; the server replies with 0, causing the progress tracking to
+believe nothing was transferred and the download was empty.
+Fix: moved the FileSize() call to before Retr() so the size is known before the
+data connection opens. The transfer then proceeds and completes normally.
+
+---
+
+#40
+Title: [UI] Port field and connect button wrap to a second line after host input was widened
+Labels: bug, ui
+Version fixed: v1.5
+Description:
+After widening the host input (issue #34), the port field and connect button now
+overflow to a second row.
+Ref: _images/issues/issue-9.png
+
+Solution (closing comment):
+Fixed in v1.5 in ConnectionBar.svelte.
+The `.topbar-form` container CSS was adjusted (increased max-width / min-width,
+`flex-wrap: nowrap`, `overflow: visible`) so the host input, port field, and
+connect button all stay on a single line even with the larger host input.
+
+---
+
+#41
+Title: [Feature] Cross-compile Windows .exe and restructure build output paths
+Labels: enhancement, build
+Version fixed: v1.6
+Description:
+No Windows executable exists. Build output has no clear platform separation.
+Expected: build/bin/linux/GlideFTP and build/bin/windows/GlideFTP.exe.
+Ref: _images/issues/issue-10.jpg
+
+Solution (closing comment):
+Implemented in v1.6.
+build.sh created at project root with three modes:
+  ./build.sh            → builds both Linux and Windows
+  ./build.sh linux      → wails build -tags webkit2_41; mv → build/bin/linux/GlideFTP
+  ./build.sh windows    → CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows
+                          wails build -platform windows/amd64;
+                          mv → build/bin/windows/GlideFTP.exe
+Requires mingw-w64-gcc for the Windows target (sudo pacman -S mingw-w64-gcc).
+Windows builds must NOT use -tags webkit2_41 (uses WebView2 instead).
+README.md updated with full build instructions.
+
+---
+
+#42
+Title: [Feature] Show real-time transfer speed (KB/s or MB/s) in the transfer queue
+Labels: enhancement
+Version fixed: v1.6
+Description:
+While a transfer is in progress the queue entry shows size and bytes done but
+no speed indicator.
+Ref: _images/issues/issue-11.jpg
+
+Solution (closing comment):
+Implemented in v1.6 in TransferQueue.svelte.
+A `speeds` Map (id → bytes/sec) tracks per-transfer speed. On each
+`transfer:progress` event the handler computes the delta between the new
+bytesDone and the last recorded bytesDone, divided by the elapsed time. Updates
+below a 250 ms window are skipped to avoid noise from tiny deltas. The speed is
+displayed next to the progress label in the accent color, formatted as
+"X.X KB/s" below 1 MB/s or "X.X MB/s" above.
+
+---
+
+#43
+Title: [Feature] Copy-to-clipboard button next to site notes in Site Manager
+Labels: enhancement, ui
+Version fixed: v1.6
+Description:
+When viewing a saved site with a note there is no quick way to copy the text.
+Ref: _images/issues/issue-12.jpg
+
+Solution (closing comment):
+Implemented in v1.6 in SiteManager.svelte.
+The note display block was wrapped in a `.view-note-wrap` relative container.
+A `.copy-note-btn` (clipboard SVG icon, position: absolute right: 8px) is
+overlaid on the note. copyNote(text) calls navigator.clipboard.writeText(text)
+and sets `noteCopied = true` for 1500 ms, swapping the clipboard icon for a
+checkmark tick to give visual confirmation.
+
+---
+
+#44
+Title: [UI] Copy button on site note is misaligned / not centered
+Labels: bug, ui
+Version fixed: v1.6
+Description:
+The copy-to-clipboard button added in issue #43 is visually offset and not
+vertically centred relative to the note block.
+Ref: _images/issues/issue-13.jpg
+
+Solution (closing comment):
+Fixed in v1.6 in SiteManager.svelte CSS.
+.copy-note-btn:
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 8px;
+.view-note-wrap:
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+.view-note:
+  flex: 1;
+  padding-right: 32px;   ← prevents note text from sliding under the button
+
+---
+
+#45
+Title: [Bug] Ctrl+Z (undo) does not work in text inputs
+Labels: bug
+Version fixed: v1.6
+Description:
+Pressing Ctrl+Z inside any text input does not undo the last typed character.
+WebKit-GTK does not fire native undo events in Svelte-bound inputs.
+
+Solution (closing comment):
+Fixed in v1.6 in App.svelte.
+A global `handleKeydown` listener is attached via `<svelte:window on:keydown>`.
+When `e.ctrlKey && e.key === 'z'` is detected and the active element is an
+INPUT or TEXTAREA:
+1. `e.preventDefault()` stops any default (no-op) handling.
+2. `document.execCommand('undo')` triggers the WebKit undo stack.
+3. A synthetic `new Event('input', { bubbles: true })` is dispatched on the
+   target so Svelte re-reads the DOM value and syncs its reactive variable.
+
+---
+
+#46
+Title: [Bug] SFTP connection fails when using a PuTTY .ppk private key file
+Labels: bug
+Version fixed: v1.6
+Description:
+Connecting via SFTP with a .ppk key file results in a parse error. Only OpenSSH
+PEM format is handled by the standard Go crypto/ssh library.
+Ref: _images/issues/issue-14.jpg / issue-15.jpg
+
+Solution (closing comment):
+Fixed in v1.6.
+internal/connection/ppk.go created (243 lines):
+- isPPKFile(path): reads the first line to detect "PuTTY-User-Key-File-2:" or
+  "-3:" headers.
+- parsePPKFile(path): full parser for PPK v2 and v3 format, supporting RSA and
+  Ed25519 key types. Decodes the base64 public and private blobs, reconstructs
+  the ssh.Signer directly without spawning puttygen.
+  Encrypted PPK keys return a descriptive error asking the user to convert with
+  PuTTYgen.
+internal/connection/sftp.go: loadPrivateKey(path, passphrase) now calls
+isPPKFile() first; if true it routes to parsePPKFile() instead of
+ssh.ParsePrivateKey(). Detection is fully automatic — no UI change needed.
+
+---
+
+#47
+Title: [Bug] Application cannot be maximized or exceed a fixed window size on large screens
+Labels: bug, ui
+Version fixed: v1.7
+Description:
+On a 3440×1440 monitor the window cannot be maximized or resized beyond a fixed
+limit, leaving large empty margins.
+Note: behaviour confirmed as still not fixed on Hyprland (Wayland).
+Ref: _images/issues/issue-16.jpg
+
+Solution (closing comment):
+Partially fixed in v1.7.
+wails.json: MaxWidth and MaxHeight were set to 0 (unlimited), removing the
+hardcoded size cap. The window can now be freely resized and maximized on X11.
+Known limitation: under Hyprland (Wayland compositor) the window still does not
+maximise correctly — this appears to be a Wails v2 / WebKit-GTK Wayland
+compositor interaction issue outside the scope of GlideFTP itself. Leaving open
+pending an upstream Wails fix.
+
+---
+
+#48
+Title: [Feature] Multi-connection support with tab management and keep-or-replace prompt
+Labels: enhancement
+Version fixed: v1.7
+Description:
+When connecting to a new site while already connected, the current connection is
+always silently replaced. Users should be offered the choice to keep the existing
+connection open and open the new one alongside it in a separate tab.
+Ref: _images/issues/issue-17.jpg
+
+Solution (closing comment):
+Implemented in v1.7 — significant work across backend and frontend.
+
+Backend (internal/connection/manager.go):
+- Connection map (id → Client) replaces the single-client model; protected by
+  sync.RWMutex.
+- ConnectNew(cfg): opens a new connection without closing existing ones; the new
+  connection becomes active.
+- CloseOne(id): closes a specific connection; if it was active, switches to the
+  most-recently-added remaining one.
+- SwitchTo(id): makes a connection active without reconnecting.
+
+Go bindings (app.go):
+- ConnectToSiteAdditional(siteID, overridePassword): adds a connection alongside
+  existing ones.
+- GetConnections(): returns []ConnInfo for all open connections.
+- SwitchConnection(id) / CloseConnection(id) / GetActiveConnectionID().
+
+Frontend stores (connection.js):
+- connections writable store: array of {id, name, host, protocol, port, user,
+  remotePath}.
+- activeConnectionId writable store.
+- addConnection(), switchTab() (saves current path before switching),
+  closeTab() (auto-activates last remaining tab if the closed one was active).
+
+UI (App.svelte):
+- .conn-tabs strip appears between the top bar and file panels, but only when
+  $connections.length > 1. Each tab shows the site name (or host), has an accent
+  underline when active, and a ✕ button to close it.
+- Disconnect-all overlay: when the disconnect button is clicked with 2+ open
+  connections, a confirmation popup explains how many connections will be closed.
+
+Site Manager (SiteManager.svelte):
+- keep-or-replace dialog: when already connected and "Connect" is clicked, the
+  user is offered "Keep current and open new" / "Replace current connection" /
+  "Cancel".
+- canAddConnection guard checks $connections.length < maxConnections before
+  enabling the "Keep" button.
+
+Settings:
+- internal/settings/settings.go: MaxConnections int field (default 3, range 1–5).
+- SettingsPanel.svelte: MaxConnections exposed with custom −/+ stepper buttons.
+
+---
+
+#49
+Title: [Bug] Connecting to the same site twice opens a duplicate tab with identical parameters
+Labels: bug
+Version fixed: v1.7 (corr)
+Description:
+When already connected to a site and choosing "Keep current session and open new"
+from the keep-or-replace dialog, selecting the exact same site a second time
+opens a second identical tab — same host, port, protocol, and user. No visual
+distinction exists between the two tabs and there is no way to tell them apart.
+Ref: _images/issues/issue-18.jpg
+
+Solution (closing comment):
+Fixed in v1.7 (corr) in SiteManager.svelte — doKeepAndAdd().
+Before calling addConnection(), the function now checks whether any entry in
+$connections already has the same host / port / protocol / user as the site
+being connected to:
+
+  const isDuplicate = $connections.some(c =>
+    c.host === site?.host &&
+    Number(c.port) === Number(site?.port) &&
+    c.protocol === site?.protocol &&
+    c.user === site?.user
+  );
+
+Two cases:
+- Duplicate detected, normal auth: connectBySite() is called instead of
+  addConnection() — the active tab is refreshed/reconnected without a new tab
+  being created.
+- Duplicate detected, ask_password auth: promptIsAdd is set to false so the
+  password prompt routes to connectBySiteWithPassword() (reconnect) instead of
+  addConnection() (new tab).
+- No duplicate: original behaviour unchanged — addConnection() opens a new tab.
+
+The site name field is intentionally NOT compared since two sites can have
+different names but point to the same server endpoint.
