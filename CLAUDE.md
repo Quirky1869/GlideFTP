@@ -16,6 +16,12 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 ./build.sh linux      # Linux only  → build/bin/linux/GlideFTP
 ./build.sh windows    # Windows only → build/bin/windows/GlideFTP.exe
 
+# Create distribution archives (requires a built binary first)
+./create-archive.sh 1.7.0              # all 4 archives (Linux+Windows × gz+tar)
+./create-archive.sh -p linux 1.7.0    # Linux archives only
+./create-archive.sh -p windows -t gz 1.7.0  # Windows .tar.gz only
+# Version must be X.Y.Z (3 numbers) — script refuses anything else
+
 # Manual — Linux (system has webkit2gtk-4.1, the tag is mandatory)
 wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
 wails dev   -tags webkit2_41        # dev mode with hot reload
@@ -86,6 +92,7 @@ GlideFTP/
 - **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
 - **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting — no "already connected" error.
 - **Multi-connection tabs**: `manager.ConnectNew()` adds a connection alongside existing ones. The frontend tracks open connections in the `connections` writable store (`[{id, name, host, protocol, port, user, remotePath}]`). Tabs appear in `App.svelte` between the topbar and dual-browser only when `$connections.length > 1`. `switchTab(id)` saves the current remotePath before switching. `closeTab(id)` cleans up and auto-activates the next tab. When the disconnect button is clicked with 2+ open connections, a confirmation overlay asks to close all. `MaxConnections` (1–5, default 3) is a setting that controls how many can be kept open; `SiteManager` checks this before offering the "keep and open new" option.
+- **Duplicate connection guard**: `doKeepAndAdd()` in `SiteManager.svelte` checks whether any entry in `$connections` already has the same `host`, `port`, `protocol`, and `user` before calling `addConnection()`. If a duplicate is detected → calls `connectBySite()` instead (reconnect, no new tab). For `ask_password` mode the `promptIsAdd` flag is set to `false` so the password prompt routes to `connectBySiteWithPassword()` rather than `addConnection()`.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
 
