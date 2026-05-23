@@ -208,6 +208,7 @@
   </div>
 
   <div class="panel-footer">
+    <span class="version-badge">v1.7.1</span>
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}
@@ -465,6 +466,8 @@ input:focus { border-color: var(--accent); }
   border-top: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+.version-badge { font-size: 12px; color: var(--accent); margin-right: auto; }
 
 .saved-msg { font-size: 13px; color: var(--success); }
 

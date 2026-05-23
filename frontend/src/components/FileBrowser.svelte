@@ -16,6 +16,16 @@
   export let onDelete = async (_path) => {};
   export let onRename = async (_old, _new) => {};
   export let otherPath = '';
+  export let otherEntries = [];
+
+  let refreshing = false;
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    refreshing = true;
+    await Promise.all([onRefresh(), new Promise(r => setTimeout(r, 500))]);
+    refreshing = false;
+  }
 
   let renamingEntry = null;
   let renameValue = '';
@@ -303,22 +313,68 @@
 
   // ── Transfer ──────────────────────────────────────────────────────────────
 
-  function queueTransfer(entry) {
-    const dest = otherPath.replace(/[/\\]?$/, '/') + entry.name;
+  function doQueueTransfer(entry, destNameOverride) {
+    const dest = otherPath.replace(/[/\\]?$/, '/') + (destNameOverride || entry.name);
     if (side === 'local') QueueUpload(entry.path, dest);
     else QueueDownload(entry.path, dest);
   }
 
+  // ── Conflict resolution ───────────────────────────────────────────────────
+
+  let conflictPending = null;
+
+  function checkConflicts(entriesToTransfer) {
+    const otherNames = new Set((otherEntries || []).map(e => e.name.toLowerCase()));
+    return {
+      conflicts: entriesToTransfer.filter(e => otherNames.has(e.name.toLowerCase())),
+      nonConflicts: entriesToTransfer.filter(e => !otherNames.has(e.name.toLowerCase())),
+    };
+  }
+
+  function getAutoName(name) {
+    const otherNames = new Set((otherEntries || []).map(e => e.name.toLowerCase()));
+    const dot = name.lastIndexOf('.');
+    const base = dot > 0 ? name.substring(0, dot) : name;
+    const ext = dot > 0 ? name.substring(dot) : '';
+    let n = 1, newName;
+    do { newName = `${base} (${n})${ext}`; n++; }
+    while (otherNames.has(newName.toLowerCase()) && n < 100);
+    return newName;
+  }
+
+  function resolveConflict(action) {
+    if (!conflictPending) return;
+    const { conflicts } = conflictPending;
+    if (action === 'replace') {
+      for (const entry of conflicts) doQueueTransfer(entry);
+    } else if (action === 'rename') {
+      for (const entry of conflicts) doQueueTransfer(entry, getAutoName(entry.name));
+    }
+    queueVisible.set(true);
+    conflictPending = null;
+  }
+
   async function transferSelected() {
     if (!selected.length) return;
-    for (const entry of selected) queueTransfer(entry);
-    queueVisible.set(true);
+    const { conflicts, nonConflicts } = checkConflicts(selected);
+    for (const entry of nonConflicts) doQueueTransfer(entry);
+    if (conflicts.length > 0) {
+      conflictPending = { conflicts };
+      if (nonConflicts.length > 0) queueVisible.set(true);
+    } else {
+      queueVisible.set(true);
+    }
   }
 
   async function transferEntry(entry) {
-    queueTransfer(entry);
-    queueVisible.set(true);
     closeContext();
+    const { conflicts, nonConflicts } = checkConflicts([entry]);
+    for (const e of nonConflicts) doQueueTransfer(e);
+    if (conflicts.length > 0) {
+      conflictPending = { conflicts };
+    } else {
+      queueVisible.set(true);
+    }
   }
 
   // ── Keyboard navigation ───────────────────────────────────────────────────
@@ -490,7 +546,7 @@
       </div>
     </div>
     <div class="browser-actions">
-      <button class="icon-btn" on:click={onRefresh} title={$t('refresh')}>
+      <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="icon-btn" on:click={() => { newFolderMode = true; closeContext(); }} title={$t('newFolder')}>
@@ -650,6 +706,31 @@
       <div class="confirm-actions">
         <button class="confirm-del-btn" on:click={() => doDeleteAll(confirmDeleteEntries)}>{$t('deleteConfirm')}</button>
         <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntries = null}>{$t('cancel')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Conflict resolution dialog -->
+{#if conflictPending}
+  <div class="confirm-overlay" on:click|self={() => conflictPending = null}>
+    <div class="confirm-box" on:click|stopPropagation>
+      <div class="conflict-warn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="confirm-msg">{$t('conflictTitle')}</div>
+      <div class="confirm-name">
+        {#if conflictPending.conflicts.length === 1}
+          {conflictPending.conflicts[0].name}
+        {:else}
+          {conflictPending.conflicts.length} {$t('items')}
+        {/if}
+      </div>
+      <div class="conflict-actions">
+        <button class="conflict-replace-btn" on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
+        <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameHost')}</button>
+        <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameServer')}</button>
+        <button class="confirm-cancel-btn" on:click={() => conflictPending = null}>{$t('cancel')}</button>
       </div>
     </div>
   </div>
@@ -984,6 +1065,30 @@
   color: var(--text-secondary); padding: 7px 18px; font-size: 13px; cursor: pointer;
 }
 .confirm-cancel-btn:hover { background: var(--bg-button-hover); }
+
+/* ── Refresh animation ── */
+.icon-btn.spinning svg {
+  animation: spin-once 0.5s linear;
+  transform-origin: center;
+}
+@keyframes spin-once {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Conflict resolution ── */
+.conflict-warn-icon svg { width: 36px; height: 36px; color: #f59e0b; }
+.conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.conflict-replace-btn {
+  background: var(--accent); border: none; border-radius: 5px;
+  color: white; padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.conflict-replace-btn:hover { background: var(--accent-hover); }
+.conflict-rename-btn {
+  background: var(--bg-button); border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-secondary); padding: 7px 14px; font-size: 13px; cursor: pointer;
+}
+.conflict-rename-btn:hover { background: var(--bg-button-hover); }
 
 /* ── Rubber band ── */
 .rubber-band {

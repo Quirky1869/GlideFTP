@@ -64,7 +64,6 @@ export default {
 
   // Auth types
   authAnonymous: 'Anonymous',
-  authAccount: 'Account',
   authAskPassword: 'Ask password',
   authInteractive: 'Interactive',
   authNormal: 'Normal',
@@ -131,6 +130,12 @@ export default {
   multiDisconnectTitle: 'Multiple active connections',
   multiDisconnectMsg: 'connections are open. Close all?',
   disconnectAll: 'Disconnect all',
+
+  // Conflict resolution
+  conflictTitle: 'File already exists',
+  conflictReplace: 'Replace',
+  conflictRenameHost: 'Rename on host',
+  conflictRenameServer: 'Rename on server',
 
   // Delete confirmation
   confirmDeleteFile: 'Delete this item?',

@@ -179,5 +179,31 @@ ATTENTION : lorsque 2 connexions sont ouvertes en simultané et que on clique su
 
 49 = J'ai remarqué que quand on créé une nouvelle connexion en gardant la session en cours cela fonctionne cependant lorsqu'on demande d'ouvrir 2 fois la même connexion -> cela fonctionne aussi ce qui nous ouvre 2 onglet qui sont exactement pareil alors que aucun paramètre de connexion ne change ni le nom renseigné dans glideftp dans les sites enregistrés, ni l'adresse ip (ou nom d'hote), ni l'utilisateur, ni le port ; a mon sens il faudrait faire en sorte de comparer ses information quand l'utilisateur choisi de garder la session en cours et si une informations est differente alors on fait comme maintenant on ouvre un nouvel onglet, en revanche si en comparant les données on voit que toutes les données sont pareil et que l'utilisateur essai de se connecter à la même ressource on déconnecte la session en cours et on reconnecte l'utilisateur à la session qu'il a sélectionnée mais sans nouvel onglet --- regarde dans ./_images/issues/issue-18.jpg (je suis connecté sur ce screen 2 fois à la même ressource avec les mêmes infos)
 
+____
 
+1.7.1
+
+50 = Il faudrait avoir un solution pour pouvoir embarqué toutes les dépendances dans le binaire de Linux -> créé une appimage
+
+51 = Est-ce que la gestion de doublons est effective, je m'explique si un utilisateur transfère le même fichier avec le même nom que ca soit depuis l'hote vers le serveur distant ou l'inverse est-ce que quelque chose est prévu ?
+Dans tout les cas il faudrait ajouter un pop-up à l'utilisateur avec les choix suivant :
+- Remplacer
+- Renommer le fichier sur l'hote
+- Renommer le fichier sur le serveur distant
+- Annuler
+
+Je te laisse revoir les phrases 
+
+52 = J'ai vu que si je drag and drop depuis l'explorateur de fichier vers le serveur distant dans l'appli
+GlideFTP cela ne fonctionne pas, je ne sais pas si cela est possible ?
+
+53 = Il faut supprimer completement le choix de "compte" dans gerer les sites -> Authentification ; il n'a pas lieu d'etre
+
+54 = J'ai vu que sur l'écran principal de connexion on peut selectionner le port voulu qui est par defaut le "21" et que à coter il y a deux petites fleches haut et bas pour monter ou descendre ce chiffre
+Mais je suppose que tu as volontairement bloquer le port 22 (car cest le port d'échange de données ftp) ce qui est une bonne chose cependant,
+lorsque l'utilisateur clique sur le fleche du haut pour augmenter le chiffre 21 cela ne fonctionne pas car 22 est "bloqué"
+Ce qu'il faut faire c'est gardé le port 22 bloqué mais faire en sorte que le fleche du haut fonctionne quand on est au port 21 et qu'on veux incrémenter le port, il faut que le port 22 sois "sauté" et que ca passe tout seul au port 23
+
+55 = Peut-tu faire en sorte que lorsque l'utilisateur clique sur la petite fleche "rafraichir" celle ci tourne 1 fois en cercle
+le but est d'avoir une animation "visible" pour l'utilisateur 
 

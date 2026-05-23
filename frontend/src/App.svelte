@@ -190,6 +190,7 @@
             entries={$localEntries}
             selected={$localSelected}
             otherPath={$remotePath}
+            otherEntries={$remoteEntries}
             onNavigate={refreshLocal}
             onNavigateUp={() => navigateLocalUp($localPath)}
             onRefresh={() => refreshLocal($localPath)}
@@ -211,6 +212,7 @@
             entries={$remoteEntries}
             selected={$remoteSelected}
             otherPath={$localPath}
+            otherEntries={$localEntries}
             onNavigate={refreshRemote}
             onNavigateUp={async () => {
               const parts = $remotePath.split('/').filter(Boolean);

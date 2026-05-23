@@ -12,15 +12,22 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 
 ```bash
 # Recommended — use the build script at project root
-./build.sh            # builds both Linux and Windows
-./build.sh linux      # Linux only  → build/bin/linux/GlideFTP
-./build.sh windows    # Windows only → build/bin/windows/GlideFTP.exe
+./build.sh            # builds Linux binary + Windows exe + AppImage
+./build.sh linux      # Linux only      → build/bin/linux/GlideFTP
+./build.sh windows    # Windows only    → build/bin/windows/GlideFTP.exe
+./build.sh appimage   # AppImage only   → build/bin/linux/GlideFTP-x86_64.AppImage
+# AppImage: downloads linuxdeploy to tools/ on first run (gitignored); requires imagemagick
+# Key env vars set internally: NO_STRIP=1 (linuxdeploy's strip too old for .relr.dyn on Arch),
+# icon resized to 256x256 (linuxdeploy requires standard resolution)
 
-# Create distribution archives (requires a built binary first)
-./create-archive.sh 1.7.0              # all 4 archives (Linux+Windows × gz+tar)
-./create-archive.sh -p linux 1.7.0    # Linux archives only
-./create-archive.sh -p windows -t gz 1.7.0  # Windows .tar.gz only
+# Create distribution archives (requires built binaries first)
+./create-archive.sh 1.7.0                       # all 6 archives (Linux+Windows+AppImage × gz+tar)
+./create-archive.sh -p linux 1.7.0              # Linux binary archives only (includes README.md)
+./create-archive.sh -p appimage 1.7.0           # AppImage archives only (no README.md)
+./create-archive.sh -p windows -t gz 1.7.0      # Windows .tar.gz only
 # Version must be X.Y.Z (3 numbers) — script refuses anything else
+# Linux binary archives include README.md with libwebkit2gtk-4.1 install instructions
+# AppImage archives contain only the .AppImage (self-contained, no deps needed)
 
 # Manual — Linux (system has webkit2gtk-4.1, the tag is mandatory)
 wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
@@ -39,6 +46,19 @@ cd frontend && npm install && npm run build
 
 > **Note:** `wails` must be on PATH — install with `go install github.com/wailsapp/wails/v2/cmd/wails@latest` then `export PATH="$PATH:$(go env GOPATH)/bin"`.
 > Windows builds use WebView2 (built into Windows 10/11) — do NOT add `-tags webkit2_41` for Windows.
+
+### Icon files — two separate assets
+
+| File | Used by |
+|---|---|
+| `build/appicon.png` | Window taskbar icon (Linux/macOS) |
+| `build/windows/icon.ico` | Icon **embedded inside the .exe** (Windows resource compiler) |
+
+**Replacing only `appicon.png` does NOT update the Windows .exe icon.** `build/windows/icon.ico` must be regenerated too:
+```bash
+magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/windows/icon.ico
+```
+`build.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` — `sudo pacman -S imagemagick`).
 
 ## Architecture
 
@@ -73,7 +93,7 @@ GlideFTP/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
-        ├── SettingsPanel.svelte    # Sliding panel (75% width from right)
+        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.0" string on each release
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```

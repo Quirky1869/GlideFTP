@@ -40,7 +40,48 @@
 |---------|--------|
 | ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
 
-### Installation
+### Download pre-built binaries
+
+The latest release provides three ready-to-run files:
+
+| File | Platform | Notes |
+|---|---|---|
+| `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Requires WebView2 (built into Windows 10/11) |
+| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` — see below |
+| `GlideFTP-x86_64.AppImage` | Linux AppImage | **Self-contained — no dependency to install** |
+
+#### Linux — pre-built binary
+
+The raw Linux binary dynamically links against `libwebkit2gtk-4.1`. If it is not installed on your system, the binary will refuse to start with a *"cannot open shared object file"* error. Install it first:
+
+```bash
+# Ubuntu / Debian (22.04+)
+sudo apt install libwebkit2gtk-4.1-0
+
+# Fedora
+sudo dnf install webkit2gtk4.1
+
+# Arch Linux
+sudo pacman -S webkit2gtk-4.1
+```
+
+Then make it executable and run it:
+
+```bash
+chmod +x GlideFTP
+./GlideFTP
+```
+
+#### Linux — AppImage (recommended)
+
+The AppImage bundles all dependencies (including `libwebkit2gtk-4.1` and the full GTK3 stack) inside a single file. No system library needs to be installed — just download, make executable, and run:
+
+```bash
+chmod +x GlideFTP-x86_64.AppImage
+./GlideFTP-x86_64.AppImage
+```
+
+### Build from source
 
 #### Prerequisites
 
@@ -53,17 +94,20 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-On **Linux**, the following system dependency is required:
+On **Linux**, the WebKit2GTK **development** package is required to compile:
 
 ```bash
-# Arch
+# Arch Linux
 sudo pacman -S webkit2gtk-4.1
 
-# Ubuntu / Debian
+# Ubuntu / Debian (22.04+)
 sudo apt install libwebkit2gtk-4.1-dev
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel
 ```
 
-#### Build from source
+#### Build
 
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
@@ -73,10 +117,13 @@ cd GlideFTP
 **Using the build script (recommended):**
 
 ```bash
-./build.sh            # builds both Linux and Windows
-./build.sh linux      # Linux only  → build/bin/linux/GlideFTP
-./build.sh windows    # Windows only → build/bin/windows/GlideFTP.exe
+./build.sh            # Linux binary + Windows exe + AppImage
+./build.sh linux      # Linux binary only  → build/bin/linux/GlideFTP
+./build.sh windows    # Windows exe only   → build/bin/windows/GlideFTP.exe
+./build.sh appimage   # AppImage only      → build/bin/linux/GlideFTP-x86_64.AppImage
 ```
+
+> The `appimage` target requires `curl` or `wget` (to download `linuxdeploy` on first run — cached in `tools/`).
 
 **Manual commands:**
 
@@ -85,7 +132,7 @@ cd GlideFTP
 wails build -tags webkit2_41
 
 # Windows cross-compile from Linux (requires mingw-w64-gcc)
-# Install on Arch/Manjaro: sudo pacman -S mingw-w64-gcc
+# Install on Arch : sudo pacman -S mingw-w64-gcc
 CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
 ```
 
@@ -148,7 +195,48 @@ build\bin\windows\GlideFTP.exe
 |:---------:|:--------:|
 | ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
 
-### Installation
+### Télécharger les binaires pré-compilés
+
+La dernière release propose trois fichiers prêts à l'emploi :
+
+| Fichier | Plateforme | Notes |
+|---|---|---|
+| `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Nécessite WebView2 (intégré à Windows 10/11) |
+| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` — voir ci-dessous |
+| `GlideFTP-x86_64.AppImage` | Linux AppImage | **Autonome — aucune dépendance à installer** |
+
+#### Linux — binaire pré-compilé
+
+Le binaire Linux est lié dynamiquement à `libwebkit2gtk-4.1`. Si cette bibliothèque n'est pas installée sur votre système, le binaire refusera de démarrer avec une erreur *"cannot open shared object file"*. Installez-la d'abord :
+
+```bash
+# Ubuntu / Debian (22.04+)
+sudo apt install libwebkit2gtk-4.1-0
+
+# Fedora
+sudo dnf install webkit2gtk4.1
+
+# Arch Linux
+sudo pacman -S webkit2gtk-4.1
+```
+
+Rendez ensuite le binaire exécutable et lancez-le :
+
+```bash
+chmod +x GlideFTP
+./GlideFTP
+```
+
+#### Linux — AppImage (recommandé)
+
+L'AppImage embarque toutes les dépendances (dont `libwebkit2gtk-4.1` et la pile GTK3 complète) dans un seul fichier. Aucune bibliothèque système à installer — téléchargez, rendez exécutable, et lancez :
+
+```bash
+chmod +x GlideFTP-x86_64.AppImage
+./GlideFTP-x86_64.AppImage
+```
+
+### Compiler depuis les sources
 
 #### Prérequis
 
@@ -161,17 +249,20 @@ go install github.com/wailsapp/wails/v2/cmd/wails@latest
 export PATH="$PATH:$(go env GOPATH)/bin"
 ```
 
-Sur **Linux**, la dépendance système suivante est nécessaire :
+Sur **Linux**, le paquet de **développement** WebKit2GTK est nécessaire pour compiler :
 
 ```bash
-# Arch
+# Arch Linux
 sudo pacman -S webkit2gtk-4.1
 
-# Ubuntu / Debian
+# Ubuntu / Debian (22.04+)
 sudo apt install libwebkit2gtk-4.1-dev
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel
 ```
 
-#### Compiler depuis les sources
+#### Compiler
 
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
@@ -181,10 +272,13 @@ cd GlideFTP
 **Via le script de build (recommandé) :**  
 
 ```bash
-./build.sh            # compile Linux et Windows
-./build.sh linux      # Linux seulement  → build/bin/linux/GlideFTP
-./build.sh windows    # Windows seulement → build/bin/windows/GlideFTP.exe
+./build.sh            # binaire Linux + exe Windows + AppImage
+./build.sh linux      # Linux seulement     → build/bin/linux/GlideFTP
+./build.sh windows    # Windows seulement   → build/bin/windows/GlideFTP.exe
+./build.sh appimage   # AppImage seulement  → build/bin/linux/GlideFTP-x86_64.AppImage
 ```
+
+> La cible `appimage` nécessite `curl` ou `wget` (pour télécharger `linuxdeploy` à la première exécution — mis en cache dans `tools/`).
 
 **Commandes manuelles :**  
 
@@ -193,7 +287,7 @@ cd GlideFTP
 wails build -tags webkit2_41
 
 # Cross-compilation Windows depuis Linux (nécessite mingw-w64-gcc)
-# Installation sur Arch/Manjaro : sudo pacman -S mingw-w64-gcc
+# Installation sur Arch : sudo pacman -S mingw-w64-gcc
 CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
 ```
 

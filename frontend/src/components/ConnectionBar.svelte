@@ -54,6 +54,12 @@
   function handleKeydown(e) {
     if (e.key === 'Enter') handleConnect();
   }
+
+  function stepPort(delta) {
+    let next = (Number(port) || 21) + delta;
+    if (protocol === 'ftp' && next === 22) next += delta > 0 ? 1 : -1;
+    port = Math.max(1, Math.min(65535, next));
+  }
 </script>
 
 <div class="conn-bar">
@@ -101,14 +107,18 @@
 
     <div class="field-group port-group">
       <label>{$t('port')}</label>
-      <input
-        type="number"
-        bind:value={port}
-        min="1"
-        max="65535"
-        disabled={isConnected || isConnecting}
-        on:keydown={handleKeydown}
-      />
+      <div class="port-stepper" class:disabled={isConnected || isConnecting}>
+        <button class="port-step-btn" on:click={() => stepPort(-1)} disabled={isConnected || isConnecting} tabindex="-1">−</button>
+        <input
+          type="number"
+          bind:value={port}
+          min="1"
+          max="65535"
+          disabled={isConnected || isConnecting}
+          on:keydown={handleKeydown}
+        />
+        <button class="port-step-btn" on:click={() => stepPort(1)} disabled={isConnected || isConnecting} tabindex="-1">+</button>
+      </div>
     </div>
 
     <button
@@ -192,9 +202,53 @@ input:disabled, select:disabled {
   cursor: not-allowed;
 }
 
-.port-group input {
-  width: 70px;
+.port-stepper {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 30px;
+  background: var(--bg-input);
 }
+.port-stepper.disabled { opacity: 0.5; }
+.port-step-btn {
+  width: 22px;
+  height: 30px;
+  border: none;
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.port-step-btn:hover:not(:disabled) { background: var(--bg-button-hover); color: var(--text-primary); }
+.port-step-btn:disabled { cursor: not-allowed; }
+.port-stepper input {
+  width: 48px;
+  border: none;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--bg-input);
+  text-align: center;
+  padding: 0 2px;
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+  height: 28px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+.port-stepper input::-webkit-outer-spin-button,
+.port-stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.port-stepper input:focus { outline: none; }
+.port-stepper input:disabled { opacity: 1; cursor: not-allowed; }
 
 .btn-connect {
   width: 34px;

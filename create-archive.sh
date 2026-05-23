@@ -13,8 +13,8 @@ Arguments:
   version           Version number in X.Y.Z format (e.g. 1.7.0)
 
 Options:
-  -p, --platform    Platform to archive: windows | linux | all  (default: all)
-  -t, --type        Archive type:        gz | tar | all          (default: all)
+  -p, --platform    Platform to archive: windows | linux | appimage | all  (default: all)
+  -t, --type        Archive type:        gz | tar | all                    (default: all)
   -h, --help        Show this help message and exit
 
 Archive types:
@@ -24,14 +24,17 @@ Archive types:
 
 Output files (example with version 1.7.0):
   GlideFTP-Windows-v1.7.0.tar.gz
-  GlideFTP-Linux-v1.7.0.tar.gz
+  GlideFTP-Linux-v1.7.0.tar.gz          ← includes README.md (dependency notice)
+  GlideFTP-Linux-AppImage-v1.7.0.tar.gz
   GlideFTP-Windows-v1.7.0.tar
-  GlideFTP-Linux-v1.7.0.tar
+  GlideFTP-Linux-v1.7.0.tar             ← includes README.md (dependency notice)
+  GlideFTP-Linux-AppImage-v1.7.0.tar
 
 Examples:
-  $SCRIPT_NAME 1.7.0                          # all 4 archives
+  $SCRIPT_NAME 1.7.0                          # all 6 archives
   $SCRIPT_NAME -p windows 1.7.0              # Windows archives only (gz + tar)
-  $SCRIPT_NAME -p linux -t gz 1.7.0          # Linux .tar.gz only
+  $SCRIPT_NAME -p linux -t gz 1.7.0          # Linux binary .tar.gz only
+  $SCRIPT_NAME -p appimage -t gz 1.7.0       # AppImage .tar.gz only
   $SCRIPT_NAME -p windows -t tar 1.7.0       # Windows .tar only
   $SCRIPT_NAME --platform all --type gz 2.0.0
 EOF
@@ -96,10 +99,10 @@ fi
 
 # ── Validate options ──────────────────────────────────────────────────────────
 case "$PLATFORM" in
-  windows|linux|all) ;;
+  windows|linux|appimage|all) ;;
   *)
     echo "Error: --platform value '$PLATFORM' is not valid." >&2
-    echo "  Accepted values: windows | linux | all" >&2
+    echo "  Accepted values: windows | linux | appimage | all" >&2
     exit 1
     ;;
 esac
@@ -114,6 +117,27 @@ case "$TYPE" in
 esac
 
 # ── Archive functions ─────────────────────────────────────────────────────────
+
+# Write the Linux README.md into the given directory
+_write_linux_readme() {
+  cat > "$1/README.md" << 'EOF'
+# GlideFTP — Linux Prerequisites
+
+Before running GlideFTP, please install the WebKit2GTK library required by the application:
+
+- **Ubuntu / Debian** : `sudo apt install libwebkit2gtk-4.1-0`
+- **Fedora** : `sudo dnf install webkit2gtk4.1`
+- **Arch Linux** : `sudo pacman -S webkit2gtk-4.1`
+
+Once installed, make the binary executable and run it:
+
+```
+chmod +x GlideFTP
+./GlideFTP
+```
+EOF
+}
+
 make_windows_gz() {
   local out="GlideFTP-Windows-v${VERSION}.tar.gz"
   echo "→ $out"
@@ -122,8 +146,13 @@ make_windows_gz() {
 
 make_linux_gz() {
   local out="GlideFTP-Linux-v${VERSION}.tar.gz"
+  local staging
+  staging="$(mktemp -d)"
+  cp build/bin/linux/GlideFTP "$staging/"
+  _write_linux_readme "$staging"
   echo "→ $out"
-  tar -czvf "$out" ./build/bin/linux/GlideFTP
+  tar -czvf "$out" -C "$staging" GlideFTP README.md
+  rm -rf "$staging"
 }
 
 make_windows_tar() {
@@ -134,8 +163,25 @@ make_windows_tar() {
 
 make_linux_tar() {
   local out="GlideFTP-Linux-v${VERSION}.tar"
+  local staging
+  staging="$(mktemp -d)"
+  cp build/bin/linux/GlideFTP "$staging/"
+  _write_linux_readme "$staging"
   echo "→ $out"
-  tar -cvf "$out" ./build/bin/linux/GlideFTP
+  tar -cvf "$out" -C "$staging" GlideFTP README.md
+  rm -rf "$staging"
+}
+
+make_appimage_gz() {
+  local out="GlideFTP-Linux-AppImage-v${VERSION}.tar.gz"
+  echo "→ $out"
+  tar -czvf "$out" -C build/bin/linux GlideFTP-x86_64.AppImage
+}
+
+make_appimage_tar() {
+  local out="GlideFTP-Linux-AppImage-v${VERSION}.tar"
+  echo "→ $out"
+  tar -cvf "$out" -C build/bin/linux GlideFTP-x86_64.AppImage
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
@@ -143,17 +189,23 @@ echo "GlideFTP archive builder — version v${VERSION}"
 echo "Platform: $PLATFORM  |  Type: $TYPE"
 echo "──────────────────────────────────────────────"
 
-[[ "$PLATFORM" == "windows" || "$PLATFORM" == "all" ]] && \
+[[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_windows_gz
 
-[[ "$PLATFORM" == "linux"   || "$PLATFORM" == "all" ]] && \
+[[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_linux_gz
 
-[[ "$PLATFORM" == "windows" || "$PLATFORM" == "all" ]] && \
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_gz
+
+[[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_windows_tar
 
-[[ "$PLATFORM" == "linux"   || "$PLATFORM" == "all" ]] && \
+[[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_linux_tar
+
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_appimage_tar
 
 echo "──────────────────────────────────────────────"
 echo "Done."

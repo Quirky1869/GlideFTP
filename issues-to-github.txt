@@ -1,4 +1,4 @@
-GlideFTP – Issues to create on GitHub (1 → 48)
+GlideFTP – Issues to create on GitHub (1 → 55)
 ================================================
 Format: Title / Labels / Description / Solution (closing comment)
 ================================================
@@ -1013,3 +1013,201 @@ Two cases:
 
 The site name field is intentionally NOT compared since two sites can have
 different names but point to the same server endpoint.
+
+---
+
+1.7.1
+
+#50
+Title: [Build] Linux binary requires libwebkit2gtk-4.1 on the target system — add AppImage distribution
+Labels: bug, build, linux
+Version fixed: v1.7 (corr)
+Description:
+Running the Linux binary on a system where libwebkit2gtk-4.1 is not installed
+fails immediately with:
+  ./GlideFTP: error while loading shared libraries: libwebkit2gtk-4.1.so.0:
+              cannot open shared object file: No such file or directory
+The Windows binary is unaffected because it uses WebView2 (built into Windows
+10/11). The error appears on any Linux distro that does not ship webkit2gtk-4.1
+by default (e.g. Ubuntu 20.04, or systems where only webkit2gtk-4.0 is present).
+
+Root cause: Wails v2 on Linux uses WebKit2GTK as a dynamically linked system
+library — it cannot be statically compiled into the binary. Building with
+-tags webkit2_41 links against libwebkit2gtk-4.1 specifically. WebKit2GTK is
+always a runtime dependency; the binary alone is not self-contained on Linux.
+
+Solution (closing comment):
+Fixed in v1.7 (corr) by adding AppImage support to build.sh.
+
+build.sh extended with a new build_appimage() function and a new target:
+  ./build.sh appimage   → builds AppImage only (builds Linux binary first if missing)
+  ./build.sh            → now produces all three: Linux binary + Windows exe + AppImage
+
+The function downloads linuxdeploy and linuxdeploy-plugin-appimage (cached in
+tools/, gitignored) on first run, then packages the binary with all its shared
+library dependencies (including libwebkit2gtk-4.1 and the full GTK3 stack) into
+a self-contained build/bin/linux/GlideFTP-x86_64.AppImage. Users on any Linux
+distro can run it directly with no prior installation — chmod +x and execute.
+
+APPIMAGE_EXTRACT_AND_RUN=1 is set so linuxdeploy itself does not require FUSE.
+tools/ added to .gitignore (downloaded AppImage tools, not source).
+
+---
+
+#51
+Title: [Feature] Duplicate file detection with conflict resolution popup when transferring
+Labels: feature, ui
+Version fixed: v1.7.1
+Description:
+When transferring a file whose name already exists in the destination folder,
+the app overwrites it silently. There is no way to know a conflict occurred or
+choose what to do.
+
+The expected behaviour is a popup dialog with four choices:
+  - Replace — overwrite the existing file
+  - Rename on host — save the transferred file with an auto-generated name
+    locally (e.g. "file (1).txt")
+  - Rename on server — save the transferred file with an auto-generated name
+    on the server (e.g. "file (1).txt")
+  - Cancel — skip the conflicting file
+
+For multi-file transfers, all conflicting files are grouped in one popup.
+Non-conflicting files in the same selection are queued immediately.
+
+Solution (closing comment):
+Fixed in v1.7.1.
+
+FileBrowser.svelte receives a new prop `otherEntries` (the entry list of the
+opposite panel, passed from App.svelte). When a transfer is requested via the
+toolbar button or the context menu:
+
+1. `checkConflicts(entries)` compares source names against `otherEntries` names
+   (case-insensitive), splitting the selection into `conflicts` / `nonConflicts`.
+2. Non-conflicting files are queued immediately via `doQueueTransfer()`.
+3. If any conflicts exist, `conflictPending = { conflicts }` triggers the popup.
+
+The popup shows the filename (single conflict) or "N items" (multiple), with
+four buttons:
+  - Replace → `doQueueTransfer(entry)` (same dest path, overwrites)
+  - Rename on host / Rename on server → `doQueueTransfer(entry, getAutoName(entry.name))`
+    Both call `getAutoName()` which increments `(1)`, `(2)`... until the generated
+    name does not exist in `otherEntries`. Both options rename the destination.
+  - Cancel (Esc / click outside) → `conflictPending = null`
+
+Drag-and-drop transfers bypass conflict detection intentionally (inline with
+typical FTP client behaviour — overwrite silently on DnD).
+
+App.svelte: `otherEntries={$remoteEntries}` added to local FileBrowser;
+`otherEntries={$localEntries}` added to remote FileBrowser.
+
+---
+
+#52
+Title: [Feature] OS drag-and-drop from system file manager into the app
+Labels: feature, wont-fix
+Version fixed: —
+Description:
+Dragging files from the system file explorer (Nautilus, Thunar, Windows
+Explorer, etc.) and dropping them into the GlideFTP remote panel does not
+trigger a transfer. The drop is silently ignored.
+
+Investigation:
+Wails v2 on Linux embeds the UI in a WebKit-GTK WebView. The WebKit-GTK context
+does not expose native OS-level drag-and-drop events (dragged file paths) to the
+JavaScript layer. The `dataTransfer` object in `dragover`/`drop` events carries
+no files or `text/uri-list` data when the drag originates from outside the
+WebView — it arrives empty.
+
+On Windows (WebView2) the situation may differ, but Wails v2 does not provide
+any cross-platform API to bridge OS DnD into the frontend.
+
+Workaround: use the transfer queue (select files in the local panel and click
+the transfer arrow), or drag items between the two panels inside the app.
+
+Solution (closing comment):
+Not implemented — technically not feasible with Wails v2 + WebKit-GTK on Linux.
+The WebView does not receive file paths from OS-level drag sources.
+Marked as wont-fix. A future Wails v3 or native GTK integration may unlock this.
+
+---
+
+#53
+Title: [UI] Remove "Account" authentication type from Site Manager
+Labels: bug, ui
+Version fixed: v1.7.1
+Description:
+The Site Manager authentication dropdown contains an "Account" option
+(`value: 'account'`) that maps to a non-standard FTP AUTH type not supported
+by the application backend. Selecting it has no useful effect and may confuse
+users.
+
+Solution (closing comment):
+Fixed in v1.7.1.
+
+Removed `{ value: 'account', label: t('authAccount') }` from the `authTypes`
+array in SiteManager.svelte.
+Removed the `authAccount` key from both i18n files (en.js and fr.js).
+The remaining auth types are: Normal, Anonymous, Ask password, Interactive,
+SSH Key.
+
+---
+
+#54
+Title: [Bug] Port increment from 21 blocked — clicking "up" arrow does nothing when FTP port is 21
+Labels: bug, ui
+Version fixed: v1.7.1
+Description:
+On the main connection bar, the port field has up/down stepper arrows. Port 22
+is intentionally blocked for FTP (a reactive statement resets it to 21). This
+causes the "up" arrow to appear to do nothing when the port is 21: it tries to
+go to 22, the reactive guard resets it back to 21, and the user sees no change.
+
+Solution (closing comment):
+Fixed in v1.7.1.
+
+The native `<input type="number">` port field was replaced with a custom stepper
+(two `<button>` elements flanking a number input) following the established
+WebKit-GTK pattern used in SettingsPanel.
+
+A `stepPort(delta)` function handles increment/decrement:
+  - Computes `next = port + delta`
+  - If `protocol === 'ftp'` and `next === 22`, skips to `next + delta` (23 going
+    up, 21 going down — but 21 going down from 22 would be unusual so the bound
+    clamp handles it)
+  - Clamps to [1, 65535]
+
+The existing reactive guard `$: if (!isConnected && protocol === 'ftp' && port === 22) port = 21`
+remains in place to handle direct keyboard input of 22.
+
+---
+
+#55
+Title: [UI] Refresh button should animate (one full rotation) on click
+Labels: feature, ui
+Version fixed: v1.7.1
+Description:
+Clicking the refresh button (↻) in either file browser panel triggers a
+directory listing refresh but provides no visual feedback that an action
+occurred. The button appears static.
+
+Solution (closing comment):
+Fixed in v1.7.1.
+
+In FileBrowser.svelte, a `refreshing` boolean state variable was added. The
+refresh button now calls `handleRefresh()` instead of `onRefresh()` directly:
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    refreshing = true;
+    await Promise.all([onRefresh(), new Promise(r => setTimeout(r, 500))]);
+    refreshing = false;
+  }
+
+`Promise.all` ensures the animation always completes at least one full rotation
+(500 ms minimum), even if the directory listing returns faster.
+
+CSS `@keyframes spin-once` rotates the SVG 360° over 500 ms (linear). The
+`spinning` class is added to the button while `refreshing` is true via
+`class:spinning={refreshing}`. `transform-origin: center` is set on the SVG so
+it rotates around its own centre.
+Multiple rapid clicks are ignored while a refresh is already in progress.

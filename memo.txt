@@ -43,18 +43,39 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows \
   wails build -platform windows/amd64
 # Binaire généré : build/bin/GlideFTP.exe
 
-# Installer le compilateur croisé Windows (Arch/Manjaro)
+# Installer le compilateur croisé Windows (Arch)
 sudo pacman -S mingw-w64-gcc
 
-# Script tout-en-un (Linux + Windows) — voir build.sh à la racine
-./build.sh            # compile les deux plateformes
-./build.sh linux      # Linux seulement  → build/bin/linux/GlideFTP
-./build.sh windows    # Windows seulement → build/bin/windows/GlideFTP.exe
+# Script tout-en-un — voir build.sh à la racine
+./build.sh            # compile les trois sorties : Linux + Windows + AppImage
+./build.sh linux      # Linux seulement    → build/bin/linux/GlideFTP
+./build.sh windows    # Windows seulement  → build/bin/windows/GlideFTP.exe
+./build.sh appimage   # AppImage seulement → build/bin/linux/GlideFTP-x86_64.AppImage
+# AppImage : télécharge linuxdeploy dans tools/ à la première exécution (gitignored)
+# Nécessite imagemagick (magick) pour redimensionner l'icône à 256×256
+
+
+--- Archives de distribution ---
+
+# Créer les archives .tar.gz et .tar pour une release (après le build)
+./create-archive.sh 1.7.1                     # 6 archives (Linux+Windows+AppImage × gz+tar)
+./create-archive.sh -p linux   1.7.1          # binaire Linux uniquement (inclut README.md)
+./create-archive.sh -p windows -t gz 1.7.1    # Windows .tar.gz uniquement
+./create-archive.sh -p appimage 1.7.1         # AppImage uniquement (sans README.md)
+# La version doit être au format X.Y.Z (3 chiffres séparés par des points)
 
 
 --- Lancer l'application ---
 
+# Linux (binaire natif)
 ./build/bin/linux/GlideFTP
+
+# Linux (AppImage — autonome, pas de dépendance nécessaire)
+chmod +x build/bin/linux/GlideFTP-x86_64.AppImage
+./build/bin/linux/GlideFTP-x86_64.AppImage
+
+# Windows (depuis l'explorateur ou en ligne de commande)
+build\bin\windows\GlideFTP.exe
 
 
 --- Développement (hot reload) ---

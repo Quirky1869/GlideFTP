@@ -281,7 +281,6 @@
   const authTypes = (t) => [
     { value: 'normal', label: t('authNormal') },
     { value: 'anonymous', label: t('authAnonymous') },
-    { value: 'account', label: t('authAccount') },
     { value: 'ask_password', label: t('authAskPassword') },
     { value: 'interactive', label: t('authInteractive') },
     { value: 'key', label: t('authSSHKey') },
