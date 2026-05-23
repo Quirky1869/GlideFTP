@@ -21,10 +21,10 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 # icon resized to 256x256 (linuxdeploy requires standard resolution)
 
 # Create distribution archives (requires built binaries first)
-./create-archive.sh 1.7.0                       # all 6 archives (Linux+Windows+AppImage × gz+tar)
-./create-archive.sh -p linux 1.7.0              # Linux binary archives only (includes README.md)
-./create-archive.sh -p appimage 1.7.0           # AppImage archives only (no README.md)
-./create-archive.sh -p windows -t gz 1.7.0      # Windows .tar.gz only
+./create-archive.sh 1.7.1                       # all 6 archives (Linux+Windows+AppImage × gz+tar)
+./create-archive.sh -p linux 1.7.1              # Linux binary archives only (includes README.md)
+./create-archive.sh -p appimage 1.7.1           # AppImage archives only (no README.md)
+./create-archive.sh -p windows -t gz 1.7.1      # Windows .tar.gz only
 # Version must be X.Y.Z (3 numbers) — script refuses anything else
 # Linux binary archives include README.md with libwebkit2gtk-4.1 install instructions
 # AppImage archives contain only the .AppImage (self-contained, no deps needed)
@@ -93,7 +93,7 @@ GlideFTP/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
-        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.0" string on each release
+        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.1" string on each release
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```
