@@ -144,9 +144,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 # Linux
 ./build/bin/linux/GlideFTP
 
+# Linux - App Image
+./build/bin/linux/GlideFTP-x86_64.AppImage
+
 # Windows
 build\bin\windows\GlideFTP.exe
 ```
+
+### Releases
+
+Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)  
 
 ### Tech Stack
 
@@ -299,9 +306,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 # Linux
 ./build/bin/linux/GlideFTP
 
+# Linux - App Image
+./build/bin/linux/GlideFTP-x86_64.AppImage
+
 # Windows
 build\bin\windows\GlideFTP.exe
 ```
+
+### Releases
+
+Les [releases](https://github.com/Quirky1869/GlideFTP/releases) sont disponibles [ici](https://github.com/Quirky1869/GlideFTP/releases)  
 
 ### Stack technique
 
