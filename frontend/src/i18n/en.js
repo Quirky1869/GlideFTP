@@ -136,6 +136,8 @@ export default {
   conflictReplace: 'Replace',
   conflictRenameHost: 'Rename on host',
   conflictRenameServer: 'Rename on server',
+  conflictRenameTitle: 'New file name',
+  conflictSkip: 'Skip',
 
   // Delete confirmation
   confirmDeleteFile: 'Delete this item?',

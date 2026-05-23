@@ -106,7 +106,8 @@ GlideFTP/
 - **Accent color** is applied via `applyAccentColor(hex)` in `settings.js` which sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars on `document.documentElement`.
 - **i18n** is a Svelte `derived` store — `$t('key')` reactively switches language with no page reload.
 - **Config files** are stored in the OS user config dir (`os.UserConfigDir()`): cross-platform without hardcoding paths.
-- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Auth type `key` (= `AuthSSHKey`) handles both OpenSSH PEM keys and PuTTY `.ppk` format (v2/v3, RSA & Ed25519) — detection is automatic via `isPPKFile()` in `ppk.go`; encrypted PPK keys return a clear error asking to convert with PuTTYgen. Selecting SFTP auto-sets authType to `interactive` (preserves `key` if already set); selecting `interactive` or `key` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`).
+- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Auth type `key` (= `AuthSSHKey`) handles both OpenSSH PEM keys and PuTTY `.ppk` format (v2/v3, RSA & Ed25519) — detection is automatic via `isPPKFile()` in `ppk.go`; encrypted PPK keys return a clear error asking to convert with PuTTYgen. Selecting SFTP auto-sets authType to `interactive` (preserves `key` if already set); selecting `interactive` or `key` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`). The `account` auth type has been removed — auth types are: Normal, Anonymous, Ask password, Interactive, SSH Key.
+- **Port stepper in ConnectionBar**: the port field uses a custom `−`/`+` stepper (`.port-stepper` div) with a hidden-spinner number input between two buttons. `stepPort(delta)` skips port 22 when `protocol === 'ftp'` (jumps 21→23 going up, 23→21 going down). A reactive guard `$: if (!isConnected && protocol === 'ftp' && port === 22) port = 21` also handles direct keyboard entry of 22.
 - **FTP passive mode** is the default (configurable in settings).
 - **FTP thread-safety**: `FTPClient` has a `sync.Mutex` — all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
 - **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
@@ -122,7 +123,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 1. **Hidden checkbox toggles** (`<label><input type="checkbox" hidden>`) — checkboxes never fire click events when hidden this way. **Use `<button class="sw" class:on={val} on:click={() => toggle(key)}>` instead.** See `SettingsPanel.svelte` for reference.
 
-2. **Native number input spinners** — unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`.
+2. **Native number input spinners** — unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`. See `SettingsPanel.svelte` and `ConnectionBar.svelte` (port stepper) for reference.
 
 3. **Dynamic `type` on `<input bind:value>`** — Svelte 3 compile error: `'type' attribute cannot be dynamic if input uses two-way binding`. **Use two separate inputs in `{#if}`/`{:else}` blocks** — one `type="text"`, one `type="password"`, both bound to the same variable. See `SiteManager.svelte` password prompt for reference.
 
@@ -132,7 +133,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 ## FileBrowser Features
 
-`FileBrowser.svelte` receives `side` ('local'|'remote'), `path`, `entries`, `selected`, `otherPath`, and action callbacks.
+`FileBrowser.svelte` receives `side` ('local'|'remote'), `path`, `entries`, `selected`, `otherPath`, `otherEntries`, and action callbacks. `otherEntries` is the entry list of the opposite panel (passed from App.svelte as `$remoteEntries` / `$localEntries`), used for conflict detection.
 
 - **".." entry**: always shown at the top; click/dblclick calls `onNavigateUp`; focused via `parentFocused` state when ArrowUp is pressed from first entry
 - **Keyboard navigation**: ArrowDown/ArrowUp moves selection through entries; ArrowUp from first entry sets `parentFocused = true` (highlights ".." row); Enter on dir navigates in; Enter when `parentFocused` calls `onNavigateUp`; `$: if (path) parentFocused = false` resets on navigation
@@ -143,7 +144,9 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Delete key**: keydown handler calls `handleDelete(selected)` — deletes the full selection
 - **Right-click context menu**: on a file → Rename / Transfer / Delete (deletes full selection if right-clicked item is in selection); on empty area → New Folder
 - **Delete confirmation**: `confirmDeleteEntries` (array); popup shows filename (1 item) or "N éléments" (multiple); `doDeleteAll()` iterates and calls `onDelete` for each, single refresh at end
-- **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` — if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array.
+- **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` — if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array. Drag-drop from the OS file manager is not supported (WebKit-GTK does not expose OS drag sources to JS).
+- **Conflict resolution**: `conflictState` is a two-mode state machine — `null` (no dialog), `{ mode:'choose', conflicts:[] }` (4-button dialog: Replace / Rename on host / Rename on server / Cancel), `{ mode:'rename', entry, remaining:[], inputVal:'', index, total }` (rename input step). `checkConflicts()` compares names against `otherEntries` (case-insensitive). Non-conflicting files in the same selection are queued immediately. For multi-file rename, the wizard advances one file at a time (`advanceRename`); a `1/N` counter is shown and the input re-mounts per file via `{#key conflictState.index}` to trigger `autofocus`. Drag-drop bypasses conflict detection.
+- **Refresh animation**: `handleRefresh()` sets `refreshing = true`, awaits `Promise.all([onRefresh(), 500ms])` to guarantee a full spin, then resets. CSS `@keyframes spin-once` rotates the SVG 360° in 0.5s; `class:spinning={refreshing}` applies it. Multiple rapid clicks ignored while refreshing.
 
 ## App.svelte Layout
 

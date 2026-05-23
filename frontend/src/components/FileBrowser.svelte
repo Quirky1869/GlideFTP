@@ -321,7 +321,11 @@
 
   // ── Conflict resolution ───────────────────────────────────────────────────
 
-  let conflictPending = null;
+  // conflictState:
+  //   null                              → no conflict dialog
+  //   { mode:'choose', conflicts:[] }   → initial 4-button dialog
+  //   { mode:'rename', entry, remaining:[], inputVal:'', index, total } → rename input
+  let conflictState = null;
 
   function checkConflicts(entriesToTransfer) {
     const otherNames = new Set((otherEntries || []).map(e => e.name.toLowerCase()));
@@ -331,27 +335,53 @@
     };
   }
 
-  function getAutoName(name) {
-    const otherNames = new Set((otherEntries || []).map(e => e.name.toLowerCase()));
-    const dot = name.lastIndexOf('.');
-    const base = dot > 0 ? name.substring(0, dot) : name;
-    const ext = dot > 0 ? name.substring(dot) : '';
-    let n = 1, newName;
-    do { newName = `${base} (${n})${ext}`; n++; }
-    while (otherNames.has(newName.toLowerCase()) && n < 100);
-    return newName;
-  }
-
   function resolveConflict(action) {
-    if (!conflictPending) return;
-    const { conflicts } = conflictPending;
+    if (!conflictState || conflictState.mode !== 'choose') return;
+    const { conflicts } = conflictState;
     if (action === 'replace') {
       for (const entry of conflicts) doQueueTransfer(entry);
+      queueVisible.set(true);
+      conflictState = null;
     } else if (action === 'rename') {
-      for (const entry of conflicts) doQueueTransfer(entry, getAutoName(entry.name));
+      conflictState = {
+        mode: 'rename',
+        entry: conflicts[0],
+        remaining: conflicts.slice(1),
+        inputVal: conflicts[0].name,
+        index: 0,
+        total: conflicts.length,
+      };
     }
-    queueVisible.set(true);
-    conflictPending = null;
+  }
+
+  function confirmRename() {
+    if (!conflictState || conflictState.mode !== 'rename') return;
+    const { entry, remaining, inputVal, index, total } = conflictState;
+    const name = (inputVal || '').trim();
+    if (name) doQueueTransfer(entry, name);
+    advanceRename(remaining, index + 1, total);
+  }
+
+  function skipRename() {
+    if (!conflictState || conflictState.mode !== 'rename') return;
+    const { remaining, index, total } = conflictState;
+    advanceRename(remaining, index + 1, total);
+  }
+
+  function advanceRename(remaining, nextIndex, total) {
+    if (remaining.length > 0) {
+      conflictState = {
+        mode: 'rename',
+        entry: remaining[0],
+        remaining: remaining.slice(1),
+        inputVal: remaining[0].name,
+        index: nextIndex,
+        total,
+      };
+    } else {
+      queueVisible.set(true);
+      conflictState = null;
+    }
   }
 
   async function transferSelected() {
@@ -359,7 +389,7 @@
     const { conflicts, nonConflicts } = checkConflicts(selected);
     for (const entry of nonConflicts) doQueueTransfer(entry);
     if (conflicts.length > 0) {
-      conflictPending = { conflicts };
+      conflictState = { mode: 'choose', conflicts };
       if (nonConflicts.length > 0) queueVisible.set(true);
     } else {
       queueVisible.set(true);
@@ -371,7 +401,7 @@
     const { conflicts, nonConflicts } = checkConflicts([entry]);
     for (const e of nonConflicts) doQueueTransfer(e);
     if (conflicts.length > 0) {
-      conflictPending = { conflicts };
+      conflictState = { mode: 'choose', conflicts };
     } else {
       queueVisible.set(true);
     }
@@ -712,26 +742,49 @@
 {/if}
 
 <!-- Conflict resolution dialog -->
-{#if conflictPending}
-  <div class="confirm-overlay" on:click|self={() => conflictPending = null}>
+{#if conflictState}
+  <div class="confirm-overlay" on:click|self={() => conflictState = null}>
     <div class="confirm-box" on:click|stopPropagation>
-      <div class="conflict-warn-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <div class="confirm-msg">{$t('conflictTitle')}</div>
-      <div class="confirm-name">
-        {#if conflictPending.conflicts.length === 1}
-          {conflictPending.conflicts[0].name}
-        {:else}
-          {conflictPending.conflicts.length} {$t('items')}
+
+      {#if conflictState.mode === 'choose'}
+        <div class="conflict-warn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="confirm-msg">{$t('conflictTitle')}</div>
+        <div class="confirm-name">
+          {#if conflictState.conflicts.length === 1}
+            {conflictState.conflicts[0].name}
+          {:else}
+            {conflictState.conflicts.length} {$t('items')}
+          {/if}
+        </div>
+        <div class="conflict-actions">
+          <button class="conflict-replace-btn" on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
+          <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameHost')}</button>
+          <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameServer')}</button>
+          <button class="confirm-cancel-btn" on:click={() => conflictState = null}>{$t('cancel')}</button>
+        </div>
+
+      {:else if conflictState.mode === 'rename'}
+        <div class="confirm-msg">{$t('conflictRenameTitle')}</div>
+        {#if conflictState.total > 1}
+          <div class="conflict-progress">{conflictState.index + 1} / {conflictState.total}</div>
         {/if}
-      </div>
-      <div class="conflict-actions">
-        <button class="conflict-replace-btn" on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
-        <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameHost')}</button>
-        <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameServer')}</button>
-        <button class="confirm-cancel-btn" on:click={() => conflictPending = null}>{$t('cancel')}</button>
-      </div>
+        {#key conflictState.index}
+          <input
+            class="conflict-rename-input"
+            type="text"
+            bind:value={conflictState.inputVal}
+            on:keydown={(e) => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') conflictState = null; }}
+            autofocus
+          />
+        {/key}
+        <div class="confirm-actions">
+          <button class="conflict-replace-btn" on:click={confirmRename}>{$t('save')}</button>
+          <button class="confirm-cancel-btn" on:click={skipRename}>{$t('conflictSkip')}</button>
+        </div>
+      {/if}
+
     </div>
   </div>
 {/if}
@@ -1078,6 +1131,22 @@
 
 /* ── Conflict resolution ── */
 .conflict-warn-icon svg { width: 36px; height: 36px; color: #f59e0b; }
+.conflict-progress {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+.conflict-rename-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  box-sizing: border-box;
+}
 .conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
 .conflict-replace-btn {
   background: var(--accent); border: none; border-radius: 5px;
