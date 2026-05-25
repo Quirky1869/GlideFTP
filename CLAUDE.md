@@ -219,5 +219,5 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 ## Text & Naming Conventions
 
-- **AppImage variants**: always write `Arch AppImage` and `Debian AppImage` — never `Arch/Manjaro` or `Debian/Ubuntu`.
+- **Arch**: always write `Arch` — never `Arch/Manjaro` anywhere (README, release notes, docs, etc.).
 - **Dashes**: always use `-` (hyphen). Never use `—` (em dash) in any generated text, release notes, or documentation.
