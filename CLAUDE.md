@@ -216,3 +216,8 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Transfer direction**: each job row shows a `.job-route` line (`"local → host"` for uploads, `"host → local"` for downloads) in all 3 tabs — uses `job.remoteHost` for the server name and `job.direction` for the arrow side.
 - **Average speed (done tab only)**: computed in `avgSpeed(job)` as `job.size / (finishedAt − createdAt)` seconds; displayed next to the route with label `avgSuffix` (i18n: `"moy."` FR / `"avg."` EN).
 - `ColorPicker.svelte` stores last 8 applied colors in `localStorage` key `glideftp_color_history`; displayed as swatches above the footer; click to select.
+
+## Text & Naming Conventions
+
+- **AppImage variants**: always write `Arch AppImage` and `Debian AppImage` — never `Arch/Manjaro` or `Debian/Ubuntu`.
+- **Dashes**: always use `-` (hyphen). Never use `—` (em dash) in any generated text, release notes, or documentation.
