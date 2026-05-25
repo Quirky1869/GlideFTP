@@ -1325,31 +1325,29 @@ Fixed in v1.7.2.
 
 ## Issue #59
 
-Title: Bouton de connexion rapide (Quick Connect)
+Title: Quick Connect button in the connection bar
 
 Labels: enhancement
 
 Description:
-Ajouter un bouton a cote du bouton "Deconnecter" dans la barre de connexion
-pour permettre a l'utilisateur de lancer rapidement une nouvelle connexion sans
-passer par le Site Manager.
+Add a button next to the Disconnect button in the connection bar so the user
+can launch a new connection quickly without going through the Site Manager.
 
-Comportement attendu :
-- Le bouton affiche une fleche vers le haut (icone "monter") quand on est
-  connecte mais que le mode connexion rapide n'est pas actif.
-- Cliquer dessus "libere" les champs de saisie (hote, utilisateur, mot de
-  passe, port, protocole) et change la fleche en fleche vers la droite.
-- L'utilisateur remplit les champs et clique sur la fleche droite pour se
-  connecter.
-- Cliquer en dehors de la barre annule le mode connexion rapide et restaure les
-  valeurs de la connexion active.
-- Si une ou plusieurs connexions sont deja ouvertes, le meme dialogue
-  "Interrompre / Garder" que dans le Site Manager doit apparaitre.
-- Si le champ hote est vide au moment de la connexion, le bord de l'input hote
-  clignote en rouge 3 fois (animation CSS, sans deplacement de layout).
+Expected behavior:
+- The button shows an up arrow when connected but quick connect mode is not
+  active.
+- Clicking it unlocks all input fields (host, user, password, port, protocol)
+  and changes the arrow to a right arrow.
+- The user fills in the fields and clicks the right arrow to connect.
+- Clicking outside the connection bar cancels quick connect mode and restores
+  the values from the active connection.
+- If one or more connections are already open, the same Keep / Replace dialog
+  as in the Site Manager must appear.
+- If the host field is empty when the user clicks the connect arrow, the host
+  input border blinks red 3 times (CSS animation, no layout shift).
 
 Solution (closing comment):
-Fixed in v1.7.2.
+Fixed in v1.7.3.
 
 **Go side:**
 - New method `app.ConnectAdditional(cfg connection.Config) (connection.ConnInfo, error)`
