@@ -15,8 +15,8 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 ./build.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
 ./build.sh linux            # Linux only             → build/bin/linux/GlideFTP
 ./build.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
-./build.sh appimage         # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./build.sh appimage-arch    # same as appimage
+./build.sh appimage         # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
+./build.sh appimage-arch    # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 ./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 #   appimage-debian uses Docker (requires docker or podman); first run builds Ubuntu 22.04 image (~10 min)
 #   Arch AppImage:   linuxdeploy bundles Arch libs; requires GLIBC 2.38+ on target

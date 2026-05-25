@@ -4,8 +4,8 @@
 #   ./build.sh                  → Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
 #   ./build.sh linux            → Linux binary only               → build/bin/linux/GlideFTP
 #   ./build.sh windows          → Windows exe only (requires mingw-w64-gcc)
-#   ./build.sh appimage         → Arch AppImage                   → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-#   ./build.sh appimage-arch    → same as appimage
+#   ./build.sh appimage         → Arch AppImage + Debian AppImage  → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
+#   ./build.sh appimage-arch    → Arch AppImage only              → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 #   ./build.sh appimage-debian  → Debian/Ubuntu AppImage (Docker) → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 #
 # Install mingw on Arch Linux:
@@ -172,7 +172,8 @@ build_appimage_debian() {
 case "$TARGET" in
   linux)                  build_linux ;;
   windows)                build_windows ;;
-  appimage|appimage-arch) build_appimage ;;
+  appimage)               build_appimage; build_appimage_debian ;;
+  appimage-arch)          build_appimage ;;
   appimage-debian)        build_appimage_debian ;;
   all)                    build_linux; build_windows; build_appimage; build_appimage_debian ;;
   *)        echo "Usage: $0 [linux|windows|appimage|appimage-arch|appimage-debian|all]"; exit 1 ;;
