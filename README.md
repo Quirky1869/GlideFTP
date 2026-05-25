@@ -131,7 +131,7 @@ cd GlideFTP
 ./build.sh                  # all: Linux binary + Windows exe + Arch AppImage + Debian AppImage
 ./build.sh linux            # Linux binary only    → build/bin/linux/GlideFTP
 ./build.sh windows          # Windows exe only     → build/bin/windows/GlideFTP.exe
-./build.sh appimage         # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-arch    # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 ./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 
@@ -309,7 +309,7 @@ cd GlideFTP
 ./build.sh                  # tout : binaire Linux + exe Windows + AppImage Arch + AppImage Debian
 ./build.sh linux            # Linux seulement       → build/bin/linux/GlideFTP
 ./build.sh windows          # Windows seulement     → build/bin/windows/GlideFTP.exe
-./build.sh appimage         # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-arch    # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 ./build.sh appimage-debian  # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 

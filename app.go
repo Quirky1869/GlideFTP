@@ -206,6 +206,20 @@ func (a *App) ConnectWithPassword(siteID, password string) (connection.ConnInfo,
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
+// ConnectAdditional adds a new connection alongside existing ones using a direct config (no saved site).
+func (a *App) ConnectAdditional(cfg connection.Config) (connection.ConnInfo, error) {
+	if cfg.TimeoutSec == 0 {
+		cfg.TimeoutSec = a.appSettings.ConnectionTimeoutSec
+	}
+	name := cfg.Host
+	id, err := a.connMgr.ConnectNew(cfg, name)
+	if err != nil {
+		return connection.ConnInfo{}, err
+	}
+	a.queue.SetExecutor(a.connMgr.GetClient())
+	return a.connInfoFrom(cfg, id, name), nil
+}
+
 // ConnectToSiteAdditional adds a new connection while keeping existing ones active.
 // overridePassword is used for ask_password sites; pass "" otherwise.
 func (a *App) ConnectToSiteAdditional(siteID, overridePassword string) (connection.ConnInfo, error) {

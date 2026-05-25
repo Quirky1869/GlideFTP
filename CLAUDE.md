@@ -102,7 +102,7 @@ GlideFTP/
     ├── utils/
     │   └── focusTrap.js            # Svelte action `trapFocus` — traps Tab/Shift+Tab inside a popup container
     └── components/
-        ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button
+        ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button + quick connect (↑/→ button)
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
         ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.2" string on each release
@@ -128,7 +128,8 @@ GlideFTP/
 - **Duplicate connection guard**: `doKeepAndAdd()` in `SiteManager.svelte` checks whether any entry in `$connections` already has the same `host`, `port`, `protocol`, and `user` before calling `addConnection()`. If a duplicate is detected → calls `connectBySite()` instead (reconnect, no new tab). For `ask_password` mode the `promptIsAdd` flag is set to `false` so the password prompt routes to `connectBySiteWithPassword()` rather than `addConnection()`.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
-- **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container — `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, and both confirm boxes in `FileBrowser`. Tab/Shift+Tab cycle only within the active popup.
+- **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container — `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, both confirm boxes in `FileBrowser`, and the quick-connect keep-or-replace dialog in `ConnectionBar`. Tab/Shift+Tab cycle only within the active popup.
+- **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode — all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` — safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` — no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
 
 ## WebKit-GTK UI Patterns (Linux)
 
@@ -179,6 +180,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 | `connections` | connection.js | Writable array of `{id, name, host, protocol, port, user, remotePath}` for all open connections |
 | `activeConnectionId` | connection.js | Writable; UUID of the currently active connection tab |
 | `addConnection(siteId, overridePassword?)` | connection.js | Calls `ConnectToSiteAdditional`; adds a connection without closing existing ones |
+| `addConnectionAdHoc(cfg)` | connection.js | Calls `ConnectAdditional`; adds a direct (non-site) connection alongside existing ones — used by quick connect "Replace" to safely add then close old |
 | `switchTab(id)` | connection.js | Saves current remotePath, calls `SwitchConnection`, refreshes remote panel for the new active connection |
 | `closeTab(id)` | connection.js | Calls `CloseConnection`, removes from store; if last tab, clears all state; if was active, switches to last remaining |
 | `connectBySite(id, config?)` | connection.js | Sets `connectionStatus` store correctly; optional `config` param populates `activeConnectionConfig` |
@@ -204,6 +206,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `app.ExportSites()` / `app.ImportSites()` — file-dialog based JSON export/import of all saved sites
 - `app.shutdown(ctx)` — registered as `OnShutdown` in `main.go`; calls `connMgr.Disconnect()` for clean teardown on window close
 - `manager.Connect()` — disconnects existing active client first; other connections remain open (enables reconnection from SiteManager)
+- `app.ConnectAdditional(cfg)` — adds a new connection alongside existing ones (no site ID required — for ConnectionBar quick connect); calls `manager.ConnectNew()` and sets the queue executor; returns `ConnInfo`
 - `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
 - `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
 - **FTP Download order**: `FileSize` MUST be called BEFORE `Retr` in `ftp.go`. Calling it after opens a command on the control connection mid-transfer, which violates FTP protocol and causes Synology (and others) to return 0 bytes.

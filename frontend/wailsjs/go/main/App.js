@@ -26,6 +26,10 @@ export function Connect(arg1) {
   return window['go']['main']['App']['Connect'](arg1);
 }
 
+export function ConnectAdditional(arg1) {
+  return window['go']['main']['App']['ConnectAdditional'](arg1);
+}
+
 export function ConnectToSite(arg1) {
   return window['go']['main']['App']['ConnectToSite'](arg1);
 }

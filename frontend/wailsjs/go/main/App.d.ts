@@ -18,6 +18,8 @@ export function CloseConnection(arg1:string):Promise<void>;
 
 export function Connect(arg1:connection.Config):Promise<connection.ConnInfo>;
 
+export function ConnectAdditional(arg1:connection.Config):Promise<connection.ConnInfo>;
+
 export function ConnectToSite(arg1:string):Promise<connection.ConnInfo>;
 
 export function ConnectToSiteAdditional(arg1:string,arg2:string):Promise<connection.ConnInfo>;

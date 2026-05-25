@@ -219,5 +219,17 @@ _____
 
 _____
 
+1.7.3
+
 59 = Faire un bouton à coter (à gauche) du bouton "Déconnecter" pour pouvoir faire une connexion rapide (sans être obliger de fermer la connexion ou de passer par "gérer les sites" comme maintenant) -> il faudra que cette connexion rapide se base sur les input déjà présent en haut de l'application lorsqu'on est connecté à un serveur distant
+Je vais essayer d'être plus précis sur la demande que je veux :
+Le but est d'avoir un bouton à la gauche du bouton "Déconnecter" qui serait un bouton de connexion rapide, pour que ce nouveau bouton puisse rentrée dans l'interface il faut que tu réduise la taille de l'input de l'hote (sur ./_images/issues/issue-21.jpg je t'ai mis une fleche rouge pour l'emplacement de ce nouveau bouton)
+Pour le moment les inputs en haut une fois connecter son "bloqués" l'utilisateur ne peut pas écrire dedans (et cest très bien) mais donc le seul moyen qu'ils ont de se connecter à une autre connexion ftp ou sftp c'est de passer par "Gérer les sites" ou de se déconnecter d'abord
+Mon but est de faire en sorte que quand l'utilisateur clique sur ce bouton "Connexion rapide", les inputs en haut + le choix de ftp ou sftp "se libere" (regarde ./_images/issues/issue-21.jpg la fleche verte montre le menu SFTP et FTP qu'il faut aussi libérer en plus des inputs), il faut que les inputs ne sois plus rempli et qu'un focus soit fait sur l'input "hote"
+Le focus devra être représenté par une fine ligne de la couleur d'accentuation tout autour de l'input
+Quand l'utilisateur fait "tab" alors il parcours les 6 choix possible : le choix ftp ou sftp, l'input hote, l'input username, l'input mdp, l'input port et le bouton de connexion (celui à la gauche du bouton déconnexion)
+Le bouton pour lancer cette connexion rapide sera le même que celui de la premiere interface (la fleche vers la droite de la couleur d'accentuation)
+ATTENTION tant que l'utilisateur n'a pas cliquer une fois sur ce bouton la flèche doit etre vers le haut, et une fois qu'il a cliquer dessus -> ca "libere" les input et la fleche sera vers la droite et ce bouton sera le bouton pour lancer la connexion rapide
+Il faut toujours prendre en compte -> le pop-up qui demande si on interromt ou si on garde la connexion doit etre aussi présent
+Si l'utilisateur clique en dehors des input alors la fonction connexion rapide s'arrete -> les input redeviennent "bloqués" et rempli avec les informations de la connexion en cours, le bouton redevient la fleche vers le haut
 

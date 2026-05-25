@@ -8,6 +8,7 @@ export default {
   disconnect: 'Déconnecter',
   connecting: 'Connexion...',
   protocol: 'Protocole',
+  quickConnect: 'Connexion rapide',
 
   // Toolbar
   manageSites: 'Gérer les sites',

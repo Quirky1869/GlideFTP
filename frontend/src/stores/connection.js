@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import {
-  Connect, Disconnect, GetConnectionStatus,
+  Connect, ConnectAdditional, Disconnect, GetConnectionStatus,
   ConnectToSite, ConnectToSiteAdditional, ConnectWithPassword,
   GetConnections, SwitchConnection, CloseConnection,
   RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename,
@@ -12,6 +12,7 @@ import {
 export const connectionStatus = writable('disconnected');
 export const connectionError = writable('');
 export const activeConnectionConfig = writable(null);
+
 
 // Multi-connection state.
 // Each entry: { id, name, host, protocol, port, user, remotePath }
@@ -170,6 +171,26 @@ export async function connectBySiteWithPassword(id, password, config = null) {
     activeConnectionId.set(info.id);
   } catch (e) {
     connectionStatus.set('disconnected');
+    connectionError.set(e?.toString() || 'Connection failed');
+    throw e;
+  }
+}
+
+// ── Direct connect (keep existing connections, no saved site) ────────────────
+
+export async function addConnectionAdHoc(cfg) {
+  connectionStatus.set('connecting');
+  connectionError.set('');
+  try {
+    const info = await ConnectAdditional(cfg);
+    connectionStatus.set('connected');
+    activeConnectionConfig.set(configFromInfo(info));
+    connections.update(cs => [...cs, entryFromInfo(info)]);
+    activeConnectionId.set(info.id);
+    await refreshRemote('/');
+  } catch (e) {
+    const conns = get(connections);
+    connectionStatus.set(conns.length > 0 ? 'connected' : 'disconnected');
     connectionError.set(e?.toString() || 'Connection failed');
     throw e;
   }
