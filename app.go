@@ -344,11 +344,11 @@ func (a *App) BrowseSSHKey() (string, error) {
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
 func (a *App) QueueUpload(localPath, remotePath string) {
-	a.queue.Add(transfer.Upload, localPath, remotePath)
+	a.queue.Add(transfer.Upload, localPath, remotePath, a.connMgr.GetActiveHost())
 }
 
 func (a *App) QueueDownload(remotePath, localPath string) {
-	a.queue.Add(transfer.Download, localPath, remotePath)
+	a.queue.Add(transfer.Download, localPath, remotePath, a.connMgr.GetActiveHost())
 }
 
 func (a *App) GetTransfers() []*transfer.Job {

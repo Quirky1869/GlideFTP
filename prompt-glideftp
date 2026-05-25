@@ -209,14 +209,15 @@ le but est d'avoir une animation "visible" pour l'utilisateur
 
 _____
 
-1.7.2 A FAIRE
+1.7.2
 
 56 = Ajouter une option avec un bouton "on/off" pour donner le choix à l'utilisateur de déployer ou non la file d'attente à chaque transfert
 
-57 = Faire un bouton "se reconnecter" qui correspondrai au fait de "rafraichir la connexion" (je sais pas si c'est utile)
+57 = Quand on est dans un pop-up j'ai remarqué que le bouton tab parcours non pas tous les boutons du pop-up mais l'entiereté de l'application
 
-58 = Faire un bouton à coter (à gauche) du bouton "Déconnecter" pour pouvoir faire une connexion rapide (sans être obliger de fermer la connexion ou de passer par "gérer les sites" comme maintenant) -> il faudra que cette connexion rapide se base sur les input déjà présent en haut de l'application lorsqu'on est connecté à un serveur distant
+58 = Dans la file d'attente on ne voit actuellement pas d'où part et arrive le fichier (local vers distant ou distant vers local) il faut rajouter cette information dans les 3 sections : File d'attente, échoués et reussis + il faudrait afficher la moyenne de transfert ca c'est à rajouter uniquement dans l'onglet "réussis" de la file d'attente
 
-59 = Quand on est dans un pop-up j'ai remarqué que le bouton tab parcours non pas tous les boutons du pop-up mais l'entiereté de l'application
+_____
 
-60 = Dans la file d'attente on ne voit actuellement pas d'où part et arrive le fichier (local vers distant ou distant vers local) il faut rajouter cette information dans les 3 sections : File d'attente, échoués et reussis + il faudrait afficher la moyenne de transfert ca c'est à rajouter uniquement dans l'onglet "réussis" de la file d'attente
+59 = Faire un bouton à coter (à gauche) du bouton "Déconnecter" pour pouvoir faire une connexion rapide (sans être obliger de fermer la connexion ou de passer par "gérer les sites" comme maintenant) -> il faudra que cette connexion rapide se base sur les input déjà présent en haut de l'application lorsqu'on est connecté à un serveur distant
+

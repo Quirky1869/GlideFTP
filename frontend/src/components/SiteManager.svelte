@@ -3,6 +3,7 @@
   import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, ExportSites, ImportSites } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
+  import { trapFocus } from '../utils/focusTrap.js';
 
   export let onClose = () => {};
 
@@ -294,7 +295,7 @@
 </script>
 
 <div class="modal-backdrop" on:click|self={onClose}>
-  <div class="modal">
+  <div class="modal" use:trapFocus>
     <div class="modal-header">
       <span class="modal-title">{$t('savedSites')}</span>
       <div class="header-actions">
@@ -495,7 +496,7 @@
 <!-- Keep-or-replace overlay -->
 {#if showKeepOrReplace}
   <div class="pwd-overlay">
-    <div class="pwd-box" style="width: 380px">
+    <div class="pwd-box" style="width: 380px" use:trapFocus>
       <div class="pwd-title">{$t('keepOrReplaceTitle')}</div>
       <div class="pwd-site">{$t('keepOrReplaceMsg')}</div>
       <div class="pwd-actions" style="flex-direction: column; gap: 8px; margin-top: 4px;">
@@ -525,7 +526,7 @@
 <!-- Password prompt overlay -->
 {#if showPasswordPrompt}
   <div class="pwd-overlay">
-    <div class="pwd-box">
+    <div class="pwd-box" use:trapFocus>
       <div class="pwd-title">{$t('passwordPromptTitle')}</div>
       <div class="pwd-site">{promptSiteName}</div>
       <label class="pwd-label">{$t('passwordPromptLabel')} {promptSiteName}</label>

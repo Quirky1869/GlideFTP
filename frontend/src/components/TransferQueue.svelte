@@ -40,6 +40,18 @@
     return Math.round(bps) + ' B/s';
   }
 
+  function avgSpeed(job) {
+    if (!job.finishedAt || !job.createdAt || !job.size) return '';
+    const dur = (new Date(job.finishedAt) - new Date(job.createdAt)) / 1000;
+    if (dur <= 0) return '';
+    return formatSpeed(job.size / dur);
+  }
+
+  function dirLabel(job) {
+    const host = job.remoteHost || '?';
+    return job.direction === 'upload' ? `local → ${host} ` : `${host} → local `;
+  }
+
   function startResize(e) {
     resizing = true;
     startY = e.clientY;
@@ -112,13 +124,14 @@
             <span class="job-size">{formatBytes(job.size)}</span>
             <span class="job-status {statusClass(job)}">{job.status}</span>
           </div>
+          <div class="job-route">{dirLabel(job)}{#if activeTab === 'done' && avgSpeed(job)}<span class="avg-speed">• {avgSpeed(job)} {$t('avgSuffix')}</span>{/if}</div>
           {#if job.status === 'running'}
             <div class="progress-bar">
               <div class="progress-fill" style="width: {progressPct(job)}%"></div>
             </div>
             <span class="progress-label">
               {progressPct(job)}% — {formatBytes(job.bytesDone)} / {formatBytes(job.size)}
-              {#if speeds[job.id] > 0}<span class="speed-label">• {formatSpeed(speeds[job.id])}</span>{/if}
+              {#if speeds[job.id] > 0}<span class="speed-label"> • {formatSpeed(speeds[job.id])}</span>{/if}
             </span>
           {/if}
           {#if job.error}
@@ -340,6 +353,19 @@
 
 .speed-label {
   color: var(--accent);
+  font-weight: 500;
+}
+
+.job-route {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.avg-speed {
+  color: var(--accent);
+  font-style: normal;
   font-weight: 500;
 }
 

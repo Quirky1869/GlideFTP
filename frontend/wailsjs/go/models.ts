@@ -231,6 +231,7 @@ export namespace transfer {
 	    direction: string;
 	    localPath: string;
 	    remotePath: string;
+	    remoteHost: string;
 	    name: string;
 	    size: number;
 	    bytesDone: number;
@@ -251,6 +252,7 @@ export namespace transfer {
 	        this.direction = source["direction"];
 	        this.localPath = source["localPath"];
 	        this.remotePath = source["remotePath"];
+	        this.remoteHost = source["remoteHost"];
 	        this.name = source["name"];
 	        this.size = source["size"];
 	        this.bytesDone = source["bytesDone"];

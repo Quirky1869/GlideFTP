@@ -4,6 +4,7 @@
   import { settings } from '../stores/settings.js';
   import { QueueUpload, QueueDownload, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
+  import { trapFocus } from '../utils/focusTrap.js';
 
   export let side = 'local';
   export let path = '';
@@ -721,7 +722,7 @@
 <!-- Delete confirmation dialog -->
 {#if confirmDeleteEntries}
   <div class="confirm-overlay" on:click|self={() => confirmDeleteEntries = null}>
-    <div class="confirm-box" on:click|stopPropagation>
+    <div class="confirm-box" on:click|stopPropagation use:trapFocus>
       <div class="confirm-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
@@ -744,7 +745,7 @@
 <!-- Conflict resolution dialog -->
 {#if conflictState}
   <div class="confirm-overlay" on:click|self={() => conflictState = null}>
-    <div class="confirm-box" on:click|stopPropagation>
+    <div class="confirm-box" on:click|stopPropagation use:trapFocus>
 
       {#if conflictState.mode === 'choose'}
         <div class="conflict-warn-icon">

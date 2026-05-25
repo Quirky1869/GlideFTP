@@ -13,7 +13,7 @@ Arguments:
   version           Version number in X.Y.Z format (e.g. 1.7.0)
 
 Options:
-  -p, --platform    Platform to archive: windows | linux | appimage | all  (default: all)
+  -p, --platform    Platform to archive: windows | linux | appimage | appimage-arch | appimage-debian | all  (default: all)
   -t, --type        Archive type:        gz | tar | all                    (default: all)
   -h, --help        Show this help message and exit
 
@@ -24,18 +24,22 @@ Archive types:
 
 Output files (example with version 1.7.0):
   GlideFTP-Windows-v1.7.0.tar.gz
-  GlideFTP-Linux-v1.7.0.tar.gz          ← includes README.md (dependency notice)
-  GlideFTP-Linux-AppImage-v1.7.0.tar.gz
+  GlideFTP-Linux-v1.7.0.tar.gz                     ← includes README.md (dependency notice)
+  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz        ← Arch / modern distros (GLIBC 2.38+)
+  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar.gz      ← Ubuntu 22.04+ / Debian (GLIBC 2.35+)
   GlideFTP-Windows-v1.7.0.tar
-  GlideFTP-Linux-v1.7.0.tar             ← includes README.md (dependency notice)
-  GlideFTP-Linux-AppImage-v1.7.0.tar
+  GlideFTP-Linux-v1.7.0.tar                         ← includes README.md (dependency notice)
+  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar
+  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar
 
 Examples:
-  $SCRIPT_NAME 1.7.0                          # all 6 archives
-  $SCRIPT_NAME -p windows 1.7.0              # Windows archives only (gz + tar)
-  $SCRIPT_NAME -p linux -t gz 1.7.0          # Linux binary .tar.gz only
-  $SCRIPT_NAME -p appimage -t gz 1.7.0       # AppImage .tar.gz only
-  $SCRIPT_NAME -p windows -t tar 1.7.0       # Windows .tar only
+  $SCRIPT_NAME 1.7.0                               # all 8 archives
+  $SCRIPT_NAME -p windows 1.7.0                   # Windows archives only (gz + tar)
+  $SCRIPT_NAME -p linux -t gz 1.7.0               # Linux binary .tar.gz only
+  $SCRIPT_NAME -p appimage -t gz 1.7.0            # both AppImage variants .tar.gz only
+  $SCRIPT_NAME -p appimage-arch -t gz 1.7.0       # Arch AppImage .tar.gz only
+  $SCRIPT_NAME -p appimage-debian -t tar 1.7.0    # Debian AppImage .tar only
+  $SCRIPT_NAME -p windows -t tar 1.7.0            # Windows .tar only
   $SCRIPT_NAME --platform all --type gz 2.0.0
 EOF
 }
@@ -99,10 +103,10 @@ fi
 
 # ── Validate options ──────────────────────────────────────────────────────────
 case "$PLATFORM" in
-  windows|linux|appimage|all) ;;
+  windows|linux|appimage|appimage-arch|appimage-debian|all) ;;
   *)
     echo "Error: --platform value '$PLATFORM' is not valid." >&2
-    echo "  Accepted values: windows | linux | appimage | all" >&2
+    echo "  Accepted values: windows | linux | appimage | appimage-arch | appimage-debian | all" >&2
     exit 1
     ;;
 esac
@@ -172,16 +176,28 @@ make_linux_tar() {
   rm -rf "$staging"
 }
 
-make_appimage_gz() {
-  local out="GlideFTP-Linux-AppImage-v${VERSION}.tar.gz"
+make_appimage_arch_gz() {
+  local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar.gz"
   echo "→ $out"
-  tar -czvf "$out" -C build/bin/linux GlideFTP-x86_64.AppImage
+  tar -czvf "$out" -C build/bin/linux GlideFTP-Arch-x86_64.AppImage
 }
 
-make_appimage_tar() {
-  local out="GlideFTP-Linux-AppImage-v${VERSION}.tar"
+make_appimage_arch_tar() {
+  local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar"
   echo "→ $out"
-  tar -cvf "$out" -C build/bin/linux GlideFTP-x86_64.AppImage
+  tar -cvf "$out" -C build/bin/linux GlideFTP-Arch-x86_64.AppImage
+}
+
+make_appimage_debian_gz() {
+  local out="GlideFTP-Linux-Debian-AppImage-v${VERSION}.tar.gz"
+  echo "→ $out"
+  tar -czvf "$out" -C build/bin/linux GlideFTP-Debian-x86_64.AppImage
+}
+
+make_appimage_debian_tar() {
+  local out="GlideFTP-Linux-Debian-AppImage-v${VERSION}.tar"
+  echo "→ $out"
+  tar -cvf "$out" -C build/bin/linux GlideFTP-Debian-x86_64.AppImage
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
@@ -195,8 +211,11 @@ echo "────────────────────────�
 [[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_linux_gz
 
-[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "all" ]] && \
-  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_gz
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-arch" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_arch_gz
+
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-debian" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_debian_gz
 
 [[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_windows_tar
@@ -204,8 +223,11 @@ echo "────────────────────────�
 [[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_linux_tar
 
-[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "all" ]] && \
-  [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_appimage_tar
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-arch" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_appimage_arch_tar
+
+[[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-debian" || "$PLATFORM" == "all" ]] && \
+  [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_appimage_debian_tar
 
 echo "──────────────────────────────────────────────"
 echo "Done."

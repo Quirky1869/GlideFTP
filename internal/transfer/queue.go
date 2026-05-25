@@ -31,6 +31,7 @@ type Job struct {
 	Direction  Direction          `json:"direction"`
 	LocalPath  string             `json:"localPath"`
 	RemotePath string             `json:"remotePath"`
+	RemoteHost string             `json:"remoteHost"`
 	Name       string             `json:"name"`
 	Size       int64              `json:"size"`
 	BytesDone  int64              `json:"bytesDone"`
@@ -83,12 +84,13 @@ func (q *Queue) SetSpeedLimit(kbps int) {
 	q.speedLimitBps = int64(kbps) * 1024
 }
 
-func (q *Queue) Add(dir Direction, localPath, remotePath string) *Job {
+func (q *Queue) Add(dir Direction, localPath, remotePath, remoteHost string) *Job {
 	job := &Job{
 		ID:         uuid.New().String(),
 		Direction:  dir,
 		LocalPath:  localPath,
 		RemotePath: remotePath,
+		RemoteHost: remoteHost,
 		Name:       filepath.Base(localPath),
 		Status:     StatusPending,
 		CreatedAt:  time.Now(),

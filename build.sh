@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Build GlideFTP for Linux, Windows, and/or as an AppImage.
 # Usage:
-#   ./build.sh              → Linux binary + Windows exe + AppImage
-#   ./build.sh linux        → Linux binary only
-#   ./build.sh windows      → Windows exe only (requires mingw-w64-gcc)
-#   ./build.sh appimage     → AppImage only (builds Linux binary first if missing)
+#   ./build.sh                  → Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
+#   ./build.sh linux            → Linux binary only               → build/bin/linux/GlideFTP
+#   ./build.sh windows          → Windows exe only (requires mingw-w64-gcc)
+#   ./build.sh appimage         → Arch AppImage                   → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+#   ./build.sh appimage-arch    → same as appimage
+#   ./build.sh appimage-debian  → Debian/Ubuntu AppImage (Docker) → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 #
 # Install mingw on Arch Linux:
 #   sudo pacman -S mingw-w64-gcc
+# Install Docker or Podman for Debian AppImage:
+#   sudo pacman -S docker  (then: sudo systemctl enable --now docker)
+#   or: sudo pacman -S podman
 
 set -e
 
@@ -112,7 +117,7 @@ DESKTOP
   # linuxdeploy discovers plugins (linuxdeploy-plugin-appimage) via PATH
   export PATH="$(pwd)/tools:$PATH"
   # Destination path for the generated AppImage
-  export OUTPUT="$(pwd)/build/bin/linux/GlideFTP-x86_64.AppImage"
+  export OUTPUT="$(pwd)/build/bin/linux/GlideFTP-Arch-x86_64.AppImage"
   # Run AppImages without FUSE (extract-and-run) — avoids FUSE requirement
   export APPIMAGE_EXTRACT_AND_RUN=1
   # Disable stripping — linuxdeploy's bundled strip is too old for .relr.dyn sections
@@ -125,19 +130,57 @@ DESKTOP
     --icon-file "$APPDIR/glideftp.png" \
     --output appimage
 
-  echo "   ✓ build/bin/linux/GlideFTP-x86_64.AppImage"
+  echo "   ✓ build/bin/linux/GlideFTP-Arch-x86_64.AppImage"
+}
+
+build_appimage_debian() {
+  echo "→ Building Debian/Ubuntu AppImage (via Docker — Ubuntu 22.04)…"
+
+  local DOCKER_CMD
+  if command -v docker &>/dev/null; then
+    DOCKER_CMD="docker"
+  elif command -v podman &>/dev/null; then
+    DOCKER_CMD="podman"
+  else
+    echo "ERROR: docker or podman not found."
+    echo "       Install with: sudo pacman -S docker  (then: sudo systemctl enable --now docker)"
+    echo "       or:           sudo pacman -S podman"
+    exit 1
+  fi
+
+  echo "   ↑ Building container image (first run may take several minutes)…"
+  "$DOCKER_CMD" build -t glideftp-debian-builder -f docker/Dockerfile.appimage .
+
+  mkdir -p build/bin/linux
+
+  # Mount host Go module cache to speed up repeated builds
+  local HOST_GOPATH
+  HOST_GOPATH="$(go env GOPATH 2>/dev/null || echo "$HOME/go")"
+
+  "$DOCKER_CMD" run --rm \
+    -v "$(pwd):/src" \
+    -v "${HOST_GOPATH}/pkg/mod:/root/go/pkg/mod" \
+    -v "$HOME/.npm:/root/.npm" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
+    glideftp-debian-builder \
+    bash /src/docker/build-appimage.sh
+
+  echo "   ✓ build/bin/linux/GlideFTP-Debian-x86_64.AppImage"
 }
 
 case "$TARGET" in
-  linux)    build_linux ;;
-  windows)  build_windows ;;
-  appimage) build_appimage ;;
-  all)      build_linux; build_windows; build_appimage ;;
-  *)        echo "Usage: $0 [linux|windows|appimage|all]"; exit 1 ;;
+  linux)                  build_linux ;;
+  windows)                build_windows ;;
+  appimage|appimage-arch) build_appimage ;;
+  appimage-debian)        build_appimage_debian ;;
+  all)                    build_linux; build_windows; build_appimage; build_appimage_debian ;;
+  *)        echo "Usage: $0 [linux|windows|appimage|appimage-arch|appimage-debian|all]"; exit 1 ;;
 esac
 
 echo ""
 echo "Build done:"
 ls -lh build/bin/linux/GlideFTP 2>/dev/null || true
-ls -lh build/bin/linux/GlideFTP-x86_64.AppImage 2>/dev/null || true
+ls -lh build/bin/linux/GlideFTP-Arch-x86_64.AppImage 2>/dev/null || true
+ls -lh build/bin/linux/GlideFTP-Debian-x86_64.AppImage 2>/dev/null || true
 ls -lh build/bin/windows/GlideFTP.exe 2>/dev/null || true

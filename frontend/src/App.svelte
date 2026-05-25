@@ -15,6 +15,7 @@
     disconnect,
   } from './stores/connection.js';
   import { transfers, queueVisible, initTransfers, completedTransfer } from './stores/transfers.js';
+  import { trapFocus } from './utils/focusTrap.js';
   import ConnectionBar from './components/ConnectionBar.svelte';
   import FileBrowser from './components/FileBrowser.svelte';
   import TransferQueue from './components/TransferQueue.svelte';
@@ -247,7 +248,7 @@
   <!-- ── Disconnect-all confirmation ───────────────────────────── -->
   {#if showDisconnectConfirm}
     <div class="dc-overlay" on:click|self={() => showDisconnectConfirm = false}>
-      <div class="dc-box">
+      <div class="dc-box" use:trapFocus>
         <div class="dc-title">{$t('multiDisconnectTitle')}</div>
         <div class="dc-msg">{$connections.length} {$t('multiDisconnectMsg')}</div>
         <div class="dc-actions">

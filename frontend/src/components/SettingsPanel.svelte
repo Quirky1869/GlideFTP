@@ -3,6 +3,7 @@
   import { settings, saveSettings } from '../stores/settings.js';
   import { BrowseLocalDir } from '../../wailsjs/go/main/App.js';
   import ColorPicker from './ColorPicker.svelte';
+  import { trapFocus } from '../utils/focusTrap.js';
 
   export let onClose = () => {};
   export let onSaved = (_settings) => {};
@@ -47,7 +48,7 @@
 
 <div class="panel-backdrop" on:click|self={onClose}></div>
 
-<div class="settings-panel">
+<div class="settings-panel" use:trapFocus>
   <div class="panel-header">
     <span class="panel-title">{$t('settingsTitle')}</span>
     <button class="close-btn" on:click={onClose}>✕</button>
@@ -208,7 +209,7 @@
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.1</span>
+    <span class="version-badge">v1.7.2</span>
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}

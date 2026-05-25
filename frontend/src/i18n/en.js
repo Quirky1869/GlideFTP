@@ -92,6 +92,7 @@ export default {
   transfers: 'Transfers',
   maxConcurrent: 'Max concurrent transfers',
   transferSpeedLimit: 'Speed limit (KB/s, 0 = unlimited)',
+  avgSuffix: 'avg.',
   defaultLocalDir: 'Default local directory',
   connection: 'Connection',
   defaultPort: 'Default FTP port',

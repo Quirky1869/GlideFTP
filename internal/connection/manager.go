@@ -295,6 +295,15 @@ func (m *Manager) GetClient() Client {
 	return m.getActiveClient()
 }
 
+func (m *Manager) GetActiveHost() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c := m.getActive(); c != nil {
+		return c.cfg.Host
+	}
+	return ""
+}
+
 func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	m.mu.Lock()
 	active := m.getActive()

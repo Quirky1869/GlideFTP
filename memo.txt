@@ -47,22 +47,32 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows \
 sudo pacman -S mingw-w64-gcc
 
 # Script tout-en-un — voir build.sh à la racine
-./build.sh            # compile les trois sorties : Linux + Windows + AppImage
-./build.sh linux      # Linux seulement    → build/bin/linux/GlideFTP
-./build.sh windows    # Windows seulement  → build/bin/windows/GlideFTP.exe
-./build.sh appimage   # AppImage seulement → build/bin/linux/GlideFTP-x86_64.AppImage
-# AppImage : télécharge linuxdeploy dans tools/ à la première exécution (gitignored)
-# Nécessite imagemagick (magick) pour redimensionner l'icône à 256×256
+./build.sh                  # compile tout : Linux + Windows + Arch AppImage + Debian AppImage
+./build.sh linux            # Linux seulement        → build/bin/linux/GlideFTP
+./build.sh windows          # Windows seulement      → build/bin/windows/GlideFTP.exe
+./build.sh appimage         # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-arch    # idem que appimage
+./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+# Arch AppImage    : télécharge linuxdeploy dans tools/ au premier run (gitignored)
+#                    Nécessite imagemagick (magick) ; NO_STRIP=1 pour les libs Arch modernes
+# Debian AppImage  : construit dans un container Ubuntu 22.04 via docker/Dockerfile.appimage
+#                    Requiert docker ou podman ; 1er run ~10 min (télécharge l'image Ubuntu)
+#                    Monte ~/go/pkg/mod et ~/.npm → builds suivants plus rapides
+#                    Compatible Ubuntu 22.04+, Debian 12+, Arch — GLIBC 2.35 plancher
 
 
 --- Archives de distribution ---
 
 # Créer les archives .tar.gz et .tar pour une release (après le build)
-./create-archive.sh 1.7.1                     # 6 archives (Linux+Windows+AppImage × gz+tar)
-./create-archive.sh -p linux   1.7.1          # binaire Linux uniquement (inclut README.md)
-./create-archive.sh -p windows -t gz 1.7.1    # Windows .tar.gz uniquement
-./create-archive.sh -p appimage 1.7.1         # AppImage uniquement (sans README.md)
+./create-archive.sh 1.7.1                            # 8 archives (Linux+Windows+ArchAppImage+DebianAppImage × gz+tar)
+./create-archive.sh -p linux          1.7.1          # binaire Linux uniquement (inclut README.md)
+./create-archive.sh -p windows   -t gz 1.7.1         # Windows .tar.gz uniquement
+./create-archive.sh -p appimage       1.7.1          # les deux AppImages (Arch + Debian)
+./create-archive.sh -p appimage-arch  1.7.1          # Arch AppImage uniquement
+./create-archive.sh -p appimage-debian 1.7.1         # Debian AppImage uniquement
 # La version doit être au format X.Y.Z (3 chiffres séparés par des points)
+# Noms de sortie : GlideFTP-Linux-Arch-AppImage-v1.7.1.tar.gz
+#                  GlideFTP-Linux-Debian-AppImage-v1.7.1.tar.gz
 
 
 --- Lancer l'application ---
@@ -70,9 +80,13 @@ sudo pacman -S mingw-w64-gcc
 # Linux (binaire natif)
 ./build/bin/linux/GlideFTP
 
-# Linux (AppImage — autonome, pas de dépendance nécessaire)
-chmod +x build/bin/linux/GlideFTP-x86_64.AppImage
-./build/bin/linux/GlideFTP-x86_64.AppImage
+# Linux (Arch AppImage — pour Arch/Manjaro/Fedora récente, GLIBC 2.38+)
+chmod +x build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+
+# Linux (Debian AppImage — pour Ubuntu 22.04+/Debian 12+/Arch, GLIBC 2.35+)
+chmod +x build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 
 # Windows (depuis l'explorateur ou en ligne de commande)
 build\bin\windows\GlideFTP.exe

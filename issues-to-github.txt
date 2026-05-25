@@ -1211,3 +1211,112 @@ CSS `@keyframes spin-once` rotates the SVG 360° over 500 ms (linear). The
 `class:spinning={refreshing}`. `transform-origin: center` is set on the SVG so
 it rotates around its own centre.
 Multiple rapid clicks are ignored while a refresh is already in progress.
+
+---
+
+#56
+Title: [Feature] Option to disable automatic transfer queue expansion on each transfer
+Labels: feature, wont-fix
+Version fixed: —
+Description:
+A request to add an on/off toggle in Settings > Transfers that would let the
+user choose whether the transfer queue panel opens automatically each time a
+transfer is initiated (current behaviour) or stays hidden until opened manually.
+
+Investigation:
+The queue panel is opened via direct `queueVisible.set(true)` calls in
+FileBrowser.svelte at six separate call sites — one per transfer entry point
+(transferSelected, transferEntry, resolveConflict replace, advanceRename
+completion, drag-and-drop drop handler, and the keyboard shortcut path). These
+calls happen at the moment the transfer is queued in the frontend, before the
+Go `transfer:added` event is emitted. Any toggle logic placed in the Wails event
+handler is therefore never reached for the normal transfer flows.
+
+Attempts to route all six call sites through a shared `openQueueIfEnabled()`
+helper that checks a settings store value were made, but the approach was
+abandoned because the store subscription and the Wails event timing made the
+behaviour unreliable and the fix was more complex than the feature warranted.
+
+Solution (closing comment):
+Not implemented — marked wont-fix for now. The transfer queue always opens
+automatically on each transfer. A future refactor that centralises the "queue a
+transfer" action into a single function would make this toggle straightforward
+to add.
+
+---
+
+#57
+Title: [Bug] Tab key cycles through entire application while a popup is open
+Labels: bug, ui, accessibility
+Version fixed: v1.7.2
+Description:
+When a popup or overlay is open (Site Manager modal, Settings panel, password
+prompt, keep-or-replace dialog, delete confirmation, conflict resolution dialog,
+or disconnect-all confirmation), pressing Tab moves focus to elements behind the
+popup rather than cycling within it. This makes keyboard navigation unusable
+while a modal is active.
+
+Solution (closing comment):
+Fixed in v1.7.2.
+
+A reusable Svelte action `trapFocus` was created in
+`frontend/src/utils/focusTrap.js`. It listens for `keydown` on the container
+node and intercepts Tab / Shift+Tab:
+
+  - Collects all focusable elements inside the container via
+    `querySelectorAll('button:not([disabled]), [href], input:not([disabled]),
+    select:not([disabled]), textarea:not([disabled]),
+    [tabindex]:not([tabindex="-1"])')`.
+  - On Tab: if focus is on the last element (or outside the container), wraps to
+    the first.
+  - On Shift+Tab: if focus is on the first element (or outside the container),
+    wraps to the last.
+  - Cleans up via the Svelte action `destroy()` callback.
+
+`use:trapFocus` was applied to six containers:
+  - `SiteManager.svelte` — `.modal` (main site manager)
+  - `SiteManager.svelte` — `.pwd-box` in the keep-or-replace overlay
+  - `SiteManager.svelte` — `.pwd-box` in the password prompt overlay
+  - `SettingsPanel.svelte` — `.settings-panel`
+  - `App.svelte` — `.dc-box` (disconnect-all confirmation)
+  - `FileBrowser.svelte` — `.confirm-box` (delete confirmation dialog)
+  - `FileBrowser.svelte` — `.confirm-box` (conflict resolution dialog)
+
+---
+
+#58
+Title: [Feature] Show transfer direction (local ↔ server) and average speed in transfer queue
+Labels: feature, ui
+Version fixed: v1.7.2
+Description:
+The transfer queue rows show the filename, size, and status, but give no
+indication of which direction a file is moving (local → remote or remote →
+local) nor which server is involved. The "Successful" tab also lacks a summary
+of how fast the transfer completed overall.
+
+Solution (closing comment):
+Fixed in v1.7.2.
+
+**Go side:**
+- `Job` struct in `internal/transfer/queue.go` gained a new field:
+  `RemoteHost string \`json:"remoteHost"\``
+- `queue.Add()` signature updated to accept `remoteHost string` as a fourth
+  argument.
+- `manager.GetActiveHost()` added to `internal/connection/manager.go` — returns
+  `cfg.Host` of the currently active connection.
+- `app.QueueUpload` and `app.QueueDownload` in `app.go` now pass
+  `a.connMgr.GetActiveHost()` when calling `queue.Add()`.
+
+**Frontend — TransferQueue.svelte:**
+- `dirLabel(job)` helper: returns `"local → <host> "` for uploads and
+  `"<host> → local "` for downloads (trailing space separates it from the
+  optional speed badge).
+- `avgSpeed(job)` helper: computes average transfer speed as
+  `job.size / ((finishedAt − createdAt) / 1000)` bytes/sec, then formats it
+  with the existing `formatSpeed()` function. Returns `''` if data is missing
+  or duration ≤ 0.
+- A `.job-route` line is rendered under the filename row in all three tabs
+  (pending, failed, successful) showing the direction string.
+- In the "successful" tab only, if `avgSpeed(job)` is non-empty, an
+  `.avg-speed` span is appended: `• <speed> <avgSuffix>` where `avgSuffix` is
+  an i18n key (`"moy."` in French, `"avg."` in English).

@@ -42,13 +42,12 @@
 
 ### Download pre-built binaries
 
-The latest release provides three ready-to-run files:
-
 | File | Platform | Notes |
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Requires WebView2 (built into Windows 10/11) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` — see below |
-| `GlideFTP-x86_64.AppImage` | Linux AppImage | **Self-contained — no dependency to install** |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage — **Debian/Ubuntu** | **Recommended** — self-contained, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage — **Arch** | For Arch / Manjaro / modern Fedora |
 
 #### Linux — pre-built binary
 
@@ -74,11 +73,23 @@ chmod +x GlideFTP
 
 #### Linux — AppImage (recommended)
 
-The AppImage bundles all dependencies (including `libwebkit2gtk-4.1` and the full GTK3 stack) inside a single file. No system library needs to be installed — just download, make executable, and run:
+Two AppImage variants are provided — both are fully self-contained (no system library to install):
+
+| Variant | File | Compatible with |
+|---|---|---|
+| **Debian/Ubuntu** ✓ recommended | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.*` | Ubuntu 22.04+, Debian 12+, Arch, and any distro with GLIBC 2.35+ |
+| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Manjaro, modern Fedora (GLIBC 2.38+) |
+
+If you are unsure which one to pick, use the **Debian/Ubuntu** variant — it runs on the widest range of distributions.
 
 ```bash
-chmod +x GlideFTP-x86_64.AppImage
-./GlideFTP-x86_64.AppImage
+# Debian/Ubuntu variant (recommended)
+chmod +x GlideFTP-Debian-x86_64.AppImage
+./GlideFTP-Debian-x86_64.AppImage
+
+# Arch variant
+chmod +x GlideFTP-Arch-x86_64.AppImage
+./GlideFTP-Arch-x86_64.AppImage
 ```
 
 ### Build from source
@@ -117,13 +128,15 @@ cd GlideFTP
 **Using the build script (recommended):**
 
 ```bash
-./build.sh            # Linux binary + Windows exe + AppImage
-./build.sh linux      # Linux binary only  → build/bin/linux/GlideFTP
-./build.sh windows    # Windows exe only   → build/bin/windows/GlideFTP.exe
-./build.sh appimage   # AppImage only      → build/bin/linux/GlideFTP-x86_64.AppImage
+./build.sh                  # all: Linux binary + Windows exe + Arch AppImage + Debian AppImage
+./build.sh linux            # Linux binary only    → build/bin/linux/GlideFTP
+./build.sh windows          # Windows exe only     → build/bin/windows/GlideFTP.exe
+./build.sh appimage         # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 
-> The `appimage` target requires `curl` or `wget` (to download `linuxdeploy` on first run — cached in `tools/`).
+> `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
+> `appimage-debian` requires **Docker** or **Podman** — builds inside an Ubuntu 22.04 container on first run (~10 min).
 
 **Manual commands:**
 
@@ -141,11 +154,14 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 #### Run
 
 ```bash
-# Linux
+# Linux binary
 ./build/bin/linux/GlideFTP
 
-# Linux - App Image
-./build/bin/linux/GlideFTP-x86_64.AppImage
+# Linux AppImage — Debian/Ubuntu variant (recommended)
+./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+
+# Linux AppImage — Arch variant
+./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 
 # Windows
 build\bin\windows\GlideFTP.exe
@@ -204,13 +220,12 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 
 ### Télécharger les binaires pré-compilés
 
-La dernière release propose trois fichiers prêts à l'emploi :
-
 | Fichier | Plateforme | Notes |
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Nécessite WebView2 (intégré à Windows 10/11) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` — voir ci-dessous |
-| `GlideFTP-x86_64.AppImage` | Linux AppImage | **Autonome — aucune dépendance à installer** |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux — **Debian/Ubuntu** | **Recommandé** — autonome, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux — **Arch** | Pour Arch / Manjaro / Fedora récente |
 
 #### Linux — binaire pré-compilé
 
@@ -236,11 +251,23 @@ chmod +x GlideFTP
 
 #### Linux — AppImage (recommandé)
 
-L'AppImage embarque toutes les dépendances (dont `libwebkit2gtk-4.1` et la pile GTK3 complète) dans un seul fichier. Aucune bibliothèque système à installer — téléchargez, rendez exécutable, et lancez :
+Deux variantes d'AppImage sont disponibles — toutes deux sont entièrement autonomes (aucune bibliothèque système à installer) :
+
+| Variante | Fichier | Compatible avec |
+|---|---|---|
+| **Debian/Ubuntu** ✓ recommandée | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.*` | Ubuntu 22.04+, Debian 12+, Arch, et toute distro avec GLIBC 2.35+ |
+| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Manjaro, Fedora récente (GLIBC 2.38+) |
+
+En cas de doute, choisissez la variante **Debian/Ubuntu** — elle est compatible avec le plus grand nombre de distributions.
 
 ```bash
-chmod +x GlideFTP-x86_64.AppImage
-./GlideFTP-x86_64.AppImage
+# Variante Debian/Ubuntu (recommandée)
+chmod +x GlideFTP-Debian-x86_64.AppImage
+./GlideFTP-Debian-x86_64.AppImage
+
+# Variante Arch
+chmod +x GlideFTP-Arch-x86_64.AppImage
+./GlideFTP-Arch-x86_64.AppImage
 ```
 
 ### Compiler depuis les sources
@@ -279,13 +306,15 @@ cd GlideFTP
 **Via le script de build (recommandé) :**  
 
 ```bash
-./build.sh            # binaire Linux + exe Windows + AppImage
-./build.sh linux      # Linux seulement     → build/bin/linux/GlideFTP
-./build.sh windows    # Windows seulement   → build/bin/windows/GlideFTP.exe
-./build.sh appimage   # AppImage seulement  → build/bin/linux/GlideFTP-x86_64.AppImage
+./build.sh                  # tout : binaire Linux + exe Windows + AppImage Arch + AppImage Debian
+./build.sh linux            # Linux seulement       → build/bin/linux/GlideFTP
+./build.sh windows          # Windows seulement     → build/bin/windows/GlideFTP.exe
+./build.sh appimage         # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-debian  # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 
-> La cible `appimage` nécessite `curl` ou `wget` (pour télécharger `linuxdeploy` à la première exécution — mis en cache dans `tools/`).
+> `appimage` nécessite `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  
+> `appimage-debian` nécessite **Docker** ou **Podman** — construit dans un container Ubuntu 22.04 au premier run (~10 min).
 
 **Commandes manuelles :**  
 
@@ -303,11 +332,14 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 #### Lancer
 
 ```bash
-# Linux
+# Binaire Linux
 ./build/bin/linux/GlideFTP
 
-# Linux - App Image
-./build/bin/linux/GlideFTP-x86_64.AppImage
+# AppImage Linux — variante Debian/Ubuntu (recommandée)
+./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+
+# AppImage Linux — variante Arch
+./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 
 # Windows
 build\bin\windows\GlideFTP.exe
@@ -328,4 +360,4 @@ Les [releases](https://github.com/Quirky1869/GlideFTP/releases) sont disponibles
 
 ---
 
-Developed with ❤️ by [Quirky](https://github.com/Quirky1869)
+Developed by [Quirky](https://github.com/Quirky1869)

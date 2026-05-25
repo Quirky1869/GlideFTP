@@ -12,22 +12,29 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 
 ```bash
 # Recommended — use the build script at project root
-./build.sh            # builds Linux binary + Windows exe + AppImage
-./build.sh linux      # Linux only      → build/bin/linux/GlideFTP
-./build.sh windows    # Windows only    → build/bin/windows/GlideFTP.exe
-./build.sh appimage   # AppImage only   → build/bin/linux/GlideFTP-x86_64.AppImage
-# AppImage: downloads linuxdeploy to tools/ on first run (gitignored); requires imagemagick
-# Key env vars set internally: NO_STRIP=1 (linuxdeploy's strip too old for .relr.dyn on Arch),
-# icon resized to 256x256 (linuxdeploy requires standard resolution)
+./build.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
+./build.sh linux            # Linux only             → build/bin/linux/GlideFTP
+./build.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
+./build.sh appimage         # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build.sh appimage-arch    # same as appimage
+./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+#   appimage-debian uses Docker (requires docker or podman); first run builds Ubuntu 22.04 image (~10 min)
+#   Arch AppImage:   linuxdeploy bundles Arch libs; requires GLIBC 2.38+ on target
+#   Debian AppImage: built in Ubuntu 22.04 container; bundles Ubuntu libs; requires GLIBC 2.35+ (Ubuntu 22.04+/Debian 12+/Arch)
+#   Both AppImages bundle WebKitNetworkProcess + WebKitWebProcess helpers; AppRun sets WEBKIT_EXEC_PATH
+#   Key env vars (Arch build): NO_STRIP=1 (linuxdeploy's strip too old for .relr.dyn on Arch),
+#   icon resized to 256x256 with magick (Arch) / convert (Debian container, ImageMagick 6)
 
 # Create distribution archives (requires built binaries first)
-./create-archive.sh 1.7.1                       # all 6 archives (Linux+Windows+AppImage × gz+tar)
-./create-archive.sh -p linux 1.7.1              # Linux binary archives only (includes README.md)
-./create-archive.sh -p appimage 1.7.1           # AppImage archives only (no README.md)
-./create-archive.sh -p windows -t gz 1.7.1      # Windows .tar.gz only
+./create-archive.sh 1.7.1                            # all 8 archives (Linux+Windows+ArchAppImage+DebianAppImage × gz+tar)
+./create-archive.sh -p linux 1.7.1                   # Linux binary archives only (includes README.md)
+./create-archive.sh -p appimage 1.7.1                # both AppImage variants (Arch + Debian)
+./create-archive.sh -p appimage-arch 1.7.1           # Arch AppImage archives only
+./create-archive.sh -p appimage-debian 1.7.1         # Debian AppImage archives only
+./create-archive.sh -p windows -t gz 1.7.1           # Windows .tar.gz only
 # Version must be X.Y.Z (3 numbers) — script refuses anything else
 # Linux binary archives include README.md with libwebkit2gtk-4.1 install instructions
-# AppImage archives contain only the .AppImage (self-contained, no deps needed)
+# AppImage archives contain only the .AppImage (self-contained, webkit helpers bundled)
 
 # Manual — Linux (system has webkit2gtk-4.1, the tag is mandatory)
 wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
@@ -66,6 +73,9 @@ magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/wi
 GlideFTP/
 ├── main.go                        # Wails entry point (1280×800)
 ├── app.go                         # All Go→JS bindings (the only Wails-bound struct)
+├── docker/
+│   ├── Dockerfile.appimage        # Ubuntu 22.04 build environment (Go 1.25, Node 20, webkit2gtk-4.1-dev, linuxdeploy)
+│   └── build-appimage.sh          # Script run inside the container: rsync source → wails build → linuxdeploy → AppImage
 ├── internal/
 │   ├── connection/
 │   │   ├── types.go               # Shared types: Config, ConnInfo, RemoteFileEntry, Client interface
@@ -89,11 +99,13 @@ GlideFTP/
     │   ├── settings.js             # Loads/saves settings; loadSettings() returns the settings object
     │   ├── connection.js           # Connection state, local+remote path/entries stores
     │   └── transfers.js            # Transfer list store; completedTransfer store; Wails event subs
+    ├── utils/
+    │   └── focusTrap.js            # Svelte action `trapFocus` — traps Tab/Shift+Tab inside a popup container
     └── components/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
-        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.1" string on each release
+        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.2" string on each release
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```
@@ -116,6 +128,7 @@ GlideFTP/
 - **Duplicate connection guard**: `doKeepAndAdd()` in `SiteManager.svelte` checks whether any entry in `$connections` already has the same `host`, `port`, `protocol`, and `user` before calling `addConnection()`. If a duplicate is detected → calls `connectBySite()` instead (reconnect, no new tab). For `ask_password` mode the `promptIsAdd` flag is set to `false` so the password prompt routes to `connectBySiteWithPassword()` rather than `addConnection()`.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
+- **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container — `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, and both confirm boxes in `FileBrowser`. Tab/Shift+Tab cycle only within the active popup.
 
 ## WebKit-GTK UI Patterns (Linux)
 
@@ -194,8 +207,12 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
 - `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
 - **FTP Download order**: `FileSize` MUST be called BEFORE `Retr` in `ftp.go`. Calling it after opens a command on the control connection mid-transfer, which violates FTP protocol and causes Synology (and others) to return 0 bytes.
+- `manager.GetActiveHost()` — returns `cfg.Host` of the currently active connection; used by `QueueUpload`/`QueueDownload` to tag each job with `RemoteHost`
+- `Job.RemoteHost string` — set at queue time with the active server hostname/IP; serialized as `remoteHost` in JSON events sent to the frontend
 
 ## TransferQueue
 
 - Speed is computed in `TransferQueue.svelte` from deltas of `bytesDone` between store updates (250 ms window minimum to avoid noise). Stored in `speeds` map (`id → bytes/sec`), displayed as `KB/s` or `MB/s` in accent color next to the progress label.
+- **Transfer direction**: each job row shows a `.job-route` line (`"local → host"` for uploads, `"host → local"` for downloads) in all 3 tabs — uses `job.remoteHost` for the server name and `job.direction` for the arrow side.
+- **Average speed (done tab only)**: computed in `avgSpeed(job)` as `job.size / (finishedAt − createdAt)` seconds; displayed next to the route with label `avgSuffix` (i18n: `"moy."` FR / `"avg."` EN).
 - `ColorPicker.svelte` stores last 8 applied colors in `localStorage` key `glideftp_color_history`; displayed as swatches above the footer; click to select.
