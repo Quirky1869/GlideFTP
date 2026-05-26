@@ -82,6 +82,8 @@ Two AppImage variants are provided — both are fully self-contained (no system 
 
 If you are unsure which one to pick, use the **Debian/Ubuntu** variant — it runs on the widest range of distributions.
 
+> **Check your GLIBC version:** `ldd --version` (first line shows the version number)
+
 ```bash
 # Debian/Ubuntu variant (recommended)
 chmod +x GlideFTP-Debian-x86_64.AppImage
@@ -259,6 +261,8 @@ Deux variantes d'AppImage sont disponibles — toutes deux sont entièrement aut
 | **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Manjaro, Fedora récente (GLIBC 2.38+) |
 
 En cas de doute, choisissez la variante **Debian/Ubuntu** — elle est compatible avec le plus grand nombre de distributions.
+
+> **Vérifier votre version de GLIBC :** `ldd --version` (la première ligne indique le numéro de version)
 
 ```bash
 # Variante Debian/Ubuntu (recommandée)
