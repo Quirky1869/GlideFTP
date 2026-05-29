@@ -27,9 +27,10 @@
   let promptPassword = '';
   let promptError = '';
   let showPwd = false;
+  let showFormPwd = false;
   let promptIsAdd = false;
 
-  // Paste context menu
+  // Paste context menu (password prompt overlay)
   let pasteMenu = null;
 
   function handlePwdContextMenu(e) {
@@ -42,6 +43,44 @@
     try {
       const text = await navigator.clipboard.readText();
       if (text) promptPassword = (promptPassword || '') + text;
+    } catch {}
+  }
+
+  // Form field context menu (cut / copy / paste)
+  let ctxMenu = null;
+
+  function handleCtxMenu(e, field, pasteOnly = false) {
+    e.preventDefault();
+    const el = e.target;
+    let selStart = 0, selEnd = 0, value = '';
+    try { selStart = el.selectionStart ?? 0; selEnd = el.selectionEnd ?? 0; } catch {}
+    try { value = el.value ?? ''; } catch {}
+    ctxMenu = { x: e.clientX, y: e.clientY, field, selStart, selEnd, value, pasteOnly };
+  }
+
+  async function ctxCopy() {
+    const { value, selStart, selEnd } = ctxMenu;
+    ctxMenu = null;
+    try { await navigator.clipboard.writeText(value.slice(selStart, selEnd)); } catch {}
+  }
+
+  async function ctxCut() {
+    const { field, value, selStart, selEnd } = ctxMenu;
+    ctxMenu = null;
+    try { await navigator.clipboard.writeText(value.slice(selStart, selEnd)); } catch {}
+    const newVal = value.slice(0, selStart) + value.slice(selEnd);
+    form = { ...form, [field]: field === 'port' ? (parseInt(newVal, 10) || 0) : newVal };
+  }
+
+  async function ctxPaste() {
+    const { field, value, selStart, selEnd } = ctxMenu;
+    ctxMenu = null;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const newVal = value.slice(0, selStart) + text + value.slice(selEnd);
+        form = { ...form, [field]: field === 'port' ? (parseInt(newVal, 10) || form.port) : newVal };
+      }
     } catch {}
   }
 
@@ -350,7 +389,7 @@
           <div class="form">
             <div class="form-row">
               <label>{$t('siteName')}</label>
-              <input type="text" bind:value={form.name} placeholder="Mon serveur FTP" />
+              <input type="text" bind:value={form.name} placeholder="Mon serveur FTP" on:contextmenu={(e) => handleCtxMenu(e, 'name')} />
             </div>
 
             <div class="form-row protocol-row">
@@ -367,11 +406,11 @@
             <div class="form-row-2">
               <div class="form-row">
                 <label>{$t('host_label')}</label>
-                <input type="text" bind:value={form.host} placeholder="ftp.example.com" />
+                <input type="text" bind:value={form.host} placeholder="ftp.example.com" on:contextmenu={(e) => handleCtxMenu(e, 'host')} />
               </div>
               <div class="form-row" style="width: 100px">
                 <label>{$t('port')}</label>
-                <input type="number" bind:value={form.port} min="1" max="65535" />
+                <input type="number" bind:value={form.port} min="1" max="65535" on:contextmenu={(e) => handleCtxMenu(e, 'port')} />
               </div>
             </div>
 
@@ -398,12 +437,25 @@
             {#if form.authType !== 'anonymous'}
               <div class="form-row">
                 <label>{$t('user')}</label>
-                <input type="text" bind:value={form.user} />
+                <input type="text" bind:value={form.user} on:contextmenu={(e) => handleCtxMenu(e, 'user')} />
               </div>
               {#if form.authType !== 'ask_password'}
                 <div class="form-row">
                   <label>{$t('password')}</label>
-                  <input type="password" bind:value={form.password} />
+                  <div class="pwd-input-wrap">
+                    {#if showFormPwd}
+                      <input class="pwd-input" type="text" bind:value={form.password} on:contextmenu={(e) => handleCtxMenu(e, 'password', true)} />
+                    {:else}
+                      <input class="pwd-input" type="password" bind:value={form.password} on:contextmenu={(e) => handleCtxMenu(e, 'password', true)} />
+                    {/if}
+                    <button type="button" class="eye-btn" on:click={() => showFormPwd = !showFormPwd} tabindex="-1">
+                      {#if showFormPwd}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      {:else}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      {/if}
+                    </button>
+                  </div>
                 </div>
               {/if}
             {/if}
@@ -412,7 +464,7 @@
               <div class="form-row">
                 <label>{$t('sshKey')}</label>
                 <div class="input-with-btn">
-                  <input type="text" bind:value={form.sshKeyPath} placeholder="/home/user/.ssh/id_rsa" />
+                  <input type="text" bind:value={form.sshKeyPath} placeholder="/home/user/.ssh/id_rsa" on:contextmenu={(e) => handleCtxMenu(e, 'sshKeyPath')} />
                   <button class="browse-btn" on:click={browseSshKey}>{$t('browse')}</button>
                 </div>
               </div>
@@ -420,13 +472,13 @@
 
             <div class="form-row">
               <label>{$t('remoteDir')}</label>
-              <input type="text" bind:value={form.remoteDir} placeholder="/" />
+              <input type="text" bind:value={form.remoteDir} placeholder="/" on:contextmenu={(e) => handleCtxMenu(e, 'remoteDir')} />
               <p class="field-hint">{$t('remoteDirHint')}</p>
             </div>
 
             <div class="form-row">
               <label>{$t('siteNote')}</label>
-              <textarea class="note-area" bind:value={form.note} rows="3" placeholder="..."></textarea>
+              <textarea class="note-area" bind:value={form.note} rows="3" placeholder="..." on:contextmenu={(e) => handleCtxMenu(e, 'note')}></textarea>
             </div>
 
             <div class="form-actions">
@@ -489,9 +541,24 @@
   </div>
 </div>
 
-<svelte:window on:click={() => pasteMenu = null} />
+<svelte:window on:click={() => { pasteMenu = null; ctxMenu = null; }} />
 
-<!-- Paste context menu -->
+<!-- Form field context menu (cut / copy / paste) -->
+{#if ctxMenu}
+  <div
+    class="paste-ctx-menu"
+    style="left: {ctxMenu.x}px; top: {ctxMenu.y}px"
+    on:click|stopPropagation
+  >
+    {#if !ctxMenu.pasteOnly && ctxMenu.selStart !== ctxMenu.selEnd}
+      <button on:click={ctxCut}>{$t('cut')}</button>
+      <button on:click={ctxCopy}>{$t('copy')}</button>
+    {/if}
+    <button on:click={ctxPaste}>{$t('paste')}</button>
+  </div>
+{/if}
+
+<!-- Paste context menu (password prompt overlay) -->
 {#if pasteMenu}
   <div
     class="paste-ctx-menu"

@@ -116,6 +116,8 @@ export default {
   // Ask password prompt
   passwordPromptTitle: 'Password required',
   passwordPromptLabel: 'Password for',
+  cut: 'Cut',
+  copy: 'Copy',
   paste: 'Paste',
 
   // Export / import

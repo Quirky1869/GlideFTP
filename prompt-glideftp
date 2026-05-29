@@ -235,4 +235,8 @@ Si l'utilisateur clique en dehors des input alors la fonction connexion rapide s
 
 60 = J'ai vu que dans "gérer les sites" il n'y avait pas moyen de dupliquer un site, j'aimerais rajouter un bouton dupliquer à l'emplacement qui est indiqué par une fleche rouge sur le screen ./_images/issues/issue-25.png
 
+61 = J'ai vu que dans "Gérer les sites" quand on est sur un site et qu'on rentre les informations dans les inputs les clic droits ne fonctionne pas
+Il faudrait que ces inpu est la possibilité de faire un couper/copier/coller quand on fait un clique droit dans les inputs "Nom du site", "Hote", "Port", "Utlisateur", "Repertoire distant par defaut", "Note", "Clé SSH"
+Pour l'input "Mot de passe" il faut seulement que l'option coller soit disponible
 
+62 = Dans gérer les sites quand on modifie les info dans les input pour un site, dans l'input "mot de passe" on n'a pas d'oeil pour regarger/controler son mdp

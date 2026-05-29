@@ -1453,3 +1453,90 @@ site since there is nothing to clone.
 
 i18n: `duplicateSite` key added to both `en.js` (`'Duplicate'`) and
 `fr.js` (`'Dupliquer'`).
+
+---
+
+#61
+Title: [Feature] Right-click context menu (cut/copy/paste) on Site Manager form inputs
+Labels: enhancement, ui
+Version fixed: v1.7.3
+Description:
+WebKit-GTK suppresses the native browser context menu inside the WebView.
+In the Site Manager form, right-clicking any input field does nothing — there is
+no way to cut, copy, or paste text using the mouse.
+
+Expected behaviour:
+- All text inputs (Site name, Host, Port, User, Default remote directory,
+  Note, SSH key path): right-click shows Cut / Copy / Paste.
+  Cut and Copy are only shown when text is selected.
+- Password input: right-click shows Paste only (to avoid exposing a stored
+  password via Copy or Cut).
+
+Solution (closing comment):
+Implemented in v1.7.3 in SiteManager.svelte.
+
+A `ctxMenu` state variable replaces the per-field approach:
+  `ctxMenu = { x, y, field, selStart, selEnd, value, pasteOnly }`
+
+`handleCtxMenu(e, field, pasteOnly = false)` is called via `on:contextmenu`
+on each form input. It captures the cursor/selection position from
+`el.selectionStart` / `el.selectionEnd` (wrapped in try-catch for
+`type="number"` inputs which throw on selection access in some engines),
+then stores the element value as a string snapshot.
+
+Three action functions:
+- `ctxCopy()`: writes `value.slice(selStart, selEnd)` to the clipboard via
+  `navigator.clipboard.writeText()`.
+- `ctxCut()`: same write + removes the selected range from `form[field]`.
+- `ctxPaste()`: reads the clipboard via `navigator.clipboard.readText()`,
+  inserts the text at the cursor position (replacing any selection).
+  For `field === 'port'`, the result is parsed with `parseInt()` to keep
+  `form.port` as a number.
+
+The menu HTML reuses the existing `.paste-ctx-menu` CSS class. Cut and Copy
+buttons are rendered only when `ctxMenu.selStart !== ctxMenu.selEnd`. The
+Paste button is always shown.
+
+`on:contextmenu` handlers added to:
+- `form.name` input → `handleCtxMenu(e, 'name')`
+- `form.host` input → `handleCtxMenu(e, 'host')`
+- `form.port` input → `handleCtxMenu(e, 'port')`
+- `form.user` input → `handleCtxMenu(e, 'user')`
+- `form.password` input → `handleCtxMenu(e, 'password', true)` (paste only)
+- `form.sshKeyPath` input → `handleCtxMenu(e, 'sshKeyPath')`
+- `form.remoteDir` input → `handleCtxMenu(e, 'remoteDir')`
+- `form.note` textarea → `handleCtxMenu(e, 'note')`
+
+`<svelte:window on:click>` updated to reset both `pasteMenu` and `ctxMenu`.
+
+i18n: `cut` and `copy` keys added to both `en.js` and `fr.js`.
+The existing `paste` key is reused.
+
+---
+
+#62
+Title: [Feature] Password visibility toggle (eye icon) on the Site Manager form password field
+Labels: enhancement, ui
+Version fixed: v1.7.3
+Description:
+In the Site Manager form, when editing a saved site, the "Password" input has no
+eye icon to reveal/hide the typed password. Users cannot verify what they have
+typed before saving.
+(The ask-password prompt overlay already has this toggle — issue #29.)
+
+Solution (closing comment):
+Implemented in v1.7.3 in SiteManager.svelte.
+
+A `showFormPwd` boolean state variable was added (separate from `showPwd` which
+controls the ask-password prompt overlay).
+
+The single `<input type="password">` was replaced with a `.pwd-input-wrap` div
+containing two inputs in an `{#if}/{:else}` block — one `type="text"` and one
+`type="password"`, both bound to `form.password` — and an `.eye-btn` that
+toggles `showFormPwd`. The `{#if}/{:else}` pattern is required because Svelte 3
+does not allow a dynamic `type` attribute on a two-way-bound input (WebKit-GTK
+pattern, see CLAUDE.md).
+
+The existing `.pwd-input-wrap`, `.pwd-input`, and `.eye-btn` CSS classes are
+reused directly — no new styles needed. The `on:contextmenu` paste-only handler
+from issue #61 is preserved on both input variants.

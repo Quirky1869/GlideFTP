@@ -106,7 +106,7 @@ GlideFTP/
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
         ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.3" string on each release
-        ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
+        ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect/duplicate saved sites; form inputs have right-click cut/copy/paste menu; password field has eye toggle
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```
 
@@ -129,6 +129,9 @@ GlideFTP/
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
 - **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container — `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, both confirm boxes in `FileBrowser`, and the quick-connect keep-or-replace dialog in `ConnectionBar`. Tab/Shift+Tab cycle only within the active popup.
+- **Duplicate site** (`SiteManager.svelte`): `duplicateSite()` clones the current `form` with `name + ' (copie)'` and calls `CreateSite`. Button rendered in `.form-actions` with `margin-left: auto` (pushed right), only visible when `selectedSite` is set (not on new-site creation). i18n key: `duplicateSite`.
+- **SiteManager form right-click menus**: `ctxMenu = { x, y, field, selStart, selEnd, value, pasteOnly }` captures cursor state on `on:contextmenu`. All text inputs and textarea get cut/copy/paste; password input gets paste-only (`pasteOnly = true`). `field === 'port'` result is passed through `parseInt()` to keep `form.port` as a number. i18n keys: `cut`, `copy`, `paste`.
+- **SiteManager form password eye toggle**: `showFormPwd` boolean (separate from `showPwd` for the ask-password overlay). Uses the `{#if}/{:else}` two-input pattern (WebKit-GTK pattern #3). Reuses `.pwd-input-wrap`, `.pwd-input`, `.eye-btn` CSS classes.
 - **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode — all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` — safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` — no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
 
 ## WebKit-GTK UI Patterns (Linux)
@@ -143,7 +146,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 4. **Ctrl+Z (undo) in inputs** — WebKit-GTK does not fire native undo in Svelte-bound inputs. Fixed globally in `App.svelte` `handleKeydown`: intercept `Ctrl+Z` on `INPUT`/`TEXTAREA`, call `document.execCommand('undo')`, then dispatch a synthetic `input` event so Svelte re-syncs its variable.
 
-5. **Right-click context menu in inputs** — WebKit-GTK disables the native context menu in the WebView. Implement a custom paste menu via `on:contextmenu` + `navigator.clipboard.readText()`. See `SiteManager.svelte` password prompt for reference.
+5. **Right-click context menu in inputs** — WebKit-GTK disables the native context menu in the WebView. Implement a custom menu via `on:contextmenu`. For **cut/copy**: snapshot `selectionStart`/`selectionEnd`/`value` at right-click time (try-catch required for `type="number"`), then write selected text with `navigator.clipboard.writeText()`. For **paste**: `navigator.clipboard.readText()` inserted at the saved cursor position. Cut/Copy buttons only shown when `selStart !== selEnd`. See `SiteManager.svelte` `handleCtxMenu` / `ctxCut` / `ctxCopy` / `ctxPaste` for the full pattern; password prompt overlay uses the simpler paste-only `pasteMenu` / `doPaste`.
 
 ## FileBrowser Features
 
