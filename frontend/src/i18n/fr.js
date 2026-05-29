@@ -48,6 +48,7 @@ export default {
   savedSites: 'Sites enregistrés',
   newSite: 'Nouveau site',
   editSite: 'Modifier le site',
+  duplicateSite: 'Dupliquer',
   siteName: 'Nom du site',
   host_label: 'Hôte',
   encryption: 'Chiffrement',

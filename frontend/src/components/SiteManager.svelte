@@ -132,6 +132,12 @@
     await loadSites();
   }
 
+  async function duplicateSite() {
+    const copy = { ...form, name: form.name + ' (copie)' };
+    await CreateSite(copy);
+    await loadSites();
+  }
+
   function siteConfig(site) {
     return { protocol: site.protocol, host: site.host, port: site.port, user: site.user };
   }
@@ -426,6 +432,9 @@
             <div class="form-actions">
               <button class="btn-primary" on:click={saveSite}>{$t('save')}</button>
               <button class="btn-secondary" on:click={() => { editMode = false; form = emptyForm(); selectedSite = null; }}>{$t('close')}</button>
+              {#if selectedSite}
+                <button class="btn-secondary" style="margin-left: auto;" on:click={duplicateSite}>{$t('duplicateSite')}</button>
+              {/if}
             </div>
           </div>
 

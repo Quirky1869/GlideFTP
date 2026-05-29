@@ -209,7 +209,7 @@
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.2</span>
+    <span class="version-badge">v1.7.3</span>
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}

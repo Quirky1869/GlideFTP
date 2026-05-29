@@ -105,7 +105,7 @@ GlideFTP/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button + quick connect (↑/→ button)
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
-        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.2" string on each release
+        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.3" string on each release
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect saved sites
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```

@@ -1416,3 +1416,40 @@ escapes all parent `overflow: hidden` constraints.
 
 **i18n:** `quickConnect` key added to both `en.js` (`'Quick connect'`) and
 `fr.js` (`'Connexion rapide'`).
+
+---
+
+#60
+Title: [Feature] Duplicate site button in Site Manager
+Labels: enhancement, ui
+Version fixed: v1.7.3
+Description:
+In the Site Manager there is no way to duplicate an existing site. A "Duplicate"
+button would allow the user to quickly clone a site and edit only the fields that
+differ (e.g. a second server with the same credentials but a different host).
+Ref: _images/issues/issue-25.png
+
+Solution (closing comment):
+Implemented in v1.7.3 in SiteManager.svelte.
+
+A `duplicateSite()` function was added to the script:
+
+  async function duplicateSite() {
+    const copy = { ...form, name: form.name + ' (copie)' };
+    await CreateSite(copy);
+    await loadSites();
+  }
+
+It clones the current form fields (all values including protocol, host, port,
+auth type, SSH key, remote dir, note) and creates a new site whose name is the
+original name suffixed with " (copie)". The site list is reloaded immediately
+so the copy appears in the left panel.
+
+A "Dupliquer" / "Duplicate" button was added to the `.form-actions` row in
+`editMode`, after the existing "Fermer" / "Close" button, pushed to the far
+right with `margin-left: auto`. The button is only rendered when editing an
+existing site (`{#if selectedSite}`) — it is hidden when creating a brand-new
+site since there is nothing to clone.
+
+i18n: `duplicateSite` key added to both `en.js` (`'Duplicate'`) and
+`fr.js` (`'Dupliquer'`).

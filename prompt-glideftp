@@ -233,3 +233,6 @@ ATTENTION tant que l'utilisateur n'a pas cliquer une fois sur ce bouton la flèc
 Il faut toujours prendre en compte -> le pop-up qui demande si on interromt ou si on garde la connexion doit etre aussi présent
 Si l'utilisateur clique en dehors des input alors la fonction connexion rapide s'arrete -> les input redeviennent "bloqués" et rempli avec les informations de la connexion en cours, le bouton redevient la fleche vers le haut
 
+60 = J'ai vu que dans "gérer les sites" il n'y avait pas moyen de dupliquer un site, j'aimerais rajouter un bouton dupliquer à l'emplacement qui est indiqué par une fleche rouge sur le screen ./_images/issues/issue-25.png
+
+

@@ -48,6 +48,7 @@ export default {
   savedSites: 'Saved sites',
   newSite: 'New site',
   editSite: 'Edit site',
+  duplicateSite: 'Duplicate',
   siteName: 'Site name',
   host_label: 'Host',
   encryption: 'Encryption',

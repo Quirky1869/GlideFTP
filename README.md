@@ -45,11 +45,11 @@
 | File | Platform | Notes |
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Requires WebView2 (built into Windows 10/11) |
-| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` — see below |
-| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage — **Debian/Ubuntu** | **Recommended** — self-contained, Ubuntu 22.04+ / Debian 12+ / Arch |
-| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage — **Arch** | For Arch / Manjaro / modern Fedora |
+| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` - see below |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Debian/Ubuntu** | **Recommended** - self-contained, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Arch** | For Arch / modern Fedora |
 
-#### Linux — pre-built binary
+#### Linux - pre-built binary
 
 The raw Linux binary dynamically links against `libwebkit2gtk-4.1`. If it is not installed on your system, the binary will refuse to start with a *"cannot open shared object file"* error. Install it first:
 
@@ -71,16 +71,16 @@ chmod +x GlideFTP
 ./GlideFTP
 ```
 
-#### Linux — AppImage (recommended)
+#### Linux - AppImage (recommended)
 
-Two AppImage variants are provided — both are fully self-contained (no system library to install):
+Two AppImage variants are provided - both are fully self-contained (no system library to install):
 
 | Variant | File | Compatible with |
 |---|---|---|
 | **Debian/Ubuntu** ✓ recommended | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.*` | Ubuntu 22.04+, Debian 12+, Arch, and any distro with GLIBC 2.35+ |
-| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Manjaro, modern Fedora (GLIBC 2.38+) |
+| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, modern Fedora (GLIBC 2.43+) |
 
-If you are unsure which one to pick, use the **Debian/Ubuntu** variant — it runs on the widest range of distributions.
+If you are unsure which one to pick, use the **Debian/Ubuntu** variant - it runs on the widest range of distributions.
 
 > **Check your GLIBC version:** `ldd --version` (first line shows the version number)
 
@@ -138,7 +138,7 @@ cd GlideFTP
 ```
 
 > `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
-> `appimage-debian` requires **Docker** or **Podman** — builds inside an Ubuntu 22.04 container on first run (~10 min).
+> `appimage-debian` requires **Docker** or **Podman** - builds inside an Ubuntu 22.04 container on first run (~10 min).
 
 **Manual commands:**
 
@@ -159,10 +159,10 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 # Linux binary
 ./build/bin/linux/GlideFTP
 
-# Linux AppImage — Debian/Ubuntu variant (recommended)
+# Linux AppImage - Debian/Ubuntu variant (recommended)
 ./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 
-# Linux AppImage — Arch variant
+# Linux AppImage - Arch variant
 ./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 
 # Windows
@@ -225,11 +225,11 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 | Fichier | Plateforme | Notes |
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Nécessite WebView2 (intégré à Windows 10/11) |
-| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` — voir ci-dessous |
-| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux — **Debian/Ubuntu** | **Recommandé** — autonome, Ubuntu 22.04+ / Debian 12+ / Arch |
-| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux — **Arch** | Pour Arch / Manjaro / Fedora récente |
+| `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` - voir ci-dessous |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Debian/Ubuntu** | **Recommandé** - autonome, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Arch** | Pour Arch / Fedora récente |
 
-#### Linux — binaire pré-compilé
+#### Linux - binaire pré-compilé
 
 Le binaire Linux est lié dynamiquement à `libwebkit2gtk-4.1`. Si cette bibliothèque n'est pas installée sur votre système, le binaire refusera de démarrer avec une erreur *"cannot open shared object file"*. Installez-la d'abord :
 
@@ -251,16 +251,16 @@ chmod +x GlideFTP
 ./GlideFTP
 ```
 
-#### Linux — AppImage (recommandé)
+#### Linux - AppImage (recommandé)
 
-Deux variantes d'AppImage sont disponibles — toutes deux sont entièrement autonomes (aucune bibliothèque système à installer) :
+Deux variantes d'AppImage sont disponibles - toutes deux sont entièrement autonomes (aucune bibliothèque système à installer) :
 
 | Variante | Fichier | Compatible avec |
 |---|---|---|
 | **Debian/Ubuntu** ✓ recommandée | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.*` | Ubuntu 22.04+, Debian 12+, Arch, et toute distro avec GLIBC 2.35+ |
-| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Manjaro, Fedora récente (GLIBC 2.38+) |
+| **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, Fedora récente (GLIBC 2.43+) |
 
-En cas de doute, choisissez la variante **Debian/Ubuntu** — elle est compatible avec le plus grand nombre de distributions.
+En cas de doute, choisissez la variante **Debian/Ubuntu** - elle est compatible avec le plus grand nombre de distributions.  
 
 > **Vérifier votre version de GLIBC :** `ldd --version` (la première ligne indique le numéro de version)
 
@@ -318,7 +318,7 @@ cd GlideFTP
 ```
 
 > `appimage` nécessite `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  
-> `appimage-debian` nécessite **Docker** ou **Podman** — construit dans un container Ubuntu 22.04 au premier run (~10 min).
+> `appimage-debian` nécessite **Docker** ou **Podman** - construit dans un container Ubuntu 22.04 au premier run (~10 min).
 
 **Commandes manuelles :**  
 
@@ -339,10 +339,10 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 # Binaire Linux
 ./build/bin/linux/GlideFTP
 
-# AppImage Linux — variante Debian/Ubuntu (recommandée)
+# AppImage Linux - variante Debian/Ubuntu (recommandée)
 ./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 
-# AppImage Linux — variante Arch
+# AppImage Linux - variante Arch
 ./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 
 # Windows
