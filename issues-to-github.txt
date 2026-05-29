@@ -1540,3 +1540,22 @@ pattern, see CLAUDE.md).
 The existing `.pwd-input-wrap`, `.pwd-input`, and `.eye-btn` CSS classes are
 reused directly — no new styles needed. The `on:contextmenu` paste-only handler
 from issue #61 is preserved on both input variants.
+
+---
+
+#63
+Title: [UI] Site Manager action buttons (Connect, Edit, Delete) left-aligned instead of centered
+Labels: bug, ui
+Version fixed: v1.7.3
+Description:
+In the Site Manager detail panel, the three action buttons — "Connecter",
+"Modifier le site", and "Supprimer le site" — are left-aligned. They should be
+centered horizontally in the detail area.
+Ref: _images/issues/v1.7.3/issue-26.png
+
+Solution (closing comment):
+Fixed in v1.7.3 in SiteManager.svelte.
+
+Added `justify-content: center` to the `.view-actions` CSS rule:
+
+  .view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }

@@ -917,7 +917,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .copy-note-btn:hover { color: var(--accent); }
 .copy-note-btn svg { width: 14px; height: 14px; }
 
-.view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 .confirm-text { font-size: 12px; color: var(--danger); }
 
 .no-selection {

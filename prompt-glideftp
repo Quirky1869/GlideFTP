@@ -240,3 +240,6 @@ Il faudrait que ces inpu est la possibilité de faire un couper/copier/coller qu
 Pour l'input "Mot de passe" il faut seulement que l'option coller soit disponible
 
 62 = Dans gérer les sites quand on modifie les info dans les input pour un site, dans l'input "mot de passe" on n'a pas d'oeil pour regarger/controler son mdp
+
+63 = Recentrer les 3 icônes dans gérer les sites -> Connecter , modifier et supprimer il faut qu'il soit centré, il sont actuelleemnt à gauche 
+

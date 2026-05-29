@@ -8,6 +8,8 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 
 Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemple.png`.
 
+Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.3 in progress, screenshots are in `./_images/issues/v1.7.3/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
+
 ## Build & Run
 
 ```bash
@@ -132,6 +134,7 @@ GlideFTP/
 - **Duplicate site** (`SiteManager.svelte`): `duplicateSite()` clones the current `form` with `name + ' (copie)'` and calls `CreateSite`. Button rendered in `.form-actions` with `margin-left: auto` (pushed right), only visible when `selectedSite` is set (not on new-site creation). i18n key: `duplicateSite`.
 - **SiteManager form right-click menus**: `ctxMenu = { x, y, field, selStart, selEnd, value, pasteOnly }` captures cursor state on `on:contextmenu`. All text inputs and textarea get cut/copy/paste; password input gets paste-only (`pasteOnly = true`). `field === 'port'` result is passed through `parseInt()` to keep `form.port` as a number. i18n keys: `cut`, `copy`, `paste`.
 - **SiteManager form password eye toggle**: `showFormPwd` boolean (separate from `showPwd` for the ask-password overlay). Uses the `{#if}/{:else}` two-input pattern (WebKit-GTK pattern #3). Reuses `.pwd-input-wrap`, `.pwd-input`, `.eye-btn` CSS classes.
+- **SiteManager action buttons centered**: `.view-actions` has `justify-content: center` — Connect / Edit / Delete buttons are horizontally centered in the detail panel.
 - **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode — all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` — safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` — no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
 
 ## WebKit-GTK UI Patterns (Linux)
