@@ -157,11 +157,11 @@ cd GlideFTP
 **Using the build script (recommended):**
 
 ```bash
-./build.sh                  # all: Linux binary + Windows exe + Arch AppImage + Debian AppImage
-./build.sh linux            # Linux binary only    → build/bin/linux/GlideFTP
-./build.sh windows          # Windows exe only     → build/bin/windows/GlideFTP.exe
-./build.sh appimage-arch    # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                  # all: Linux binary + Windows exe + Arch AppImage + Debian AppImage
+./make.sh linux            # Linux binary only    → build/bin/linux/GlideFTP
+./make.sh windows          # Windows exe only     → build/bin/windows/GlideFTP.exe
+./make.sh appimage-arch    # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 
 > `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
@@ -364,11 +364,11 @@ cd GlideFTP
 **Via le script de build (recommandé) :**  
 
 ```bash
-./build.sh                  # tout : binaire Linux + exe Windows + AppImage Arch + AppImage Debian
-./build.sh linux            # Linux seulement       → build/bin/linux/GlideFTP
-./build.sh windows          # Windows seulement     → build/bin/windows/GlideFTP.exe
-./build.sh appimage-arch    # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./build.sh appimage-debian  # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                  # tout : binaire Linux + exe Windows + AppImage Arch + AppImage Debian
+./make.sh linux            # Linux seulement       → build/bin/linux/GlideFTP
+./make.sh windows          # Windows seulement     → build/bin/windows/GlideFTP.exe
+./make.sh appimage-arch    # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian  # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ```
 
 > `appimage` nécessite `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  

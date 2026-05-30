@@ -14,12 +14,12 @@ Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}`
 
 ```bash
 # Recommended - use the build script at project root
-./build.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
-./build.sh linux            # Linux only             → build/bin/linux/GlideFTP
-./build.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
-./build.sh appimage         # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
-./build.sh appimage-arch    # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
+./make.sh linux            # Linux only             → build/bin/linux/GlideFTP
+./make.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
+./make.sh appimage         # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
+./make.sh appimage-arch    # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 #   appimage-debian uses Docker (requires docker or podman); first run builds Ubuntu 22.04 image (~10 min)
 #   Arch AppImage:   linuxdeploy bundles Arch libs; requires GLIBC 2.38+ on target
 #   Debian AppImage: built in Ubuntu 22.04 container; bundles Ubuntu libs; requires GLIBC 2.35+ (Ubuntu 22.04+/Debian 12+/Arch)
@@ -67,7 +67,7 @@ cd frontend && npm install && npm run build
 ```bash
 magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/windows/icon.ico
 ```
-`build.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` - `sudo pacman -S imagemagick`).
+`make.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` - `sudo pacman -S imagemagick`).
 
 ## Architecture
 

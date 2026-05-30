@@ -1625,3 +1625,38 @@ Arch users on minimal setups may not have gnome-keyring or kwallet installed.
 A README.md is included in the Arch AppImage archive with check and install
 commands. If no keyring daemon is running, the banner guides the user to use
 "Ask password" auth instead.
+
+---
+
+#65
+Title: [UX] No visual feedback when clicking Connect in the Site Manager
+Labels: enhancement, ui
+Version fixed: v1.7.3
+Description:
+When the user clicks "Connect" in the Site Manager on a saved site, the background
+grays out slightly but the modal itself does not change. On a slow connection this
+leaves no visible indication that the click was registered, causing the user to
+wonder whether the action started or the application froze.
+User feedback: re-clicking triggered an "already connected" error.
+
+Solution (closing comment):
+Implemented in v1.7.3 in SiteManager.svelte.
+
+A `connecting` boolean state variable was added. All four connection paths set it
+to `true` before the async call and reset it in a `finally` block:
+- `connectToSite()` - direct connect (normal auth)
+- `doKeepAndAdd()` - keep existing + open new tab (duplicate and non-duplicate paths)
+- `doReplace()` - replace current connection
+- `confirmPasswordConnect()` - ask_password prompt confirm button
+
+While `connecting` is true:
+- The Connect button (site detail panel) is disabled and shows a spinning arc SVG
+  + the existing `connecting` i18n key ("Connexion..." / "Connecting...").
+- The Keep / Replace buttons in the keep-or-replace overlay are both disabled and
+  show the same spinner + text.
+- The Connect button in the password prompt overlay is disabled and shows the
+  spinner; the Cancel button is also disabled to prevent mid-connection dismissal.
+
+CSS: `@keyframes btn-spin` (360deg, 0.75s linear) applied via `.btn-spinner` class
+on a 14x14 SVG arc icon. No layout shift - the spinner replaces the arrow icon at
+the same size.

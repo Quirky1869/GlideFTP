@@ -244,3 +244,16 @@ Pour l'input "Mot de passe" il faut seulement que l'option coller soit disponibl
 63 = Recentrer les 3 icônes dans gérer les sites -> Connecter , modifier et supprimer il faut qu'il soit centré, il sont actuelleemnt à gauche 
 
 64 = Il faut trouver un moyen de chiffrer les mot de passe pour ne pas qu'il soit en clair (keyring et/ou kwallet)
+
+65 = j'ai eu un retour de la part d'un pote dev qui me dit ceci : ca m'as permis de voir un truc, c'est vraiment un detail 
+Quand tu fais manage sites -> ton site -> connect
+le fond se grise, mais c'est a peine visible, et le modal de "manage sites" ne change absolument pas 
+du coup ca laisse le doute a l'utilisateur si il a bien cliqué ou non, si ca a planté ou non
+Et comme la 
+jsuis dans le train, la connexion est mauvaise
+j'ai eu un doute j'ai recliqué
+Bon t'as une érreur qui te dit que y'a déja une connexion en cours
+et ca c'est bien
+Mais pour éviter le doute, soit le griser soit mettre un loading screen (truc qui tourne par dessus ou un truc dans le genre) 
+C'est pas con
+Pense tu qu'on peut implémenter un loading screen comme il l'a indiqué ?

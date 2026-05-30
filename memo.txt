@@ -47,12 +47,12 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows \
 sudo pacman -S mingw-w64-gcc
 
 # Script tout-en-un — voir build.sh à la racine
-./build.sh                  # compile tout : Linux + Windows + Arch AppImage + Debian AppImage
-./build.sh linux            # Linux seulement        → build/bin/linux/GlideFTP
-./build.sh windows          # Windows seulement      → build/bin/windows/GlideFTP.exe
-./build.sh appimage         # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./build.sh appimage-arch    # idem que appimage
-./build.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                  # compile tout : Linux + Windows + Arch AppImage + Debian AppImage
+./make.sh linux            # Linux seulement        → build/bin/linux/GlideFTP
+./make.sh windows          # Windows seulement      → build/bin/windows/GlideFTP.exe
+./make.sh appimage         # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-arch    # idem que appimage
+./make.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 # Arch AppImage    : télécharge linuxdeploy dans tools/ au premier run (gitignored)
 #                    Nécessite imagemagick (magick) ; NO_STRIP=1 pour les libs Arch modernes
 # Debian AppImage  : construit dans un container Ubuntu 22.04 via docker/Dockerfile.appimage

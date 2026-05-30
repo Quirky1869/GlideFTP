@@ -32,6 +32,9 @@
   let importPassphraseError = '';
   let showImportPwd = false;
 
+  // Connection loading state
+  let connecting = false;
+
   // Keep-or-replace dialog (shown when already connected)
   let showKeepOrReplace = false;
   let pendingSiteId = null;
@@ -219,12 +222,15 @@
       showPasswordPrompt = true;
       return;
     }
+    connecting = true;
     try {
       await connectBySite(id, siteConfig(site));
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
       alert(e?.toString() || 'Connection failed');
+    } finally {
+      connecting = false;
     }
   }
 
@@ -252,22 +258,28 @@
     }
 
     if (isDuplicate) {
+      connecting = true;
       try {
         await connectBySite(pendingSiteId, pendingConfig);
         await refreshRemote(site?.remoteDir || '/');
         onClose();
       } catch (e) {
         alert(e?.toString() || 'Connection failed');
+      } finally {
+        connecting = false;
       }
       return;
     }
 
+    connecting = true;
     try {
       await addConnection(pendingSiteId, '');
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
       alert(e?.toString() || 'Connection failed');
+    } finally {
+      connecting = false;
     }
   }
 
@@ -283,18 +295,22 @@
       showPasswordPrompt = true;
       return;
     }
+    connecting = true;
     try {
       await connectBySite(pendingSiteId, pendingConfig);
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
       alert(e?.toString() || 'Connection failed');
+    } finally {
+      connecting = false;
     }
   }
 
   async function confirmPasswordConnect() {
     promptError = '';
     const site = sites.find(s => s.id === promptSiteId);
+    connecting = true;
     try {
       if (promptIsAdd) {
         await addConnection(promptSiteId, promptPassword);
@@ -306,6 +322,8 @@
       onClose();
     } catch (e) {
       promptError = e?.toString() || 'Connection failed';
+    } finally {
+      connecting = false;
     }
   }
 
@@ -596,9 +614,14 @@
               {/if}
             </div>
             <div class="view-actions">
-              <button class="btn-primary" on:click={() => connectToSite(selectedSite.id)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                {$t('connect')}
+              <button class="btn-primary" on:click={() => connectToSite(selectedSite.id)} disabled={connecting}>
+                {#if connecting}
+                  <svg class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                  {$t('connecting')}
+                {:else}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  {$t('connect')}
+                {/if}
               </button>
               <button class="btn-secondary" on:click={() => { editMode = true; }}>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -781,17 +804,27 @@
         <button
           class="btn-primary"
           style="width: 100%; justify-content: center;"
-          disabled={!canAddConnection}
+          disabled={!canAddConnection || connecting}
           title={!canAddConnection ? $t('maxConnectionsReached') : ''}
           on:click={doKeepAndAdd}
         >
-          {$t('keepConnection')}
-          {#if !canAddConnection}
-            <span style="font-size: 11px; opacity: 0.7; margin-left: 4px;">({$t('maxConnectionsReached')})</span>
+          {#if connecting}
+            <svg class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            {$t('connecting')}
+          {:else}
+            {$t('keepConnection')}
+            {#if !canAddConnection}
+              <span style="font-size: 11px; opacity: 0.7; margin-left: 4px;">({$t('maxConnectionsReached')})</span>
+            {/if}
           {/if}
         </button>
-        <button class="btn-secondary" style="width: 100%; justify-content: center;" on:click={doReplace}>
-          {$t('replaceConnection')}
+        <button class="btn-secondary" style="width: 100%; justify-content: center;" disabled={connecting} on:click={doReplace}>
+          {#if connecting}
+            <svg class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            {$t('connecting')}
+          {:else}
+            {$t('replaceConnection')}
+          {/if}
         </button>
         <button class="btn-secondary" style="width: 100%; justify-content: center;" on:click={() => showKeepOrReplace = false}>
           {$t('cancel')}
@@ -840,8 +873,15 @@
         <div class="pwd-error">{promptError}</div>
       {/if}
       <div class="pwd-actions">
-        <button class="btn-primary" on:click={confirmPasswordConnect}>{$t('connect')}</button>
-        <button class="btn-secondary" on:click={() => showPasswordPrompt = false}>{$t('cancel')}</button>
+        <button class="btn-primary" on:click={confirmPasswordConnect} disabled={connecting}>
+          {#if connecting}
+            <svg class="btn-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            {$t('connecting')}
+          {:else}
+            {$t('connect')}
+          {/if}
+        </button>
+        <button class="btn-secondary" on:click={() => showPasswordPrompt = false} disabled={connecting}>{$t('cancel')}</button>
       </div>
     </div>
   </div>
@@ -1195,6 +1235,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .pwd-error { font-size: 12px; color: var(--danger); }
 
 .pwd-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── Connect button spinner ── */
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+.btn-spinner {
+  width: 14px; height: 14px;
+  animation: btn-spin 0.75s linear infinite;
+  transform-origin: center;
+  flex-shrink: 0;
+}
 
 /* ── Keyring warning banner ── */
 .keyring-warning {
