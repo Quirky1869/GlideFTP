@@ -1784,3 +1784,47 @@ color + subtle background when in tree mode.
 **i18n:**
 - `treeView`: `'Tree view'` (EN) / `'Vue arborescente'` (FR).
 - `listView`: `'List view'` (EN) / `'Vue liste'` (FR).
+
+---
+
+#68
+Title: [Bug] "Clear" button in the Failed tab of the transfer queue has no effect
+Labels: bug
+Version fixed: v1.7.4
+Description:
+Clicking the "Clear" (Vider) button in the "Failed" tab of the transfer queue
+does not remove the entries from the list. The button appears to do nothing.
+The same button works correctly in the "Successful" tab.
+
+Root cause:
+The Failed tab displays jobs with status `failed` OR `cancelled` (cancelled
+transfers are grouped with failed ones in the UI):
+
+  $: failed = $transfers.filter(j => j.status === 'failed' || j.status === 'cancelled');
+
+However the "Clear" button only called `clearTransfers('failed')`, which maps
+to `queue.Clear(StatusFailed)` on the Go side. This removes only jobs whose
+status is exactly `"failed"`. Jobs with status `"cancelled"` are left untouched.
+
+When a user cancels a transfer (via the Cancel button), its status becomes
+`"cancelled"`. If the Failed tab contains only cancelled jobs (or a mix where
+the failed ones are cleared but cancelled ones remain), the list appears
+unchanged after clicking Clear.
+
+Solution (closing comment):
+Fixed in v1.7.4 in TransferQueue.svelte.
+
+The "Clear" button handler for the Failed tab now calls `clearTransfers` twice,
+once per status:
+
+  if (activeTab === 'failed') {
+    clearTransfers('failed');
+    clearTransfers('cancelled');
+  } else {
+    clearTransfers('done');
+  }
+
+Each call triggers a separate `ClearTransfers` binding → `queue.Clear()` on the
+Go side → emits `transfer:cleared` with the corresponding status → the frontend
+event handler filters out all matching jobs from the store.
+Both calls are fast in-memory operations with no network involvement.

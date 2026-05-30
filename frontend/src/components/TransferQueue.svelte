@@ -104,7 +104,10 @@
     </div>
     <div class="queue-actions">
       {#if activeTab !== 'pending' && currentList.length > 0}
-        <button class="small-btn" on:click={() => clearTransfers(activeTab === 'failed' ? 'failed' : 'done')}>
+        <button class="small-btn" on:click={() => {
+          if (activeTab === 'failed') { clearTransfers('failed'); clearTransfers('cancelled'); }
+          else clearTransfers('done');
+        }}>
           {$t('clear')}
         </button>
       {/if}

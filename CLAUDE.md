@@ -8,7 +8,7 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 
 Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemple.png`.
 
-Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.3 in progress, screenshots are in `./_images/issues/v1.7.3/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
+Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.4 in progress, screenshots are in `./_images/issues/v1.7.4/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
 ## Build & Run
 
@@ -94,7 +94,7 @@ GlideFTP/
 │   ├── crypto/
 │   │   └── crypto.go              # .gfe encrypted export format: Argon2id(passphrase,salt) → AES-256-GCM; Encrypt/Decrypt/IsEncrypted
 │   ├── settings/
-│   │   └── settings.go            # App settings - persisted to ~/.config/GlideFTP/settings.json (includes MaxConnections)
+│   │   └── settings.go            # App settings - persisted to ~/.config/GlideFTP/settings.json (includes MaxConnections, ConnectCardShadow)
 │   └── fs/
 │       └── local.go               # Local filesystem helpers (ListDir, MkDir, Delete, Rename)
 └── frontend/src/
@@ -177,6 +177,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` - if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array. Drag-drop from the OS file manager is not supported (WebKit-GTK does not expose OS drag sources to JS).
 - **Conflict resolution**: `conflictState` is a two-mode state machine - `null` (no dialog), `{ mode:'choose', conflicts:[] }` (4-button dialog: Replace / Rename on host / Rename on server / Cancel), `{ mode:'rename', entry, remaining:[], inputVal:'', index, total }` (rename input step). `checkConflicts()` compares names against `otherEntries` (case-insensitive). Non-conflicting files in the same selection are queued immediately. For multi-file rename, the wizard advances one file at a time (`advanceRename`); a `1/N` counter is shown and the input re-mounts per file via `{#key conflictState.index}` to trigger `autofocus`. Drag-drop bypasses conflict detection.
 - **Refresh animation**: `handleRefresh()` sets `refreshing = true`, awaits `Promise.all([onRefresh(), 500ms])` to guarantee a full spin, then resets. CSS `@keyframes spin-once` rotates the SVG 360° in 0.5s; `class:spinning={refreshing}` applies it. Multiple rapid clicks ignored while refreshing.
+- **Tree view**: toggle button to the left of the refresh button switches the panel between list view and tree view (`treeMode` boolean, independent per panel, resets to `false` on disconnect). In tree mode the file-list is replaced by `.tree-list`. State: `treeNodes` (flat array `{path, name, depth, isDir, size, modTime, expanded, loading, leaf}`), `treeLoaded` Set + `treeChildrenMap` object (lazy-load cache keyed by dir path), `treeSelected` (path of selected file). `enterTreeMode()` resets all state, loads `/` via `fetchDirChildren('/')`, then calls `autoExpandToPath(path)` to pre-expand all ancestors of the current path. `expandTreeNode(idx)` inserts child nodes after the parent in the flat array and marks `leaf:true` if no children. `collapseTreeNode(idx)` removes all descendants (nodes with depth > parent depth). Dir rows: click → `onNavigate()`; toggle arrow → expand/collapse. File rows: single click → `treeSelected` (accent highlight + transfer button visible); double-click → `transferTreeFile()` which queues upload/download to `otherPath`. Transfer arrow button visible on hover (opacity 0→1). `fetchDirChildren` returns dirs first then files, both sorted alphabetically.
 
 ## App.svelte Layout
 
@@ -204,7 +205,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 | `activeConnectionConfig` | connection.js | Writable; set on every connect with `{ protocol, host, port, user }`; used by `ConnectionBar` to show real values when connected |
 | `initLocalDir(startDir?)` | connection.js | Initializes local panel; pass `defaultLocalDir` from settings on startup |
 | `loadSettings()` | settings.js | Returns the loaded settings object (in addition to updating the store) |
-| `applyAccentColor(hex)` | settings.js | Sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars; called on load and save |
+| `applyAccentColor(hex)` | settings.js | Sets `--accent`, `--accent-hover`, `--accent-subtle`, `--accent-glow` CSS vars; called on load and save |
 
 ## Go Backend Notes
 
@@ -237,7 +238,8 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 - Speed is computed in `TransferQueue.svelte` from deltas of `bytesDone` between store updates (250 ms window minimum to avoid noise). Stored in `speeds` map (`id → bytes/sec`), displayed as `KB/s` or `MB/s` in accent color next to the progress label.
 - **Transfer direction**: each job row shows a `.job-route` line (`"local → host"` for uploads, `"host → local"` for downloads) in all 3 tabs - uses `job.remoteHost` for the server name and `job.direction` for the arrow side.
-- **Average speed (done tab only)**: computed in `avgSpeed(job)` as `job.size / (finishedAt − createdAt)` seconds; displayed next to the route with label `avgSuffix` (i18n: `"moy."` FR / `"avg."` EN).
+- **Average speed (done tab only)**: computed in `avgSpeed(job)` as `job.size / (finishedAt - createdAt)` seconds; displayed next to the route with label `avgSuffix` (i18n: `"moy."` FR / `"avg."` EN).
+- **Clear button (failed tab)**: the "Échoués" tab groups `status === 'failed'` AND `status === 'cancelled'` jobs. The "Vider" button calls `clearTransfers('failed')` then `clearTransfers('cancelled')` to remove both - calling only `'failed'` left cancelled jobs behind.
 - `ColorPicker.svelte` stores last 8 applied colors in `localStorage` key `glideftp_color_history`; displayed as swatches above the footer; click to select.
 
 ## Text & Naming Conventions

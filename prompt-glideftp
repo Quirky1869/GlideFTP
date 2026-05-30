@@ -265,3 +265,20 @@ ______
 66 = Ajouter une shadow box sur lecran principale autour du rectangle de connexion (le shadown bow doit etre à l'exterieur bas et droite avec la couleur d'accentuation) il doit y avoir un parametre qui permet d'activer ou désactiver ce shadow box dans les parametres, dans "l'onglet" interface (par defaut mettre sur off)
 
 67 = Ajout d'un vue arborescence du pc et du serveur distant
+
+68 = Le bouton "vider" dans la file d'attente dans echoués ne fonctionne pas alors que sur "reussis" oui
+
+69 = Faire en sorte sur Linux de lancer l'application autre que par un prompt
+Option 1 - La plus simple : fichier .desktop + script d'install
+Un fichier .desktop (standard freedesktop.org) suffit pour apparaître dans les lanceurs (GNOME, KDE, etc.). Un script install.sh copie l'AppImage + l'icône + le .desktop dans ~/.local/ — sans sudo, fonctionne sur les 3 distros :
+~/.local/bin/GlideFTP.AppImage
+~/.local/share/icons/GlideFTP.png
+~/.local/share/applications/GlideFTP.desktop
+C'est 20-30 lignes de bash. L'appli apparaît dans le menu application immédiatement.
+
+Option 2 - Packages natifs (plus professionnel)
+- Debian/Ubuntu → .deb via dpkg-deb ou fpm
+- Arch → PKGBUILD publié sur l'AUR
+- Fedora/RHEL → .rpm via rpmbuild ou fpm
+
+L'outil fpm (Effing Package Management) permet de générer les 3 formats depuis une seule endre les 3 systèmes de packaging.
