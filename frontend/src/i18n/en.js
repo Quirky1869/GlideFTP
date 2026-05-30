@@ -103,6 +103,8 @@ export default {
   autoReconnect: 'Auto-reconnect',
   interface: 'Interface',
   connectCardShadow: 'Connection card accent shadow',
+  treeView: 'Tree view',
+  listView: 'List view',
   showHiddenFiles: 'Show hidden files',
   confirmOnDelete: 'Confirm before deleting',
   dateFormat: 'Date format',

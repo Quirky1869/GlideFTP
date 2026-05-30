@@ -15,7 +15,7 @@
 - **Dark & Light themes** - dark by default, switchable in settings
 - **Custom accent color** - full RGB/HEX color picker to personalize the interface
 - **English & French interface** - English by default, switchable in settings
-- **Dual-panel file browser** - local files on the left, remote files on the right
+- **Dual-panel file browser** - local files on the left, remote files on the right; toggle per panel between flat list view and hierarchical tree view (lazy-loaded, files visible with size indicator; double-click or arrow button to transfer)
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
 - **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
@@ -222,7 +222,7 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **Thèmes sombre & clair** - sombre par défaut, modifiable dans les paramètres
 - **Couleur d'accentuation personnalisable** - sélecteur de couleur RGB/HEX pour personnaliser l'interface
 - **Interface en anglais & français** - anglais par défaut, modifiable dans les paramètres
-- **Explorateur double panneau** - fichiers locaux à gauche, fichiers distants à droite
+- **Explorateur double panneau** - fichiers locaux à gauche, fichiers distants à droite ; basculez par panneau entre la vue liste et une vue arborescente hiérarchique (chargement paresseux, fichiers visibles avec indicateur de taille ; double-clic ou bouton flèche pour transférer)
 - **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
 - **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
 - **Onglets multi-connexion** - ouvrez plusieurs serveurs simultanément ; des onglets style navigateur apparaissent entre la barre d'outils et les panneaux de fichiers ; limite configurable (1 à 5) dans les paramètres

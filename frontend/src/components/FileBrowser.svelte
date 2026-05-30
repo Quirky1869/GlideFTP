@@ -486,6 +486,106 @@
     }
   }
 
+  // ── Tree view ─────────────────────────────────────────────────────────────
+
+  let treeMode = false;
+  let treeNodes = [];      // [{path, name, depth, expanded, loading, leaf}]
+  let treeLoaded = new Set();
+  let treeChildrenMap = {};
+  let treeSelected = null;
+
+  async function fetchDirChildren(dirPath) {
+    if (treeLoaded.has(dirPath)) return treeChildrenMap[dirPath] || [];
+    try {
+      const fn = side === 'local' ? LocalListDir : RemoteListDir;
+      const list = await fn(dirPath);
+      const cmp = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      const dirs  = (list || []).filter(e =>  e.isDir).sort(cmp);
+      const files = (list || []).filter(e => !e.isDir).sort(cmp);
+      const all = [...dirs, ...files];
+      treeChildrenMap[dirPath] = all;
+      treeLoaded.add(dirPath);
+      return all;
+    } catch {
+      treeChildrenMap[dirPath] = [];
+      treeLoaded.add(dirPath);
+      return [];
+    }
+  }
+
+  async function enterTreeMode() {
+    treeMode = true;
+    treeNodes = [];
+    treeLoaded = new Set();
+    treeChildrenMap = {};
+    const roots = await fetchDirChildren('/');
+    treeNodes = roots.map(e => ({
+      path: e.path, name: e.name, depth: 0, isDir: e.isDir,
+      size: e.size, modTime: e.modTime,
+      expanded: false, loading: false, leaf: !e.isDir,
+    }));
+    await autoExpandToPath(path);
+  }
+
+  function transferTreeFile(node) {
+    const dest = otherPath.replace(/[/\\]?$/, '/') + node.name;
+    if (side === 'local') QueueUpload(node.path, dest);
+    else QueueDownload(node.path, dest);
+    queueVisible.set(true);
+  }
+
+  async function autoExpandToPath(targetPath) {
+    if (!targetPath || targetPath === '/') return;
+    const parts = targetPath.split('/').filter(Boolean);
+    let current = '';
+    for (let i = 0; i < parts.length - 1; i++) {
+      current += '/' + parts[i];
+      const idx = treeNodes.findIndex(n => n.path === current);
+      if (idx !== -1 && !treeNodes[idx].expanded) {
+        await expandTreeNode(idx);
+      }
+    }
+  }
+
+  async function expandTreeNode(idx) {
+    if (treeNodes[idx].loading || treeNodes[idx].leaf) return;
+    treeNodes = treeNodes.map((n, i) => i === idx ? { ...n, loading: true } : n);
+    const node = treeNodes[idx];
+    const children = await fetchDirChildren(node.path);
+    const childNodes = children.map(e => ({
+      path: e.path, name: e.name, depth: node.depth + 1, isDir: e.isDir,
+      size: e.size, modTime: e.modTime,
+      expanded: false, loading: false, leaf: !e.isDir,
+    }));
+    treeNodes = [
+      ...treeNodes.slice(0, idx + 1),
+      ...childNodes,
+      ...treeNodes.slice(idx + 1),
+    ];
+    treeNodes[idx] = { ...treeNodes[idx], loading: false, expanded: true, leaf: childNodes.length === 0 };
+    treeNodes = [...treeNodes];
+  }
+
+  function collapseTreeNode(idx) {
+    if (!treeNodes[idx].expanded) return;
+    const depth = treeNodes[idx].depth;
+    let end = idx + 1;
+    while (end < treeNodes.length && treeNodes[end].depth > depth) end++;
+    treeNodes = [
+      ...treeNodes.slice(0, idx + 1),
+      ...treeNodes.slice(end),
+    ];
+    treeNodes[idx] = { ...treeNodes[idx], expanded: false };
+    treeNodes = [...treeNodes];
+  }
+
+  async function toggleTreeNode(idx) {
+    const node = treeNodes[idx];
+    if (node.loading || node.leaf) return;
+    if (node.expanded) collapseTreeNode(idx);
+    else await expandTreeNode(idx);
+  }
+
   // ── Drag and drop ─────────────────────────────────────────────────────────
 
   function handleDragStart(e, entry) {
@@ -577,6 +677,18 @@
       </div>
     </div>
     <div class="browser-actions">
+      <button
+        class="icon-btn"
+        class:active={treeMode}
+        on:click={() => treeMode ? (treeMode = false) : enterTreeMode()}
+        title={treeMode ? $t('listView') : $t('treeView')}
+      >
+        {#if treeMode}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        {:else}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="3" y2="18"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="9" x2="9" y2="15"/></svg>
+        {/if}
+      </button>
       <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
@@ -613,76 +725,130 @@
     </div>
   {/if}
 
-  <div
-    class="file-list"
-    bind:this={fileListEl}
-    on:mousedown={handleListMouseDown}
-  >
-    <div class="file-list-header" on:contextmenu|stopPropagation>
-      <span class="col-name col-sortable" on:click={() => toggleSort('name')}>
-        {$t('name')}{#if sortKey === 'name'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
-      </span>
-      <span class="col-size col-sortable" on:click={() => toggleSort('size')}>
-        {$t('size')}{#if sortKey === 'size'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
-      </span>
-      <span class="col-date col-sortable" on:click={() => toggleSort('date')}>
-        {$t('date')}{#if sortKey === 'date'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
-      </span>
-    </div>
-
-    <!-- ".." parent row -->
-    <div
-      class="file-row is-dir parent-row"
-      class:focused={parentFocused}
-      on:click={() => { parentFocused = false; onNavigateUp(); }}
-      on:dblclick={onNavigateUp}
-      on:contextmenu|stopPropagation
-    >
-      <span class="col-name">
-        <span class="file-icon">📁</span>
-        <span class="file-name">..</span>
-      </span>
-      <span class="col-size"></span>
-      <span class="col-date"></span>
-    </div>
-
-    {#if entries.length === 0}
-      <div class="empty">{$t('emptyFolder')}</div>
-    {:else}
-      {#each sortedEntries as entry (entry.path)}
+  {#if treeMode}
+    <div class="tree-list">
+      {#if treeNodes.length === 0}
+        <div class="tree-loading">
+          <svg class="tree-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        </div>
+      {/if}
+      {#each treeNodes as node, i (node.path)}
         <div
-          class="file-row"
-          class:selected={selected.some(s => s.path === entry.path)}
-          class:is-dir={entry.isDir}
-          draggable={true}
-          on:click={(e) => handleClick(e, entry)}
-          on:dblclick={() => handleDblClick(entry)}
-          on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry)}
-          on:dragstart={(e) => handleDragStart(e, entry)}
+          class="tree-row"
+          class:tree-active={node.isDir && node.path === path}
+          class:tree-selected={!node.isDir && node.path === treeSelected}
+          class:tree-file-row={!node.isDir}
+          style="padding-left: {8 + node.depth * 16}px"
+          on:click={() => { treeSelected = node.path; if (node.isDir) onNavigate(node.path); }}
+          on:dblclick={() => { if (!node.isDir) transferTreeFile(node); }}
+          title={node.path}
         >
-          <span class="col-name">
-            <span class="file-icon">
-              {#if entry.isDir}📁{:else}📄{/if}
-            </span>
-            {#if renamingEntry?.path === entry.path}
-              <input
-                class="rename-input"
-                type="text"
-                bind:value={renameValue}
-                on:click|stopPropagation
-                on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
-                autofocus
-              />
-            {:else}
-              <span class="file-name">{entry.name}</span>
-            {/if}
-          </span>
-          <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
-          <span class="col-date">{formatDate(entry.modTime)}</span>
+          {#if node.isDir}
+            <button
+              class="tree-toggle"
+              on:click|stopPropagation={() => toggleTreeNode(i)}
+              tabindex="-1"
+            >
+              {#if node.loading}
+                <svg class="tree-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              {:else if node.leaf}
+                <span class="tree-leaf-dot">·</span>
+              {:else if node.expanded}
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+              {:else}
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
+              {/if}
+            </button>
+          {:else}
+            <span class="tree-toggle-spacer"></span>
+          {/if}
+          <span class="file-icon">{node.isDir ? '📁' : '📄'}</span>
+          <span class="tree-name">{node.name}</span>
+          {#if !node.isDir}
+            <span class="tree-file-size">{formatBytes(node.size || 0)}</span>
+            <button class="tree-transfer-btn" on:click|stopPropagation={() => transferTreeFile(node)} title={$t('transfer')}>
+              {#if side === 'local'}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              {:else}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              {/if}
+            </button>
+          {/if}
         </div>
       {/each}
-    {/if}
-  </div>
+    </div>
+  {:else}
+    <div
+      class="file-list"
+      bind:this={fileListEl}
+      on:mousedown={handleListMouseDown}
+    >
+      <div class="file-list-header" on:contextmenu|stopPropagation>
+        <span class="col-name col-sortable" on:click={() => toggleSort('name')}>
+          {$t('name')}{#if sortKey === 'name'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+        </span>
+        <span class="col-size col-sortable" on:click={() => toggleSort('size')}>
+          {$t('size')}{#if sortKey === 'size'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+        </span>
+        <span class="col-date col-sortable" on:click={() => toggleSort('date')}>
+          {$t('date')}{#if sortKey === 'date'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+        </span>
+      </div>
+
+      <!-- ".." parent row -->
+      <div
+        class="file-row is-dir parent-row"
+        class:focused={parentFocused}
+        on:click={() => { parentFocused = false; onNavigateUp(); }}
+        on:dblclick={onNavigateUp}
+        on:contextmenu|stopPropagation
+      >
+        <span class="col-name">
+          <span class="file-icon">📁</span>
+          <span class="file-name">..</span>
+        </span>
+        <span class="col-size"></span>
+        <span class="col-date"></span>
+      </div>
+
+      {#if entries.length === 0}
+        <div class="empty">{$t('emptyFolder')}</div>
+      {:else}
+        {#each sortedEntries as entry (entry.path)}
+          <div
+            class="file-row"
+            class:selected={selected.some(s => s.path === entry.path)}
+            class:is-dir={entry.isDir}
+            draggable={true}
+            on:click={(e) => handleClick(e, entry)}
+            on:dblclick={() => handleDblClick(entry)}
+            on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry)}
+            on:dragstart={(e) => handleDragStart(e, entry)}
+          >
+            <span class="col-name">
+              <span class="file-icon">
+                {#if entry.isDir}📁{:else}📄{/if}
+              </span>
+              {#if renamingEntry?.path === entry.path}
+                <input
+                  class="rename-input"
+                  type="text"
+                  bind:value={renameValue}
+                  on:click|stopPropagation
+                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  autofocus
+                />
+              {:else}
+                <span class="file-name">{entry.name}</span>
+              {/if}
+            </span>
+            <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            <span class="col-date">{formatDate(entry.modTime)}</span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <!-- Context menu -->
@@ -1159,6 +1325,127 @@
   color: var(--text-secondary); padding: 7px 14px; font-size: 13px; cursor: pointer;
 }
 .conflict-rename-btn:hover { background: var(--bg-button-hover); }
+
+/* ── Tree view ── */
+.tree-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  user-select: none;
+}
+
+.tree-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: var(--text-muted);
+}
+
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding-right: 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: background 0.08s;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.tree-row:hover { background: var(--bg-hover); }
+.tree-row.tree-active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tree-toggle {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 3px;
+  transition: color 0.1s, background 0.1s;
+}
+.tree-toggle:hover { color: var(--text-primary); background: var(--bg-button-hover); }
+.tree-toggle svg { width: 14px; height: 14px; }
+.tree-active .tree-toggle { color: var(--accent); }
+
+.tree-leaf-dot {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--border);
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.tree-toggle-spacer {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.tree-file-row { color: var(--text-secondary); }
+.tree-file-row:hover { color: var(--text-primary); }
+.tree-file-row:hover .tree-transfer-btn { opacity: 1; }
+.tree-selected { background: var(--accent-subtle); color: var(--accent); }
+.tree-selected .tree-transfer-btn { opacity: 1; }
+
+.tree-file-size {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-right: 4px;
+}
+
+.tree-transfer-btn {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.1s;
+}
+.tree-transfer-btn svg { width: 14px; height: 14px; }
+.tree-transfer-btn:hover { background: var(--accent-subtle); }
+
+.tree-spin {
+  animation: tree-spin-anim 0.8s linear infinite;
+  transform-origin: center;
+}
+@keyframes tree-spin-anim {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.icon-btn.active {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
 
 /* ── Rubber band ── */
 .rubber-band {

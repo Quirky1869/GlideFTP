@@ -103,6 +103,8 @@ export default {
   autoReconnect: 'Reconnexion automatique',
   interface: 'Interface',
   connectCardShadow: 'Ombre d\'accentuation du panneau de connexion',
+  treeView: 'Vue arborescente',
+  listView: 'Vue liste',
   showHiddenFiles: 'Afficher les fichiers cachés',
   confirmOnDelete: 'Confirmer avant suppression',
   dateFormat: 'Format de date',

@@ -1660,3 +1660,127 @@ While `connecting` is true:
 CSS: `@keyframes btn-spin` (360deg, 0.75s linear) applied via `.btn-spinner` class
 on a 14x14 SVG arc icon. No layout shift - the spinner replaces the arrow icon at
 the same size.
+
+---
+
+1.7.4
+
+#66
+Title: [Feature] Accent shadow box on the connection card (main screen)
+Labels: enhancement, ui
+Version fixed: v1.7.4
+Description:
+On the main (disconnected) screen, the centered connection card has no decorative
+shadow. A request to add an outer shadow on the bottom-right side using the active
+accent color, with a toggle to enable or disable it in Settings > Interface
+(default: off).
+
+Solution (closing comment):
+Implemented in v1.7.4.
+
+**internal/settings/settings.go:**
+- New field `ConnectCardShadow bool \`json:"connectCardShadow"\`` added to the
+  Settings struct. Default value: `false` (off).
+
+**frontend/src/stores/settings.js — applyAccentColor():**
+- New CSS custom property `--accent-glow` added alongside `--accent-subtle`:
+  `rgba(r, g, b, 0.45)`. This gives a semi-transparent variant of the accent
+  color usable for glow effects without hardcoding opacity in component CSS.
+
+**frontend/src/App.svelte:**
+- `settings` store imported from `stores/settings.js`.
+- `.connect-card` receives `class:shadow-accent={$settings?.connectCardShadow}`.
+- CSS `.connect-card.shadow-accent`:
+    box-shadow:
+      0 8px 32px rgba(0,0,0,0.3),      /* existing dark shadow preserved */
+      4px 4px 8px var(--accent-glow),   /* close neon halo */
+      8px 8px 20px var(--accent-glow),  /* medium neon halo */
+      14px 14px 45px var(--accent-subtle); /* soft far diffusion */
+  Three layered shadows offset to the bottom-right create a neon/glow look
+  rather than a hard opaque shadow. `transition: box-shadow 0.25s ease` animates
+  the toggle.
+
+**frontend/src/components/SettingsPanel.svelte:**
+- New toggle switch row added as the first item in the Interface section:
+  label `$t('connectCardShadow')`, bound to `form.connectCardShadow` via the
+  existing `toggle()` helper.
+
+**i18n:**
+- `connectCardShadow`: `'Connection card accent shadow'` (EN) /
+  `'Ombre d\'accentuation du panneau de connexion'` (FR).
+
+---
+
+#67
+Title: [Feature] Tree view for local and remote file panels
+Labels: enhancement, ui
+Version fixed: v1.7.4
+Description:
+The file browser panels only show a flat directory listing. A request to add a
+hierarchical tree view that shows the full folder structure, with files visible
+and transferable, switchable per panel via a toggle button in the panel toolbar.
+
+Expected behaviour:
+- A toggle button to the left of the Refresh button switches the panel between
+  list view (current) and tree view.
+- The default view on each connection is the list view.
+- Tree view starts from the filesystem root (/), lazily loading children when a
+  folder is expanded.
+- Folders and files are both visible in the tree (folders first, then files,
+  alphabetically).
+- Clicking a folder navigates to it (updates the breadcrumb and the panel path).
+- Double-clicking a file (or clicking the arrow button on hover) transfers it to
+  the opposite panel's current path.
+- Single-clicking a file selects it with an accent highlight.
+- The node matching the current path is highlighted in accent color.
+- Ancestors of the current path are auto-expanded when entering tree mode.
+Ref: _images/issues/v1.7.4/issue-27.png (button placement),
+     _images/issues/v1.7.4/issue-28.png (tree style reference)
+
+Solution (closing comment):
+Implemented in v1.7.4 in FileBrowser.svelte.
+
+**State:**
+- `treeMode` boolean (default false, resets on component destroy / reconnect).
+- `treeNodes` array: flat display list of `{path, name, depth, isDir, size,
+  modTime, expanded, loading, leaf}`. Files have `leaf: true`; folder nodes
+  start as non-leaf until expanded.
+- `treeLoaded` Set and `treeChildrenMap` object: lazy-load cache — each dir path
+  is fetched at most once per tree session.
+- `treeSelected` string: path of the currently single-clicked file (for highlight).
+
+**Functions:**
+- `fetchDirChildren(dirPath)`: calls `LocalListDir` or `RemoteListDir`, returns
+  sorted dirs-first + files. Result is cached in `treeChildrenMap`.
+- `enterTreeMode()`: resets all tree state, loads `/` children, calls
+  `autoExpandToPath(path)` to pre-expand ancestors of the current path.
+- `autoExpandToPath(targetPath)`: iterates ancestor segments and calls
+  `expandTreeNode(idx)` for each one that is not yet expanded.
+- `expandTreeNode(idx)`: marks node as loading, fetches children, inserts child
+  nodes immediately after the parent in `treeNodes`, marks parent as
+  `expanded: true` (or `leaf: true` if no children).
+- `collapseTreeNode(idx)`: removes all descendant nodes (depth > parent depth)
+  from `treeNodes` and marks parent as `expanded: false`.
+- `toggleTreeNode(idx)`: expand or collapse depending on current state.
+- `transferTreeFile(node)`: queues upload or download to `otherPath` via the
+  existing `QueueUpload` / `QueueDownload` bindings.
+
+**Toggle button:**
+Placed to the left of the Refresh button in `.browser-actions`. Shows a tree
+icon (inactive) or list icon (active); `class:active={treeMode}` applies accent
+color + subtle background when in tree mode.
+
+**Tree row rendering (`{#each treeNodes}`):**
+- Indentation: `padding-left: {8 + depth * 16}px`.
+- Dir rows: expand/collapse button (▶ collapsed / ▼ expanded / spinner loading /
+  `·` leaf), 📁 icon, folder name. Click → `onNavigate(node.path)`.
+- File rows: spacer (no toggle button), 📄 icon, file name, file size (right-
+  aligned), transfer arrow button (visible on hover). Click → select
+  (`treeSelected = node.path`). Double-click → `transferTreeFile(node)`.
+- `class:tree-active` on the dir matching `path` (accent highlight).
+- `class:tree-selected` on the selected file (accent highlight + transfer button
+  always visible).
+
+**i18n:**
+- `treeView`: `'Tree view'` (EN) / `'Vue arborescente'` (FR).
+- `listView`: `'List view'` (EN) / `'Vue liste'` (FR).
