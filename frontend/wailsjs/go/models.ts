@@ -178,6 +178,7 @@ export namespace settings {
 	    maxTransferSpeedKBps: number;
 	    accentColor: string;
 	    maxConnections: number;
+	    connectCardShadow: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -199,6 +200,7 @@ export namespace settings {
 	        this.maxTransferSpeedKBps = source["maxTransferSpeedKBps"];
 	        this.accentColor = source["accentColor"];
 	        this.maxConnections = source["maxConnections"];
+	        this.connectCardShadow = source["connectCardShadow"];
 	    }
 	}
 

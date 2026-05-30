@@ -181,6 +181,16 @@
     <section>
       <h3>{$t('interface')}</h3>
       <div class="setting-row">
+        <label>{$t('connectCardShadow')}</label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.connectCardShadow}
+          on:click={() => toggle('connectCardShadow')}
+          aria-pressed={form.connectCardShadow}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
         <label>{$t('showHiddenFiles')}</label>
         <button
           type="button"

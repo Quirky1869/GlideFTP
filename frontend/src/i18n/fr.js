@@ -102,6 +102,7 @@ export default {
   passiveMode: 'Mode passif (PASV)',
   autoReconnect: 'Reconnexion automatique',
   interface: 'Interface',
+  connectCardShadow: 'Ombre d\'accentuation du panneau de connexion',
   showHiddenFiles: 'Afficher les fichiers cachés',
   confirmOnDelete: 'Confirmer avant suppression',
   dateFormat: 'Format de date',

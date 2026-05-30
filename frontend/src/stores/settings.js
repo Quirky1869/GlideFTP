@@ -44,8 +44,10 @@ export function applyAccentColor(hex) {
   const hb = Math.round(b * f);
   const hoverHex = '#' + [hr, hg, hb].map(v => v.toString(16).padStart(2, '0')).join('');
   const subtle = `rgba(${r}, ${g}, ${b}, 0.14)`;
+  const glow   = `rgba(${r}, ${g}, ${b}, 0.45)`;
   const root = document.documentElement;
   root.style.setProperty('--accent', hex);
   root.style.setProperty('--accent-hover', hoverHex);
   root.style.setProperty('--accent-subtle', subtle);
+  root.style.setProperty('--accent-glow', glow);
 }

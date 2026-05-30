@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { t } from './i18n/index.js';
-  import { loadSettings } from './stores/settings.js';
+  import { loadSettings, settings } from './stores/settings.js';
   import {
     connectionStatus,
     connections, activeConnectionId, switchTab, closeTab,
@@ -169,7 +169,7 @@
     {#if !isConnected}
       <!-- ── Disconnected: centered connection form ─────────────── -->
       <div class="connect-center">
-        <div class="connect-card">
+        <div class="connect-card" class:shadow-accent={$settings?.connectCardShadow}>
           <h1 class="connect-title">GlideFTP</h1>
           <p class="connect-subtitle">{$t('connectFirst')}</p>
           <div class="connect-bar-wrap">
@@ -529,6 +529,15 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
+  transition: box-shadow 0.25s ease;
+}
+
+.connect-card.shadow-accent {
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.3),
+    4px 4px 8px var(--accent-glow),
+    8px 8px 20px var(--accent-glow),
+    14px 14px 45px var(--accent-subtle);
 }
 
 .connect-title {

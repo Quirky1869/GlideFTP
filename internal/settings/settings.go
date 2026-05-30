@@ -21,6 +21,7 @@ type Settings struct {
 	MaxTransferSpeedKBps   int    `json:"maxTransferSpeedKBps"`
 	AccentColor            string `json:"accentColor"`
 	MaxConnections         int    `json:"maxConnections"`
+	ConnectCardShadow      bool   `json:"connectCardShadow"`
 }
 
 func Default() *Settings {
@@ -40,6 +41,7 @@ func Default() *Settings {
 		MaxTransferSpeedKBps:   0,
 		AccentColor:            "#5B8AF5",
 		MaxConnections:         3,
+		ConnectCardShadow:      false,
 	}
 }
 

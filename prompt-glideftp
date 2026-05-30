@@ -257,3 +257,9 @@ et ca c'est bien
 Mais pour éviter le doute, soit le griser soit mettre un loading screen (truc qui tourne par dessus ou un truc dans le genre) 
 C'est pas con
 Pense tu qu'on peut implémenter un loading screen comme il l'a indiqué ?
+
+______
+
+66 = Ajouter une shadow box sur lecran principale autour du rectangle de connexion (le shadown bow doit etre à l'exterieur bas et droite avec la couleur d'accentuation) il doit y avoir un parametre qui permet d'activer ou désactiver ce shadow box dans les parametres, dans "l'onglet" interface (par defaut mettre sur off)
+
+67 = Ajout d'un vue arborescence du pc et du serveur distant
