@@ -142,6 +142,25 @@ export namespace fs {
 
 }
 
+export namespace main {
+	
+	export class ImportFileInfo {
+	    path: string;
+	    needsPassphrase: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportFileInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.needsPassphrase = source["needsPassphrase"];
+	    }
+	}
+
+}
+
 export namespace settings {
 	
 	export class Settings {

@@ -1559,3 +1559,69 @@ Fixed in v1.7.3 in SiteManager.svelte.
 Added `justify-content: center` to the `.view-actions` CSS rule:
 
   .view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+
+---
+
+#64
+Title: [Security] Passwords stored in plain text in sites.json
+Labels: enhancement, security
+Version fixed: v1.7.3
+Description:
+Saved site passwords are written in plain text in the config file
+~/.config/GlideFTP/sites.json. Anyone with access to the file (backup, sync,
+export) can read all credentials without any protection.
+
+Solution (closing comment):
+Implemented in v1.7.3. Passwords are now stored in the OS system keyring and
+never written to disk.
+
+Backend - new packages:
+- `internal/keyring/keyring.go` - wraps github.com/zalando/go-keyring.
+  Uses the D-Bus Secret Service API (gnome-keyring / kwallet) on Linux and
+  the Windows Credential Manager (DPAPI) on Windows. No TPM required on
+  either platform. `IsAvailable()` probes the daemon at startup.
+- `internal/crypto/crypto.go` - .gfe encrypted export format.
+  Key derivation: Argon2id (memory=64 MB, time=3, threads=4) -> 32-byte key.
+  Encryption: AES-256-GCM. File layout: [4B magic "GFEX"][1B version]
+  [32B random salt][12B random nonce][ciphertext + GCM tag].
+
+Backend - app.go changes:
+- `sites.go save()` always strips passwords before writing to disk.
+- `migratePasswords()` runs at startup: any plaintext password still present in
+  an old sites.json is migrated to the keyring, then the file is re-saved stripped.
+- `GetSites()` enriches each site with its password from the keyring before
+  returning to the frontend (so the form still shows the saved password).
+- `CreateSite` / `UpdateSite`: password is extracted, cleared from the struct,
+  then stored in the keyring. Auth types anonymous / ask_password / interactive
+  never store a password (handled by `needsKeyring()`).
+- `DeleteSite`: also calls `keyringMgr.Delete()`.
+- `buildSiteConfig`: fetches the password from the keyring for each connection.
+- New bindings: `GetKeyringStatus()`, `ExportSitesPlain()`,
+  `ExportSitesEncrypted(passphrase)`, `OpenImportDialog()`, `DoImportSites(path, passphrase)`.
+
+Frontend - SiteManager.svelte:
+- Yellow warning banner shown when `GetKeyringStatus()` returns
+  `"keyring_unavailable"`, with a message asking the user to install
+  gnome-keyring or use "Ask password" auth.
+- Export button now opens a two-step dialog:
+  - Step 1: choice between "Without passwords" (plain .json) and
+    "With passwords (encrypted)" (.gfe).
+  - Step 2 (encrypted only): passphrase input + confirmation field, both
+    with eye-toggle. Mismatched or empty passphrase is blocked client-side.
+- Import: `OpenImportDialog()` opens the file picker and returns
+  `{ path, needsPassphrase }`. If the file is a .gfe, a passphrase prompt
+  is shown before calling `DoImportSites(path, passphrase)`. Plain JSON
+  imports (including old-format files with plaintext passwords) are handled
+  transparently - passwords found in the JSON are stored in the keyring on
+  import.
+
+Cross-platform export/import:
+The .gfe format uses only Go stdlib crypto primitives - it is fully portable
+between Linux and Windows. A file exported on Linux can be imported on Windows
+and vice versa.
+
+Linux - keyring availability (Arch):
+Arch users on minimal setups may not have gnome-keyring or kwallet installed.
+A README.md is included in the Arch AppImage archive with check and install
+commands. If no keyring daemon is running, the banner guides the user to use
+"Ask password" auth instead.

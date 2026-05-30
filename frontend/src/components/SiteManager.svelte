@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, ExportSites, ImportSites } from '../../wailsjs/go/main/App.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, GetKeyringStatus, ExportSitesPlain, ExportSitesEncrypted, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
@@ -11,6 +11,26 @@
   let selectedSite = null;
   let editMode = false;
   let confirmDeleteId = null;
+
+  // Keyring availability warning
+  let keyringStatus = '';
+  GetKeyringStatus().then(s => { keyringStatus = s; });
+
+  // Export dialog
+  let showExportDialog = false;
+  let exportStep = 'choice'; // 'choice' | 'passphrase'
+  let exportPassphrase = '';
+  let exportPassphraseConfirm = '';
+  let exportPassphraseError = '';
+  let showExportPwd = false;
+  let showExportPwdConfirm = false;
+
+  // Import passphrase dialog
+  let showImportPassphrase = false;
+  let importFilePath = '';
+  let importPassphrase = '';
+  let importPassphraseError = '';
+  let showImportPwd = false;
 
   // Keep-or-replace dialog (shown when already connected)
   let showKeepOrReplace = false;
@@ -304,9 +324,45 @@
     if (path) form = { ...form, sshKeyPath: path };
   }
 
-  async function exportSites() {
+  function openExportDialog() {
+    exportStep = 'choice';
+    exportPassphrase = '';
+    exportPassphraseConfirm = '';
+    exportPassphraseError = '';
+    showExportPwd = false;
+    showExportPwdConfirm = false;
+    showExportDialog = true;
+  }
+
+  async function doExportPlain() {
+    showExportDialog = false;
     try {
-      await ExportSites();
+      await ExportSitesPlain();
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
+  }
+
+  function goToExportPassphrase() {
+    exportStep = 'passphrase';
+    exportPassphrase = '';
+    exportPassphraseConfirm = '';
+    exportPassphraseError = '';
+  }
+
+  async function doExportEncrypted() {
+    exportPassphraseError = '';
+    if (!exportPassphrase) {
+      exportPassphraseError = $t('exportPassphraseEmpty');
+      return;
+    }
+    if (exportPassphrase !== exportPassphraseConfirm) {
+      exportPassphraseError = $t('exportPassphraseMismatch');
+      return;
+    }
+    showExportDialog = false;
+    try {
+      await ExportSitesEncrypted(exportPassphrase);
     } catch (e) {
       if (e) alert(e.toString());
     }
@@ -314,13 +370,37 @@
 
   async function importSites() {
     try {
-      const count = await ImportSites();
+      const info = await OpenImportDialog();
+      if (!info || !info.path) return;
+      if (info.needsPassphrase) {
+        importFilePath = info.path;
+        importPassphrase = '';
+        importPassphraseError = '';
+        showImportPwd = false;
+        showImportPassphrase = true;
+      } else {
+        const count = await DoImportSites(info.path, '');
+        if (count > 0) {
+          await loadSites();
+          alert(`${count} ${$t('importedCount')}`);
+        }
+      }
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
+  }
+
+  async function doImportWithPassphrase() {
+    importPassphraseError = '';
+    try {
+      const count = await DoImportSites(importFilePath, importPassphrase);
+      showImportPassphrase = false;
       if (count > 0) {
         await loadSites();
         alert(`${count} ${$t('importedCount')}`);
       }
     } catch (e) {
-      if (e) alert(e.toString());
+      importPassphraseError = e?.toString() || $t('importPassphraseError');
     }
   }
 
@@ -344,7 +424,7 @@
     <div class="modal-header">
       <span class="modal-title">{$t('savedSites')}</span>
       <div class="header-actions">
-        <button class="header-btn" on:click={exportSites} title={$t('exportSites')}>
+        <button class="header-btn" on:click={openExportDialog} title={$t('exportSites')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {$t('exportSites')}
         </button>
@@ -355,6 +435,13 @@
       </div>
       <button class="close-btn" on:click={onClose}>✕</button>
     </div>
+
+    {#if keyringStatus === 'keyring_unavailable'}
+      <div class="keyring-warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>{$t('keyringUnavailable')}</span>
+      </div>
+    {/if}
 
     <div class="modal-body">
       <!-- Site list -->
@@ -542,6 +629,121 @@
 </div>
 
 <svelte:window on:click={() => { pasteMenu = null; ctxMenu = null; }} />
+
+<!-- Export dialog -->
+{#if showExportDialog}
+  <div class="pwd-overlay">
+    <div class="pwd-box" style="width: 420px" use:trapFocus>
+      {#if exportStep === 'choice'}
+        <div class="pwd-title">{$t('exportChoiceTitle')}</div>
+        <div class="pwd-site">{$t('exportChoiceMsg')}</div>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 4px;">
+          <button class="export-choice-btn" on:click={doExportPlain}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <div>
+              <div style="font-weight:600">{$t('exportWithoutPasswords')}</div>
+              <div style="font-size:11px;opacity:0.7;margin-top:2px">{$t('exportWithoutPasswordsDesc')}</div>
+            </div>
+          </button>
+          <button class="export-choice-btn export-choice-btn--accent" on:click={goToExportPassphrase}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div>
+              <div style="font-weight:600">{$t('exportWithPasswords')}</div>
+              <div style="font-size:11px;opacity:0.7;margin-top:2px">{$t('exportWithPasswordsDesc')}</div>
+            </div>
+          </button>
+        </div>
+        <div class="pwd-actions" style="margin-top: 4px;">
+          <button class="btn-secondary" on:click={() => showExportDialog = false}>{$t('cancel')}</button>
+        </div>
+
+      {:else if exportStep === 'passphrase'}
+        <div class="pwd-title">{$t('exportPassphraseTitle')}</div>
+        <label class="pwd-label">{$t('exportPassphraseLabel')}</label>
+        <div class="pwd-input-wrap">
+          {#if showExportPwd}
+            <input class="pwd-input" type="text" bind:value={exportPassphrase} autofocus
+              on:keydown={(e) => { if (e.key === 'Enter') doExportEncrypted(); if (e.key === 'Escape') showExportDialog = false; }}
+              on:contextmenu={(e) => { e.preventDefault(); }} />
+          {:else}
+            <input class="pwd-input" type="password" bind:value={exportPassphrase} autofocus
+              on:keydown={(e) => { if (e.key === 'Enter') doExportEncrypted(); if (e.key === 'Escape') showExportDialog = false; }}
+              on:contextmenu={(e) => { e.preventDefault(); }} />
+          {/if}
+          <button type="button" class="eye-btn" on:click={() => showExportPwd = !showExportPwd} tabindex="-1">
+            {#if showExportPwd}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            {:else}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            {/if}
+          </button>
+        </div>
+        <label class="pwd-label">{$t('exportPassphraseConfirmLabel')}</label>
+        <div class="pwd-input-wrap">
+          {#if showExportPwdConfirm}
+            <input class="pwd-input" type="text" bind:value={exportPassphraseConfirm}
+              on:keydown={(e) => { if (e.key === 'Enter') doExportEncrypted(); if (e.key === 'Escape') showExportDialog = false; }}
+              on:contextmenu={(e) => { e.preventDefault(); }} />
+          {:else}
+            <input class="pwd-input" type="password" bind:value={exportPassphraseConfirm}
+              on:keydown={(e) => { if (e.key === 'Enter') doExportEncrypted(); if (e.key === 'Escape') showExportDialog = false; }}
+              on:contextmenu={(e) => { e.preventDefault(); }} />
+          {/if}
+          <button type="button" class="eye-btn" on:click={() => showExportPwdConfirm = !showExportPwdConfirm} tabindex="-1">
+            {#if showExportPwdConfirm}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            {:else}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            {/if}
+          </button>
+        </div>
+        {#if exportPassphraseError}
+          <div class="pwd-error">{exportPassphraseError}</div>
+        {/if}
+        <div class="pwd-actions">
+          <button class="btn-primary" on:click={doExportEncrypted}>{$t('exportBtn')}</button>
+          <button class="btn-secondary" on:click={() => exportStep = 'choice'}>{$t('cancel')}</button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Import passphrase dialog -->
+{#if showImportPassphrase}
+  <div class="pwd-overlay">
+    <div class="pwd-box" use:trapFocus>
+      <div class="pwd-title">{$t('importPassphraseTitle')}</div>
+      <div class="pwd-site">{$t('importPassphraseMsg')}</div>
+      <label class="pwd-label">{$t('importPassphraseLabel')}</label>
+      <div class="pwd-input-wrap">
+        {#if showImportPwd}
+          <input class="pwd-input" type="text" bind:value={importPassphrase} autofocus
+            on:keydown={(e) => { if (e.key === 'Enter') doImportWithPassphrase(); if (e.key === 'Escape') showImportPassphrase = false; }}
+            on:contextmenu={(e) => { e.preventDefault(); }} />
+        {:else}
+          <input class="pwd-input" type="password" bind:value={importPassphrase} autofocus
+            on:keydown={(e) => { if (e.key === 'Enter') doImportWithPassphrase(); if (e.key === 'Escape') showImportPassphrase = false; }}
+            on:contextmenu={(e) => { e.preventDefault(); }} />
+        {/if}
+        <button type="button" class="eye-btn" on:click={() => showImportPwd = !showImportPwd} tabindex="-1">
+          {#if showImportPwd}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          {:else}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          {/if}
+        </button>
+      </div>
+      {#if importPassphraseError}
+        <div class="pwd-error">{importPassphraseError}</div>
+      {/if}
+      <div class="pwd-actions">
+        <button class="btn-primary" on:click={doImportWithPassphrase}>{$t('importSites')}</button>
+        <button class="btn-secondary" on:click={() => showImportPassphrase = false}>{$t('cancel')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- Form field context menu (cut / copy / paste) -->
 {#if ctxMenu}
@@ -993,6 +1195,40 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .pwd-error { font-size: 12px; color: var(--danger); }
 
 .pwd-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── Keyring warning banner ── */
+.keyring-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 16px;
+  background: color-mix(in srgb, #f59e0b 12%, var(--bg-secondary));
+  border-bottom: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+  color: #b45309;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.keyring-warning svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; stroke: #f59e0b; }
+
+/* ── Export choice buttons ── */
+.export-choice-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-primary);
+  padding: 12px 14px;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.export-choice-btn:hover { background: var(--bg-button-hover); border-color: var(--accent); }
+.export-choice-btn--accent { border-color: var(--accent); }
+.export-choice-btn--accent:hover { background: var(--accent-subtle); }
 
 /* ── Paste context menu ── */
 .paste-ctx-menu {

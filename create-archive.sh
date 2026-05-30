@@ -24,7 +24,8 @@ Archive types:
 
 Output files (example with version 1.7.0):
   GlideFTP-Windows-v1.7.0.tar.gz
-  GlideFTP-Linux-v1.7.0.tar.gz                     ← includes README.md (dependency notice)
+  GlideFTP-Linux-v1.7.0.tar.gz                     ← includes README.md (libwebkit2gtk install, EN+FR)
+  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz        ← includes README.md (keyring setup, EN+FR)
   GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz        ← Arch / modern distros (GLIBC 2.38+)
   GlideFTP-Linux-Debian-AppImage-v1.7.0.tar.gz      ← Ubuntu 22.04+ / Debian (GLIBC 2.35+)
   GlideFTP-Windows-v1.7.0.tar
@@ -122,23 +123,111 @@ esac
 
 # ── Archive functions ─────────────────────────────────────────────────────────
 
-# Write the Linux README.md into the given directory
+# Write the Linux binary README.md into the given directory (EN + FR)
 _write_linux_readme() {
   cat > "$1/README.md" << 'EOF'
-# GlideFTP — Linux Prerequisites
+# ENGLISH
 
-Before running GlideFTP, please install the WebKit2GTK library required by the application:
+# GlideFTP - Linux Prerequisites
 
-- **Ubuntu / Debian** : `sudo apt install libwebkit2gtk-4.1-0`
-- **Fedora** : `sudo dnf install webkit2gtk4.1`
-- **Arch Linux** : `sudo pacman -S webkit2gtk-4.1`
+Before running GlideFTP, install the WebKit2GTK library required by the application:
 
-Once installed, make the binary executable and run it:
+  Ubuntu / Debian : sudo apt install libwebkit2gtk-4.1-0  
+  Fedora          : sudo dnf install webkit2gtk4.1  
+  Arch Linux      : sudo pacman -S webkit2gtk-4.1  
 
-```
-chmod +x GlideFTP
-./GlideFTP
-```
+Then make the binary executable and run it:
+
+  chmod +x GlideFTP  
+  ./GlideFTP
+
+==============================================================================
+# FRANCAIS
+
+# GlideFTP - Prerequis Linux
+
+Avant de lancer GlideFTP, installez la bibliotheque WebKit2GTK requise :
+
+  Ubuntu / Debian : sudo apt install libwebkit2gtk-4.1-0  
+  Fedora          : sudo dnf install webkit2gtk4.1  
+  Arch Linux      : sudo pacman -S webkit2gtk-4.1  
+
+Rendez ensuite le binaire executable et lancez-le :
+
+  chmod +x GlideFTP  
+  ./GlideFTP
+EOF
+}
+
+# Write the Arch AppImage README.md into the given directory (EN + FR)
+_write_arch_appimage_readme() {
+  cat > "$1/README.md" << 'EOF'
+# ENGLISH
+
+# GlideFTP - Arch AppImage
+
+## Running the AppImage
+
+  chmod +x GlideFTP-Arch-x86_64.AppImage  
+  ./GlideFTP-Arch-x86_64.AppImage
+
+## Password Storage - Keyring
+
+GlideFTP stores saved site passwords in the system keyring (gnome-keyring or kwallet).
+Most desktop environments include one by default, but some minimal Arch setups may not.
+
+Check if a keyring daemon is currently running:
+
+  pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "no keyring daemon found"
+
+If no daemon is running, install one:
+
+  # For GNOME / non-KDE environments (recommended)
+  sudo pacman -S gnome-keyring
+
+  # For KDE / Plasma
+  sudo pacman -S kwallet
+
+After installing, log out and log back in so the daemon starts automatically with your session.
+
+If no keyring is available, GlideFTP will show a warning banner in the Site Manager.
+In that case, use the "Ask password" authentication type so passwords are prompted at
+connect time rather than stored.
+
+==============================================================================
+# FRANCAIS
+
+# GlideFTP - AppImage Arch
+
+## Lancer l'AppImage
+
+  chmod +x GlideFTP-Arch-x86_64.AppImage  
+  ./GlideFTP-Arch-x86_64.AppImage
+
+## Stockage des mots de passe - Keyring
+
+GlideFTP stocke les mots de passe de vos sites dans le keyring systeme (gnome-keyring ou kwallet).
+La plupart des environnements de bureau en incluent un par defaut, mais certaines installations
+Arch minimalistes peuvent ne pas en avoir.
+
+Verifiez si un daemon keyring est actif :
+
+  pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "aucun daemon keyring trouve"
+
+Si aucun daemon n'est actif, installez-en un :
+
+  # Pour GNOME / environnements non-KDE (recommande)
+  sudo pacman -S gnome-keyring
+
+  # Pour KDE / Plasma
+  sudo pacman -S kwallet
+
+Apres l'installation, deconnectez-vous puis reconnectez-vous pour que le daemon
+demarre automatiquement avec votre session.
+
+Si aucun keyring n'est disponible, GlideFTP affiche une banniere d'avertissement dans
+le Gestionnaire de sites. Dans ce cas, utilisez le type d'authentification
+"Demander le mot de passe" afin que le mot de passe soit saisi a la connexion.
 EOF
 }
 
@@ -178,14 +267,24 @@ make_linux_tar() {
 
 make_appimage_arch_gz() {
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar.gz"
+  local staging
+  staging="$(mktemp -d)"
+  cp build/bin/linux/GlideFTP-Arch-x86_64.AppImage "$staging/"
+  _write_arch_appimage_readme "$staging"
   echo "→ $out"
-  tar -czvf "$out" -C build/bin/linux GlideFTP-Arch-x86_64.AppImage
+  tar -czvf "$out" -C "$staging" GlideFTP-Arch-x86_64.AppImage README.md
+  rm -rf "$staging"
 }
 
 make_appimage_arch_tar() {
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar"
+  local staging
+  staging="$(mktemp -d)"
+  cp build/bin/linux/GlideFTP-Arch-x86_64.AppImage "$staging/"
+  _write_arch_appimage_readme "$staging"
   echo "→ $out"
-  tar -cvf "$out" -C build/bin/linux GlideFTP-Arch-x86_64.AppImage
+  tar -cvf "$out" -C "$staging" GlideFTP-Arch-x86_64.AppImage README.md
+  rm -rf "$staging"
 }
 
 make_appimage_debian_gz() {
@@ -201,9 +300,9 @@ make_appimage_debian_tar() {
 }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
-echo "GlideFTP archive builder — version v${VERSION}"
+echo "GlideFTP archive builder - version v${VERSION}"
 echo "Platform: $PLATFORM  |  Type: $TYPE"
-echo "──────────────────────────────────────────────"
+echo "----------------------------------------------"
 
 [[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_windows_gz

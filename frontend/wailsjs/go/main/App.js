@@ -54,8 +54,16 @@ export function Disconnect() {
   return window['go']['main']['App']['Disconnect']();
 }
 
-export function ExportSites() {
-  return window['go']['main']['App']['ExportSites']();
+export function DoImportSites(arg1, arg2) {
+  return window['go']['main']['App']['DoImportSites'](arg1, arg2);
+}
+
+export function ExportSitesEncrypted(arg1) {
+  return window['go']['main']['App']['ExportSitesEncrypted'](arg1);
+}
+
+export function ExportSitesPlain() {
+  return window['go']['main']['App']['ExportSitesPlain']();
 }
 
 export function GetActiveConnectionID() {
@@ -68,6 +76,10 @@ export function GetConnectionStatus() {
 
 export function GetConnections() {
   return window['go']['main']['App']['GetConnections']();
+}
+
+export function GetKeyringStatus() {
+  return window['go']['main']['App']['GetKeyringStatus']();
 }
 
 export function GetLocalHome() {
@@ -98,10 +110,6 @@ export function GetTransfers() {
   return window['go']['main']['App']['GetTransfers']();
 }
 
-export function ImportSites() {
-  return window['go']['main']['App']['ImportSites']();
-}
-
 export function LocalDelete(arg1) {
   return window['go']['main']['App']['LocalDelete'](arg1);
 }
@@ -116,6 +124,10 @@ export function LocalMkDir(arg1) {
 
 export function LocalRename(arg1, arg2) {
   return window['go']['main']['App']['LocalRename'](arg1, arg2);
+}
+
+export function OpenImportDialog() {
+  return window['go']['main']['App']['OpenImportDialog']();
 }
 
 export function QueueDownload(arg1, arg2) {

@@ -5,6 +5,7 @@ import {sites} from '../models';
 import {fs} from '../models';
 import {settings} from '../models';
 import {transfer} from '../models';
+import {main} from '../models';
 
 export function BrowseLocalDir():Promise<string>;
 
@@ -32,13 +33,19 @@ export function DeleteSite(arg1:string):Promise<void>;
 
 export function Disconnect():Promise<void>;
 
-export function ExportSites():Promise<void>;
+export function DoImportSites(arg1:string,arg2:string):Promise<number>;
+
+export function ExportSitesEncrypted(arg1:string):Promise<void>;
+
+export function ExportSitesPlain():Promise<void>;
 
 export function GetActiveConnectionID():Promise<string>;
 
 export function GetConnectionStatus():Promise<string>;
 
 export function GetConnections():Promise<Array<connection.ConnInfo>>;
+
+export function GetKeyringStatus():Promise<string>;
 
 export function GetLocalHome():Promise<string>;
 
@@ -54,8 +61,6 @@ export function GetSites():Promise<Array<sites.Site>>;
 
 export function GetTransfers():Promise<Array<transfer.Job>>;
 
-export function ImportSites():Promise<number>;
-
 export function LocalDelete(arg1:string):Promise<void>;
 
 export function LocalListDir(arg1:string):Promise<Array<fs.FileEntry>>;
@@ -63,6 +68,8 @@ export function LocalListDir(arg1:string):Promise<Array<fs.FileEntry>>;
 export function LocalMkDir(arg1:string):Promise<void>;
 
 export function LocalRename(arg1:string,arg2:string):Promise<void>;
+
+export function OpenImportDialog():Promise<main.ImportFileInfo>;
 
 export function QueueDownload(arg1:string,arg2:string):Promise<void>;
 

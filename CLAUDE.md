@@ -13,7 +13,7 @@ Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}`
 ## Build & Run
 
 ```bash
-# Recommended — use the build script at project root
+# Recommended - use the build script at project root
 ./build.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
 ./build.sh linux            # Linux only             → build/bin/linux/GlideFTP
 ./build.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
@@ -34,15 +34,15 @@ Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}`
 ./create-archive.sh -p appimage-arch 1.7.1           # Arch AppImage archives only
 ./create-archive.sh -p appimage-debian 1.7.1         # Debian AppImage archives only
 ./create-archive.sh -p windows -t gz 1.7.1           # Windows .tar.gz only
-# Version must be X.Y.Z (3 numbers) — script refuses anything else
+# Version must be X.Y.Z (3 numbers) - script refuses anything else
 # Linux binary archives include README.md with libwebkit2gtk-4.1 install instructions
 # AppImage archives contain only the .AppImage (self-contained, webkit helpers bundled)
 
-# Manual — Linux (system has webkit2gtk-4.1, the tag is mandatory)
+# Manual - Linux (system has webkit2gtk-4.1, the tag is mandatory)
 wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
 wails dev   -tags webkit2_41        # dev mode with hot reload
 
-# Manual — Windows cross-compile from Linux (requires mingw-w64-gcc)
+# Manual - Windows cross-compile from Linux (requires mingw-w64-gcc)
 # Install: sudo pacman -S mingw-w64-gcc
 CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windows/amd64
 
@@ -53,10 +53,10 @@ cd frontend && npm install && npm run build
 ./build/bin/linux/GlideFTP
 ```
 
-> **Note:** `wails` must be on PATH — install with `go install github.com/wailsapp/wails/v2/cmd/wails@latest` then `export PATH="$PATH:$(go env GOPATH)/bin"`.
-> Windows builds use WebView2 (built into Windows 10/11) — do NOT add `-tags webkit2_41` for Windows.
+> **Note:** `wails` must be on PATH - install with `go install github.com/wailsapp/wails/v2/cmd/wails@latest` then `export PATH="$PATH:$(go env GOPATH)/bin"`.
+> Windows builds use WebView2 (built into Windows 10/11) - do NOT add `-tags webkit2_41` for Windows.
 
-### Icon files — two separate assets
+### Icon files - two separate assets
 
 | File | Used by |
 |---|---|
@@ -67,7 +67,7 @@ cd frontend && npm install && npm run build
 ```bash
 magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/windows/icon.ico
 ```
-`build.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` — `sudo pacman -S imagemagick`).
+`build.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` - `sudo pacman -S imagemagick`).
 
 ## Architecture
 
@@ -88,9 +88,13 @@ GlideFTP/
 │   ├── transfer/
 │   │   └── queue.go               # Worker-pool transfer queue; emits Wails events for progress
 │   ├── sites/
-│   │   └── sites.go               # Saved sites — persisted to ~/.config/GlideFTP/sites.json
+│   │   └── sites.go               # Saved sites - persisted to ~/.config/GlideFTP/sites.json (passwords NEVER written to disk)
+│   ├── keyring/
+│   │   └── keyring.go             # System keyring abstraction (go-keyring): Set/Get/Delete/IsAvailable - D-Bus/gnome-keyring on Linux, DPAPI on Windows
+│   ├── crypto/
+│   │   └── crypto.go              # .gfe encrypted export format: Argon2id(passphrase,salt) → AES-256-GCM; Encrypt/Decrypt/IsEncrypted
 │   ├── settings/
-│   │   └── settings.go            # App settings — persisted to ~/.config/GlideFTP/settings.json (includes MaxConnections)
+│   │   └── settings.go            # App settings - persisted to ~/.config/GlideFTP/settings.json (includes MaxConnections)
 │   └── fs/
 │       └── local.go               # Local filesystem helpers (ListDir, MkDir, Delete, Rename)
 └── frontend/src/
@@ -102,54 +106,56 @@ GlideFTP/
     │   ├── connection.js           # Connection state, local+remote path/entries stores
     │   └── transfers.js            # Transfer list store; completedTransfer store; Wails event subs
     ├── utils/
-    │   └── focusTrap.js            # Svelte action `trapFocus` — traps Tab/Shift+Tab inside a popup container
+    │   └── focusTrap.js            # Svelte action `trapFocus` - traps Tab/Shift+Tab inside a popup container
     └── components/
         ├── ConnectionBar.svelte    # Host/user/pass/port/protocol inputs + connect button + quick connect (↑/→ button)
         ├── FileBrowser.svelte      # Single panel: nav, sort, multi-select, drag-drop, rename, delete
         ├── TransferQueue.svelte    # Bottom panel, resizable, 3 tabs: pending/failed/done
-        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) — update hardcoded "v1.7.3" string on each release
+        ├── SettingsPanel.svelte    # Sliding panel (75% width from right); footer shows version badge (accent color, bottom-left) - update hardcoded "v1.7.3" string on each release
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect/duplicate saved sites; form inputs have right-click cut/copy/paste menu; password field has eye toggle
         └── ColorPicker.svelte      # Sliding overlay (z-index 500): HSV canvas + hue slider + RGB/HEX inputs
 ```
 
 ## Key Design Decisions
 
-- **One `App` struct** in `app.go` is the single Wails binding — all methods on it are exposed to JS automatically.
+- **One `App` struct** in `app.go` is the single Wails binding - all methods on it are exposed to JS automatically.
 - **Transfer progress** uses `runtime.EventsEmit` from Go → frontend subscribes with `EventsOn('transfer:progress', ...)`. Removal emits `transfer:removed`.
-- **Theme** is applied via `document.documentElement.setAttribute('data-theme', 'dark'|'light')` — CSS vars defined in `style.css`.
+- **Theme** is applied via `document.documentElement.setAttribute('data-theme', 'dark'|'light')` - CSS vars defined in `style.css`.
 - **Accent color** is applied via `applyAccentColor(hex)` in `settings.js` which sets `--accent`, `--accent-hover`, `--accent-subtle` CSS vars on `document.documentElement`.
-- **i18n** is a Svelte `derived` store — `$t('key')` reactively switches language with no page reload.
+- **i18n** is a Svelte `derived` store - `$t('key')` reactively switches language with no page reload.
 - **Config files** are stored in the OS user config dir (`os.UserConfigDir()`): cross-platform without hardcoding paths.
-- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Auth type `key` (= `AuthSSHKey`) handles both OpenSSH PEM keys and PuTTY `.ppk` format (v2/v3, RSA & Ed25519) — detection is automatic via `isPPKFile()` in `ppk.go`; encrypted PPK keys return a clear error asking to convert with PuTTYgen. Selecting SFTP auto-sets authType to `interactive` (preserves `key` if already set); selecting `interactive` or `key` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`). The `account` auth type has been removed — auth types are: Normal, Anonymous, Ask password, Interactive, SSH Key.
+- **SFTP auth** supports password, SSH key file (with optional passphrase), interactive keyboard, and SSH agent (`SSH_AUTH_SOCK`). Auth type `key` (= `AuthSSHKey`) handles both OpenSSH PEM keys and PuTTY `.ppk` format (v2/v3, RSA & Ed25519) - detection is automatic via `isPPKFile()` in `ppk.go`; encrypted PPK keys return a clear error asking to convert with PuTTYgen. Selecting SFTP auto-sets authType to `interactive` (preserves `key` if already set); selecting `interactive` or `key` auto-sets protocol to `sftp` (coupled in `SiteManager.svelte` via `setProtocol`/`setAuthType`). The `account` auth type has been removed - auth types are: Normal, Anonymous, Ask password, Interactive, SSH Key.
 - **Port stepper in ConnectionBar**: the port field uses a custom `−`/`+` stepper (`.port-stepper` div) with a hidden-spinner number input between two buttons. `stepPort(delta)` skips port 22 when `protocol === 'ftp'` (jumps 21→23 going up, 23→21 going down). A reactive guard `$: if (!isConnected && protocol === 'ftp' && port === 22) port = 21` also handles direct keyboard entry of 22.
 - **FTP passive mode** is the default (configurable in settings).
-- **FTP thread-safety**: `FTPClient` has a `sync.Mutex` — all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
-- **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk — calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
-- **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting — no "already connected" error.
+- **FTP thread-safety**: `FTPClient` has a `sync.Mutex` - all methods lock it. The `jlaffaye/ftp` library is not thread-safe; without the mutex, concurrent queue jobs corrupt the connection.
+- **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk - calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
+- **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting - no "already connected" error.
 - **Multi-connection tabs**: `manager.ConnectNew()` adds a connection alongside existing ones. The frontend tracks open connections in the `connections` writable store (`[{id, name, host, protocol, port, user, remotePath}]`). Tabs appear in `App.svelte` between the topbar and dual-browser only when `$connections.length > 1`. `switchTab(id)` saves the current remotePath before switching. `closeTab(id)` cleans up and auto-activates the next tab. When the disconnect button is clicked with 2+ open connections, a confirmation overlay asks to close all. `MaxConnections` (1–5, default 3) is a setting that controls how many can be kept open; `SiteManager` checks this before offering the "keep and open new" option.
 - **Duplicate connection guard**: `doKeepAndAdd()` in `SiteManager.svelte` checks whether any entry in `$connections` already has the same `host`, `port`, `protocol`, and `user` before calling `addConnection()`. If a duplicate is detected → calls `connectBySite()` instead (reconnect, no new tab). For `ask_password` mode the `promptIsAdd` flag is set to `false` so the password prompt routes to `connectBySiteWithPassword()` rather than `addConnection()`.
 - **DefaultLocalDir**: `initLocalDir(startDir?)` in connection.js uses the setting on startup; `loadSettings()` returns the settings object so `App.svelte` can pass it immediately.
 - **ListDir timeout**: `manager.ListDir` wraps the blocking client call in a goroutine with a `time.After` timeout; on timeout it forces disconnect and returns an error so the UI doesn't freeze.
-- **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container — `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, both confirm boxes in `FileBrowser`, and the quick-connect keep-or-replace dialog in `ConnectionBar`. Tab/Shift+Tab cycle only within the active popup.
+- **Focus trap in popups**: `use:trapFocus` (from `utils/focusTrap.js`) is applied to every modal/overlay container - `SiteManager` main modal, keep-or-replace overlay, password prompt overlay, `SettingsPanel`, disconnect-all box in `App.svelte`, both confirm boxes in `FileBrowser`, and the quick-connect keep-or-replace dialog in `ConnectionBar`. Tab/Shift+Tab cycle only within the active popup.
 - **Duplicate site** (`SiteManager.svelte`): `duplicateSite()` clones the current `form` with `name + ' (copie)'` and calls `CreateSite`. Button rendered in `.form-actions` with `margin-left: auto` (pushed right), only visible when `selectedSite` is set (not on new-site creation). i18n key: `duplicateSite`.
 - **SiteManager form right-click menus**: `ctxMenu = { x, y, field, selStart, selEnd, value, pasteOnly }` captures cursor state on `on:contextmenu`. All text inputs and textarea get cut/copy/paste; password input gets paste-only (`pasteOnly = true`). `field === 'port'` result is passed through `parseInt()` to keep `form.port` as a number. i18n keys: `cut`, `copy`, `paste`.
 - **SiteManager form password eye toggle**: `showFormPwd` boolean (separate from `showPwd` for the ask-password overlay). Uses the `{#if}/{:else}` two-input pattern (WebKit-GTK pattern #3). Reuses `.pwd-input-wrap`, `.pwd-input`, `.eye-btn` CSS classes.
-- **SiteManager action buttons centered**: `.view-actions` has `justify-content: center` — Connect / Edit / Delete buttons are horizontally centered in the detail panel.
-- **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode — all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` — safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` — no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
+- **SiteManager action buttons centered**: `.view-actions` has `justify-content: center` - Connect / Edit / Delete buttons are horizontally centered in the detail panel.
+- **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode - all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` - safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` - no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
+- **Password security - system keyring**: passwords are stored in the OS keyring (gnome-keyring/kwallet on Linux via D-Bus, Windows Credential Manager/DPAPI on Windows). `sites.json` on disk **never contains passwords** - `sites.go save()` always strips them. `app.GetSites()` enriches sites with passwords from keyring before returning to the frontend. `app.CreateSite`/`UpdateSite` extract the password, clear it from the struct, then call `keyringMgr.Set()`. `app.DeleteSite` also calls `keyringMgr.Delete()`. On startup `migratePasswords()` migrates any plaintext passwords still in old `sites.json` to keyring then re-saves the file stripped. `needsKeyring(authType)` returns false for `anonymous`, `ask_password`, `interactive` - those auth types never store a password. If keyring is unavailable `GetKeyringStatus()` returns `"keyring_unavailable"` and `SiteManager.svelte` shows a yellow warning banner; passwords simply won't be saved (user should switch to `ask_password`).
+- **Password security - encrypted export (.gfe)**: export dialog offers two choices - "without passwords" (plain JSON) or "with passwords" (encrypted `.gfe`). The `.gfe` binary format: `[4B magic "GFEX"][1B version][32B random salt][12B random nonce][ciphertext+GCM tag]`. Key derivation: `Argon2id(passphrase, salt, time=3, memory=64MB, threads=4)` → 32-byte AES-256 key. Encryption: AES-256-GCM (provides confidentiality + integrity). On import, `IsEncrypted()` checks magic bytes; if encrypted, frontend shows passphrase prompt before calling `DoImportSites(path, passphrase)`. Works cross-platform (Linux↔Windows) because the format is purely binary/Go stdlib - no OS-specific primitives.
 
 ## WebKit-GTK UI Patterns (Linux)
 
 The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must not be used**:
 
-1. **Hidden checkbox toggles** (`<label><input type="checkbox" hidden>`) — checkboxes never fire click events when hidden this way. **Use `<button class="sw" class:on={val} on:click={() => toggle(key)}>` instead.** See `SettingsPanel.svelte` for reference.
+1. **Hidden checkbox toggles** (`<label><input type="checkbox" hidden>`) - checkboxes never fire click events when hidden this way. **Use `<button class="sw" class:on={val} on:click={() => toggle(key)}>` instead.** See `SettingsPanel.svelte` for reference.
 
-2. **Native number input spinners** — unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`. See `SettingsPanel.svelte` and `ConnectionBar.svelte` (port stepper) for reference.
+2. **Native number input spinners** - unreliable/invisible. **Use custom `−`/`+` buttons with a `step(key, delta, min, max)` helper.** Hide native spinners with `-moz-appearance: textfield` and `-webkit-appearance: none`. See `SettingsPanel.svelte` and `ConnectionBar.svelte` (port stepper) for reference.
 
-3. **Dynamic `type` on `<input bind:value>`** — Svelte 3 compile error: `'type' attribute cannot be dynamic if input uses two-way binding`. **Use two separate inputs in `{#if}`/`{:else}` blocks** — one `type="text"`, one `type="password"`, both bound to the same variable. See `SiteManager.svelte` password prompt for reference.
+3. **Dynamic `type` on `<input bind:value>`** - Svelte 3 compile error: `'type' attribute cannot be dynamic if input uses two-way binding`. **Use two separate inputs in `{#if}`/`{:else}` blocks** - one `type="text"`, one `type="password"`, both bound to the same variable. See `SiteManager.svelte` password prompt for reference.
 
-4. **Ctrl+Z (undo) in inputs** — WebKit-GTK does not fire native undo in Svelte-bound inputs. Fixed globally in `App.svelte` `handleKeydown`: intercept `Ctrl+Z` on `INPUT`/`TEXTAREA`, call `document.execCommand('undo')`, then dispatch a synthetic `input` event so Svelte re-syncs its variable.
+4. **Ctrl+Z (undo) in inputs** - WebKit-GTK does not fire native undo in Svelte-bound inputs. Fixed globally in `App.svelte` `handleKeydown`: intercept `Ctrl+Z` on `INPUT`/`TEXTAREA`, call `document.execCommand('undo')`, then dispatch a synthetic `input` event so Svelte re-syncs its variable.
 
-5. **Right-click context menu in inputs** — WebKit-GTK disables the native context menu in the WebView. Implement a custom menu via `on:contextmenu`. For **cut/copy**: snapshot `selectionStart`/`selectionEnd`/`value` at right-click time (try-catch required for `type="number"`), then write selected text with `navigator.clipboard.writeText()`. For **paste**: `navigator.clipboard.readText()` inserted at the saved cursor position. Cut/Copy buttons only shown when `selStart !== selEnd`. See `SiteManager.svelte` `handleCtxMenu` / `ctxCut` / `ctxCopy` / `ctxPaste` for the full pattern; password prompt overlay uses the simpler paste-only `pasteMenu` / `doPaste`.
+5. **Right-click context menu in inputs** - WebKit-GTK disables the native context menu in the WebView. Implement a custom menu via `on:contextmenu`. For **cut/copy**: snapshot `selectionStart`/`selectionEnd`/`value` at right-click time (try-catch required for `type="number"`), then write selected text with `navigator.clipboard.writeText()`. For **paste**: `navigator.clipboard.readText()` inserted at the saved cursor position. Cut/Copy buttons only shown when `selStart !== selEnd`. See `SiteManager.svelte` `handleCtxMenu` / `ctxCut` / `ctxCopy` / `ctxPaste` for the full pattern; password prompt overlay uses the simpler paste-only `pasteMenu` / `doPaste`.
 
 ## FileBrowser Features
 
@@ -161,11 +167,11 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Column sort**: click Name/Size/Date headers; dirs always listed first; second click reverses order
 - **Multi-select**: Ctrl+click toggles, Shift+click range-selects, rubber-band (click-drag on empty area)
 - **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2
-- **Delete key**: keydown handler calls `handleDelete(selected)` — deletes the full selection
+- **Delete key**: keydown handler calls `handleDelete(selected)` - deletes the full selection
 - **Right-click context menu**: on a file → Rename / Transfer / Delete (deletes full selection if right-clicked item is in selection); on empty area → New Folder
 - **Delete confirmation**: `confirmDeleteEntries` (array); popup shows filename (1 item) or "N éléments" (multiple); `doDeleteAll()` iterates and calls `onDelete` for each, single refresh at end
-- **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` — if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array. Drag-drop from the OS file manager is not supported (WebKit-GTK does not expose OS drag sources to JS).
-- **Conflict resolution**: `conflictState` is a two-mode state machine — `null` (no dialog), `{ mode:'choose', conflicts:[] }` (4-button dialog: Replace / Rename on host / Rename on server / Cancel), `{ mode:'rename', entry, remaining:[], inputVal:'', index, total }` (rename input step). `checkConflicts()` compares names against `otherEntries` (case-insensitive). Non-conflicting files in the same selection are queued immediately. For multi-file rename, the wizard advances one file at a time (`advanceRename`); a `1/N` counter is shown and the input re-mounts per file via `{#key conflictState.index}` to trigger `autofocus`. Drag-drop bypasses conflict detection.
+- **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` - if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array. Drag-drop from the OS file manager is not supported (WebKit-GTK does not expose OS drag sources to JS).
+- **Conflict resolution**: `conflictState` is a two-mode state machine - `null` (no dialog), `{ mode:'choose', conflicts:[] }` (4-button dialog: Replace / Rename on host / Rename on server / Cancel), `{ mode:'rename', entry, remaining:[], inputVal:'', index, total }` (rename input step). `checkConflicts()` compares names against `otherEntries` (case-insensitive). Non-conflicting files in the same selection are queued immediately. For multi-file rename, the wizard advances one file at a time (`advanceRename`); a `1/N` counter is shown and the input re-mounts per file via `{#key conflictState.index}` to trigger `autofocus`. Drag-drop bypasses conflict detection.
 - **Refresh animation**: `handleRefresh()` sets `refreshing = true`, awaits `Promise.all([onRefresh(), 500ms])` to guarantee a full spin, then resets. CSS `@keyframes spin-once` rotates the SVG 360° in 0.5s; `class:spinning={refreshing}` applies it. Multiple rapid clicks ignored while refreshing.
 
 ## App.svelte Layout
@@ -186,7 +192,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 | `connections` | connection.js | Writable array of `{id, name, host, protocol, port, user, remotePath}` for all open connections |
 | `activeConnectionId` | connection.js | Writable; UUID of the currently active connection tab |
 | `addConnection(siteId, overridePassword?)` | connection.js | Calls `ConnectToSiteAdditional`; adds a connection without closing existing ones |
-| `addConnectionAdHoc(cfg)` | connection.js | Calls `ConnectAdditional`; adds a direct (non-site) connection alongside existing ones — used by quick connect "Replace" to safely add then close old |
+| `addConnectionAdHoc(cfg)` | connection.js | Calls `ConnectAdditional`; adds a direct (non-site) connection alongside existing ones - used by quick connect "Replace" to safely add then close old |
 | `switchTab(id)` | connection.js | Saves current remotePath, calls `SwitchConnection`, refreshes remote panel for the new active connection |
 | `closeTab(id)` | connection.js | Calls `CloseConnection`, removes from store; if last tab, clears all state; if was active, switches to last remaining |
 | `connectBySite(id, config?)` | connection.js | Sets `connectionStatus` store correctly; optional `config` param populates `activeConnectionConfig` |
@@ -198,35 +204,39 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 ## Go Backend Notes
 
-- `queue.RemoveJob(id)` — removes a finished/cancelled/failed job; emits `transfer:removed` event
-- `app.RemoveTransfer(id)` — JS-callable wrapper around `queue.RemoveJob`
-- `app.ConnectWithPassword(id, password)` — connects to a saved site but overrides its stored password (for `ask_password` sites)
-- `app.ConnectToSiteAdditional(siteID, overridePassword)` — adds a new connection alongside existing ones (multi-tab); calls `manager.ConnectNew()`
-- `app.GetConnections()` — returns `[]ConnInfo` for all currently open connections
-- `app.SwitchConnection(id)` — switches the active connection and calls `queue.SetExecutor` with the new client
-- `app.CloseConnection(id)` — closes a specific connection and calls `queue.SetExecutor` with the updated active client
-- `app.GetActiveConnectionID()` — returns the UUID of the currently active connection
-- `manager.ConnectNew()` — adds a connection without removing existing ones; new connection becomes active
-- `manager.CloseOne(id)` — closes specific connection; if it was active, switches to the most-recently-added remaining one
-- `manager.SwitchTo(id)` — makes a connection active without reconnecting
-- `app.ExportSites()` / `app.ImportSites()` — file-dialog based JSON export/import of all saved sites
-- `app.shutdown(ctx)` — registered as `OnShutdown` in `main.go`; calls `connMgr.Disconnect()` for clean teardown on window close
-- `manager.Connect()` — disconnects existing active client first; other connections remain open (enables reconnection from SiteManager)
-- `app.ConnectAdditional(cfg)` — adds a new connection alongside existing ones (no site ID required — for ConnectionBar quick connect); calls `manager.ConnectNew()` and sets the queue executor; returns `ConnInfo`
-- `Client` interface (`types.go`) — `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
-- `FTPClient` — all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
+- `queue.RemoveJob(id)` - removes a finished/cancelled/failed job; emits `transfer:removed` event
+- `app.RemoveTransfer(id)` - JS-callable wrapper around `queue.RemoveJob`
+- `app.ConnectWithPassword(id, password)` - connects to a saved site but overrides its stored password (for `ask_password` sites)
+- `app.ConnectToSiteAdditional(siteID, overridePassword)` - adds a new connection alongside existing ones (multi-tab); calls `manager.ConnectNew()`
+- `app.GetConnections()` - returns `[]ConnInfo` for all currently open connections
+- `app.SwitchConnection(id)` - switches the active connection and calls `queue.SetExecutor` with the new client
+- `app.CloseConnection(id)` - closes a specific connection and calls `queue.SetExecutor` with the updated active client
+- `app.GetActiveConnectionID()` - returns the UUID of the currently active connection
+- `manager.ConnectNew()` - adds a connection without removing existing ones; new connection becomes active
+- `manager.CloseOne(id)` - closes specific connection; if it was active, switches to the most-recently-added remaining one
+- `manager.SwitchTo(id)` - makes a connection active without reconnecting
+- `app.ExportSitesPlain()` - file-dialog, exports sites as plain JSON without passwords
+- `app.ExportSitesEncrypted(passphrase)` - file-dialog, exports sites as `.gfe` (Argon2id+AES-256-GCM encrypted); fetches passwords from keyring before encrypting
+- `app.OpenImportDialog()` - opens file-dialog, reads first bytes, returns `ImportFileInfo{Path, NeedsPassphrase}`
+- `app.DoImportSites(path, passphrase)` - imports from plain JSON or `.gfe`; stores passwords in keyring; returns count
+- `app.GetKeyringStatus()` - returns `""` if keyring available, `"keyring_unavailable"` otherwise
+- `app.shutdown(ctx)` - registered as `OnShutdown` in `main.go`; calls `connMgr.Disconnect()` for clean teardown on window close
+- `manager.Connect()` - disconnects existing active client first; other connections remain open (enables reconnection from SiteManager)
+- `app.ConnectAdditional(cfg)` - adds a new connection alongside existing ones (no site ID required - for ConnectionBar quick connect); calls `manager.ConnectNew()` and sets the queue executor; returns `ConnInfo`
+- `Client` interface (`types.go`) - `Upload` and `Download` now take `context.Context` as first arg; both `FTPClient` and `SFTPClient` implement this
+- `FTPClient` - all methods are protected by `sync.Mutex`; FTP connections are not thread-safe
 - **FTP Download order**: `FileSize` MUST be called BEFORE `Retr` in `ftp.go`. Calling it after opens a command on the control connection mid-transfer, which violates FTP protocol and causes Synology (and others) to return 0 bytes.
-- `manager.GetActiveHost()` — returns `cfg.Host` of the currently active connection; used by `QueueUpload`/`QueueDownload` to tag each job with `RemoteHost`
-- `Job.RemoteHost string` — set at queue time with the active server hostname/IP; serialized as `remoteHost` in JSON events sent to the frontend
+- `manager.GetActiveHost()` - returns `cfg.Host` of the currently active connection; used by `QueueUpload`/`QueueDownload` to tag each job with `RemoteHost`
+- `Job.RemoteHost string` - set at queue time with the active server hostname/IP; serialized as `remoteHost` in JSON events sent to the frontend
 
 ## TransferQueue
 
 - Speed is computed in `TransferQueue.svelte` from deltas of `bytesDone` between store updates (250 ms window minimum to avoid noise). Stored in `speeds` map (`id → bytes/sec`), displayed as `KB/s` or `MB/s` in accent color next to the progress label.
-- **Transfer direction**: each job row shows a `.job-route` line (`"local → host"` for uploads, `"host → local"` for downloads) in all 3 tabs — uses `job.remoteHost` for the server name and `job.direction` for the arrow side.
+- **Transfer direction**: each job row shows a `.job-route` line (`"local → host"` for uploads, `"host → local"` for downloads) in all 3 tabs - uses `job.remoteHost` for the server name and `job.direction` for the arrow side.
 - **Average speed (done tab only)**: computed in `avgSpeed(job)` as `job.size / (finishedAt − createdAt)` seconds; displayed next to the route with label `avgSuffix` (i18n: `"moy."` FR / `"avg."` EN).
 - `ColorPicker.svelte` stores last 8 applied colors in `localStorage` key `glideftp_color_history`; displayed as swatches above the footer; click to select.
 
 ## Text & Naming Conventions
 
-- **Arch**: always write `Arch` — never `Arch/Manjaro` anywhere (README, release notes, docs, etc.).
-- **Dashes**: always use `-` (hyphen). Never use `—` (em dash) in any generated text, release notes, or documentation.
+- **Arch**: always write `Arch` - never `Arch/Manjaro` anywhere (README, release notes, docs, etc.).
+- **Dashes**: always use `-` (hyphen). Never use `-` (em dash) in any generated text, release notes, or documentation.

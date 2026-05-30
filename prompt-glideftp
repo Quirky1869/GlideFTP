@@ -243,3 +243,4 @@ Pour l'input "Mot de passe" il faut seulement que l'option coller soit disponibl
 
 63 = Recentrer les 3 icônes dans gérer les sites -> Connecter , modifier et supprimer il faut qu'il soit centré, il sont actuelleemnt à gauche 
 
+64 = Il faut trouver un moyen de chiffrer les mot de passe pour ne pas qu'il soit en clair (keyring et/ou kwallet)

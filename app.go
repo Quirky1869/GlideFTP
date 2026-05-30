@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 
+	gfeCrypto "GlideFTP/internal/crypto"
 	"GlideFTP/internal/connection"
 	localfs "GlideFTP/internal/fs"
+	"GlideFTP/internal/keyring"
 	"GlideFTP/internal/settings"
 	"GlideFTP/internal/sites"
 	"GlideFTP/internal/transfer"
@@ -16,11 +18,12 @@ import (
 )
 
 type App struct {
-	ctx        context.Context
-	connMgr    *connection.Manager
-	queue      *transfer.Queue
-	siteMgr    *sites.Manager
+	ctx         context.Context
+	connMgr     *connection.Manager
+	queue       *transfer.Queue
+	siteMgr     *sites.Manager
 	appSettings *settings.Settings
+	keyringMgr  *keyring.Manager
 }
 
 func NewApp() *App {
@@ -29,6 +32,7 @@ func NewApp() *App {
 		connMgr:     connection.NewManager(),
 		siteMgr:     sites.NewManager(),
 		appSettings: s,
+		keyringMgr:  keyring.NewManager(),
 	}
 	return app
 }
@@ -40,10 +44,42 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.queue = transfer.NewQueue(a.appSettings.MaxConcurrentTransfers, emitter)
 	a.queue.SetSpeedLimit(a.appSettings.MaxTransferSpeedKBps)
+	a.migratePasswords()
 }
 
 func (a *App) shutdown(ctx context.Context) {
 	a.connMgr.Disconnect()
+}
+
+// migratePasswords moves any plaintext passwords still in sites.json into the keyring.
+// This handles the one-time migration from the pre-keyring format.
+func (a *App) migratePasswords() {
+	if !a.keyringMgr.IsAvailable() {
+		return
+	}
+	allSites := a.siteMgr.GetAll()
+	migrated := false
+	for _, site := range allSites {
+		if site.Password != "" && needsKeyring(string(site.AuthType)) {
+			if err := a.keyringMgr.Set(site.ID, site.Password); err == nil {
+				migrated = true
+			}
+		}
+	}
+	if migrated {
+		// Re-save sites.json with passwords stripped (save() always strips them).
+		_ = a.siteMgr.Persist()
+	}
+}
+
+// needsKeyring reports whether a given authType should store a password in the keyring.
+func needsKeyring(authType string) bool {
+	switch authType {
+	case "anonymous", "ask_password", "interactive":
+		return false
+	default:
+		return true
+	}
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────
@@ -58,25 +94,66 @@ func (a *App) SaveSettings(s settings.Settings) error {
 	return s.Save()
 }
 
+// ─── Keyring ─────────────────────────────────────────────────────────────────
+
+// GetKeyringStatus returns "" when the system keyring is available, or an error key otherwise.
+func (a *App) GetKeyringStatus() string {
+	if a.keyringMgr.IsAvailable() {
+		return ""
+	}
+	return "keyring_unavailable"
+}
+
 // ─── Sites ───────────────────────────────────────────────────────────────────
 
+// GetSites returns all saved sites, with passwords populated from the keyring.
 func (a *App) GetSites() []sites.Site {
-	return a.siteMgr.GetAll()
+	siteList := a.siteMgr.GetAll()
+	for i := range siteList {
+		if pwd, err := a.keyringMgr.Get(siteList[i].ID); err == nil && pwd != "" {
+			siteList[i].Password = pwd
+		}
+	}
+	return siteList
 }
 
 func (a *App) CreateSite(s sites.Site) (sites.Site, error) {
-	return a.siteMgr.Create(s)
+	password := s.Password
+	s.Password = ""
+	created, err := a.siteMgr.Create(s)
+	if err != nil {
+		return sites.Site{}, err
+	}
+	if password != "" && needsKeyring(string(s.AuthType)) {
+		_ = a.keyringMgr.Set(created.ID, password)
+	}
+	created.Password = password
+	return created, nil
 }
 
 func (a *App) UpdateSite(s sites.Site) error {
-	return a.siteMgr.Update(s)
+	password := s.Password
+	s.Password = ""
+	if err := a.siteMgr.Update(s); err != nil {
+		return err
+	}
+	if !needsKeyring(string(s.AuthType)) || password == "" {
+		_ = a.keyringMgr.Delete(s.ID)
+	} else {
+		_ = a.keyringMgr.Set(s.ID, password)
+	}
+	return nil
 }
 
 func (a *App) DeleteSite(id string) error {
+	_ = a.keyringMgr.Delete(id)
 	return a.siteMgr.Delete(id)
 }
 
-func (a *App) ExportSites() error {
+// ─── Export / Import ─────────────────────────────────────────────────────────
+
+// ExportSitesPlain exports all sites as plain JSON without passwords.
+func (a *App) ExportSitesPlain() error {
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "Export sites",
 		DefaultFilename: "glideftp-sites.json",
@@ -87,37 +164,113 @@ func (a *App) ExportSites() error {
 	if err != nil || path == "" {
 		return err
 	}
-	data, err := json.MarshalIndent(a.siteMgr.GetAll(), "", "  ")
+	allSites := a.siteMgr.GetAll()
+	for i := range allSites {
+		allSites[i].Password = ""
+	}
+	data, err := json.MarshalIndent(allSites, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, 0600)
 }
 
-func (a *App) ImportSites() (int, error) {
-	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Import sites",
+// ExportSitesEncrypted exports all sites with passwords, encrypted with Argon2id+AES-256-GCM.
+func (a *App) ExportSitesEncrypted(passphrase string) error {
+	if passphrase == "" {
+		return fmt.Errorf("la passphrase ne peut pas être vide")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export sites (chiffré)",
+		DefaultFilename: "glideftp-sites.gfe",
 		Filters: []runtime.FileFilter{
-			{DisplayName: "JSON Files", Pattern: "*.json"},
+			{DisplayName: "GlideFTP Export", Pattern: "*.gfe"},
 		},
 	})
 	if err != nil || path == "" {
-		return 0, err
+		return err
 	}
+	allSites := a.siteMgr.GetAll()
+	for i := range allSites {
+		if pwd, err := a.keyringMgr.Get(allSites[i].ID); err == nil && pwd != "" {
+			allSites[i].Password = pwd
+		}
+	}
+	plaintext, err := json.MarshalIndent(allSites, "", "  ")
+	if err != nil {
+		return err
+	}
+	encrypted, err := gfeCrypto.Encrypt(plaintext, passphrase)
+	if err != nil {
+		return fmt.Errorf("chiffrement échoué : %w", err)
+	}
+	return os.WriteFile(path, encrypted, 0600)
+}
+
+// ImportFileInfo is returned by OpenImportDialog to tell the frontend what kind of file was selected.
+type ImportFileInfo struct {
+	Path            string `json:"path"`
+	NeedsPassphrase bool   `json:"needsPassphrase"`
+}
+
+// OpenImportDialog opens a file picker and reports whether the selected file is encrypted.
+func (a *App) OpenImportDialog() (ImportFileInfo, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Import sites",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "GlideFTP Export", Pattern: "*.gfe;*.json"},
+			{DisplayName: "All Files", Pattern: "*"},
+		},
+	})
+	if err != nil || path == "" {
+		return ImportFileInfo{}, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ImportFileInfo{}, err
+	}
+	return ImportFileInfo{
+		Path:            path,
+		NeedsPassphrase: gfeCrypto.IsEncrypted(data),
+	}, nil
+}
+
+// DoImportSites imports sites from a file (plain JSON or .gfe encrypted).
+// Pass an empty passphrase for plain JSON files.
+func (a *App) DoImportSites(path, passphrase string) (int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return 0, err
 	}
+	var jsonData []byte
+	if gfeCrypto.IsEncrypted(data) {
+		if passphrase == "" {
+			return 0, fmt.Errorf("passphrase requise pour ce fichier")
+		}
+		jsonData, err = gfeCrypto.Decrypt(data, passphrase)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		jsonData = data
+	}
 	var imported []sites.Site
-	if err := json.Unmarshal(data, &imported); err != nil {
-		return 0, fmt.Errorf("invalid file format: %w", err)
+	if err := json.Unmarshal(jsonData, &imported); err != nil {
+		return 0, fmt.Errorf("format de fichier invalide : %w", err)
 	}
 	count := 0
 	for _, s := range imported {
+		password := s.Password
 		s.ID = ""
-		if _, err := a.siteMgr.Create(s); err == nil {
-			count++
+		s.Password = ""
+		created, err := a.siteMgr.Create(s)
+		if err != nil {
+			continue
 		}
+		if password != "" && needsKeyring(string(s.AuthType)) {
+			_ = a.keyringMgr.Set(created.ID, password)
+		}
+		count++
 	}
 	return count, nil
 }
@@ -126,7 +279,12 @@ func (a *App) ImportSites() (int, error) {
 
 func (a *App) buildSiteConfig(site sites.Site, password string) connection.Config {
 	if password == "" {
-		password = site.Password
+		if site.Password != "" {
+			// Password already populated (e.g. during migration before keyring save)
+			password = site.Password
+		} else {
+			password, _ = a.keyringMgr.Get(site.ID)
+		}
 	}
 	return connection.Config{
 		Protocol:   connection.Protocol(site.Protocol),

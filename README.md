@@ -19,7 +19,8 @@
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
 - **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
-- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON
+- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON or encrypted `.gfe`
+- **Secure password storage** - passwords are stored in the OS keyring (gnome-keyring/kwallet on Linux, Windows Credential Manager on Windows), never in plain text on disk
 - **Ask-password auth** - password is never saved; prompted at connect time
 - **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive (or SSH Key) and vice versa
 - **Path autocomplete** - dropdown suggestions while typing in the path bar
@@ -69,6 +70,32 @@ Then make it executable and run it:
 ```bash
 chmod +x GlideFTP
 ./GlideFTP
+```
+
+#### Linux - password storage (keyring)
+
+GlideFTP stores passwords in the **system keyring** (gnome-keyring or kwallet). These are usually pre-installed on major desktop environments. If the keyring daemon is not running, a warning banner appears in the Site Manager and passwords will not be saved (use "Ask password" auth instead).
+
+To check whether a keyring daemon is available:
+
+```bash
+pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "no keyring daemon found"
+```
+
+To install one if missing:
+
+```bash
+# Arch Linux - GNOME Keyring (recommended for non-KDE environments)
+sudo pacman -S gnome-keyring
+
+# Arch Linux - KWallet (for KDE/Plasma)
+sudo pacman -S kwallet
+
+# Ubuntu / Debian
+sudo apt install gnome-keyring
+
+# Fedora
+sudo dnf install gnome-keyring
 ```
 
 #### Linux - AppImage (recommended)
@@ -199,7 +226,8 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
 - **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
 - **Onglets multi-connexion** - ouvrez plusieurs serveurs simultanément ; des onglets style navigateur apparaissent entre la barre d'outils et les panneaux de fichiers ; limite configurable (1 à 5) dans les paramètres
-- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON
+- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON ou en `.gfe` chiffré
+- **Stockage sécurisé des mots de passe** - les mots de passe sont stockés dans le keyring système (gnome-keyring/kwallet sur Linux, Gestionnaire de mots de passe Windows), jamais en clair sur le disque
 - **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
 - **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive (ou Clé SSH) et inversement
 - **Autocomplétion de chemin** - suggestions dans la barre de chemin lors de la saisie
@@ -249,6 +277,32 @@ Rendez ensuite le binaire exécutable et lancez-le :
 ```bash
 chmod +x GlideFTP
 ./GlideFTP
+```
+
+#### Linux - stockage des mots de passe (keyring)
+
+GlideFTP stocke les mots de passe dans le **keyring système** (gnome-keyring ou kwallet). Ces démons sont généralement pré-installés sur les environnements de bureau courants. Si aucun démon keyring n'est actif, une bannière d'avertissement s'affiche dans le Gestionnaire de sites et les mots de passe ne seront pas enregistrés (utilisez l'auth "Demander le mot de passe" à la place).
+
+Pour vérifier si un démon keyring est disponible :
+
+```bash
+pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "aucun démon keyring trouvé"
+```
+
+Pour en installer un si nécessaire :
+
+```bash
+# Arch Linux - GNOME Keyring (recommandé hors KDE)
+sudo pacman -S gnome-keyring
+
+# Arch Linux - KWallet (pour KDE/Plasma)
+sudo pacman -S kwallet
+
+# Ubuntu / Debian
+sudo apt install gnome-keyring
+
+# Fedora
+sudo dnf install gnome-keyring
 ```
 
 #### Linux - AppImage (recommandé)

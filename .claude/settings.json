@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); b=$(basename \"$f\"); [ \"${f%.md}\" != \"$f\" ] && [ -f \"$f\" ] && grep -qF '—' \"$f\" && printf '{\"decision\":\"block\",\"reason\":\"Em dash (—) détecté dans %s. Convention projet : utilisez - (tiret simple) uniquement.\"}' \"$b\" && exit 2; exit 0",
+            "statusMessage": "Vérification em dash..."
+          }
+        ]
+      }
+    ]
+  }
+}

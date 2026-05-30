@@ -80,11 +80,22 @@ func (m *Manager) save() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(m.sites, "", "  ")
+	// Passwords are stored in the system keyring — never write them to disk.
+	toSave := make([]Site, len(m.sites))
+	for i, s := range m.sites {
+		s.Password = ""
+		toSave[i] = s
+	}
+	data, err := json.MarshalIndent(toSave, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(path, data, 0600)
+}
+
+// Persist forces a save of the current site list to disk (with passwords stripped).
+func (m *Manager) Persist() error {
+	return m.save()
 }
 
 func (m *Manager) GetAll() []Site {
