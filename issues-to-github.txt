@@ -2181,3 +2181,73 @@ Intra-panel drag-and-drop (list view + tree view):
   dragover/dragleave/drop handlers.
 
 i18n: pasteHere, copyDone, cutDone added to en.js and fr.js.
+
+---
+
+#73
+Title: [Feature] Deleted local files go to system trash / recycle bin instead of being permanently deleted
+Labels: enhancement
+Version fixed: v1.7.4
+Description:
+When deleting a file or folder from the local panel (Delete key, right-click
+→ Delete, or multi-selection delete), the item disappears permanently. It does
+not appear in the OS trash / recycle bin, making recovery impossible without
+a third-party tool.
+
+Expected behaviour: deleting from the local panel should move the item to the
+system trash (Linux) or Recycle Bin (Windows), just like deleting from a
+standard file manager.
+
+Note: this feature only applies to the local panel. Remote files (FTP/SFTP)
+are deleted on the server and there is no server-side trash mechanism in
+either protocol.
+
+Solution (closing comment):
+Fixed in v1.7.4.
+
+Three platform-specific files were added to internal/fs/ using Go build tags.
+app.go LocalDelete() now calls localfs.Trash() instead of localfs.Delete().
+
+**Linux — internal/fs/trash_linux.go (//go:build linux)**
+
+Implements the FreeDesktop.org XDG Trash specification:
+
+1. Determines the trash directory:
+   $XDG_DATA_HOME/Trash, falling back to ~/.local/share/Trash.
+2. Creates files/ and info/ subdirectories with mode 0700 if absent.
+3. Resolves a unique name for the trashed item (collision avoidance:
+   appends .1, .2, ... before the extension until a free slot is found).
+4. Moves the item via os.Rename (fast, atomic, no data copy).
+   Cross-device case (EXDEV): falls back to localfs.Copy() + os.RemoveAll()
+   so files on separate filesystems (e.g. a second partition) are still
+   handled correctly.
+5. Writes the .trashinfo sidecar file:
+   [Trash Info]
+   Path=/absolute/original/path
+   DeletionDate=2024-06-01T14:30:00
+
+The trashinfo format is compatible with Nautilus, Thunar, Dolphin, Nemo,
+and any other FreeDesktop-compliant file manager.
+
+**Windows — internal/fs/trash_windows.go (//go:build windows)**
+
+Calls SHFileOperationW from shell32.dll via syscall.NewLazyDLL (no CGo
+required, compatible with mingw-w64 cross-compilation from Linux).
+
+The SHFILEOPSTRUCTW struct is reproduced in Go with explicit padding fields
+to match MSVC's 64-bit layout (56 bytes total):
+  hwnd, wFunc, _pad1, pFrom, pTo, fFlags, _pad2, fAborted, hMapping, title.
+
+Flags used:
+  FOF_ALLOWUNDO      (0x0040) — sends to Recycle Bin, recoverable
+  FOF_NOCONFIRMATION (0x0010) — no Windows dialog
+  FOF_SILENT         (0x0004) — no progress window
+  FOF_NOERRORUI     (0x0400) — suppress error dialogs (errors returned as int)
+
+The pFrom path is encoded as a double-null-terminated UTF-16 multi-string
+(required by SHFileOperationW): unicode/utf16.Encode([]rune(path + "\x00\x00")).
+
+**Fallback — internal/fs/trash_other.go (//go:build !linux && !windows)**
+
+Falls back to permanent deletion (os.RemoveAll) on unsupported platforms so
+the package still compiles everywhere.

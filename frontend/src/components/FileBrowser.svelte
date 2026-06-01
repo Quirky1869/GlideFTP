@@ -65,10 +65,26 @@
     setTimeout(() => { pasteMsg = null; }, 4000);
   }
 
+  // Returns a unique name like "file (copie).txt", "file (copie 1).txt", etc.
+  // usedNames is a Set of names already taken (updated in-place as names are reserved).
+  function uniqueCopyName(name, usedNames) {
+    const dotIdx = name.indexOf('.', name.startsWith('.') ? 1 : 0);
+    const base = dotIdx > 0 ? name.slice(0, dotIdx) : name;
+    const ext  = dotIdx > 0 ? name.slice(dotIdx)    : '';
+    const candidates = [`${base} (copie)${ext}`,
+      ...[...Array(100).keys()].map(i => `${base} (copie ${i + 1})${ext}`)];
+    const chosen = candidates.find(c => !usedNames.has(c));
+    usedNames.add(chosen);
+    return chosen;
+  }
+
   async function pasteToFolder(destFolder) {
     const cb = $clipboard;
     if (!cb || cb.side !== side) return;
     pasteMsg = null;
+
+    // Track names present in current dir + names generated during this batch.
+    const usedNames = new Set(entries.map(e => e.name));
 
     // Progressive refresh: first at 1s, then every 4s while the operation runs
     let progressTimer = setTimeout(async () => {
@@ -79,8 +95,11 @@
 
     try {
       for (const entry of cb.entries) {
-        const dest = destFolder.replace(/\/?$/, '/') + entry.name;
-        if (entry.path === dest) continue;
+        const base = destFolder.replace(/\/?$/, '/');
+        // Same-location paste: generate a "(copie)" name instead of skipping.
+        const sameLocation = entry.path === base + entry.name;
+        const destName = sameLocation ? uniqueCopyName(entry.name, usedNames) : entry.name;
+        const dest = base + destName;
         if (cb.operation === 'cut') {
           await onRename(entry.path, dest);
         } else if (side === 'local') {

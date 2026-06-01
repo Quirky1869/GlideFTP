@@ -493,7 +493,7 @@ func (a *App) RemoteCopyDir(srcPath, destPath string) error {
 }
 
 func (a *App) LocalDelete(path string) error {
-	return localfs.Delete(path)
+	return localfs.Trash(path)
 }
 
 func (a *App) LocalRename(oldPath, newPath string) error {

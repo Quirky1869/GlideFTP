@@ -241,6 +241,11 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `app.QueueUploadDir(localPath, remotePath)` / `app.QueueDownloadDir(remotePath, localPath)` - async recursive directory transfer; walks tree, creates dest dirs, queues one job per file; exported to frontend via `App.js`
 - `queue.SetWorkers(n int)` - replaces the semaphore with a new buffered channel of capacity `n`; called by `SaveSettings()` alongside `SetSpeedLimit()`
 - `manager.SetOnConnectionLost(fn func(id, host string))` - registers callback fired when a keepalive detects a dead connection; wired in `app.go startup()` to emit `connection:lost` Wails event
+- `app.LocalCopy(srcPath, destPath)` / `localfs.Copy(src, dst)` - recursive local copy (files + dirs); used by intra-panel copy/paste in FileBrowser
+- `app.RemoteCopy(srcPath, destPath)` - downloads to temp file then re-uploads; works for FTP and SFTP without server-side COPY command; synchronous so caller can await
+- `app.RemoteCopyDir(srcPath, destPath)` - synchronous recursive remote copy (MkDir + recurse + CopyRemote per file)
+- `app.LocalDelete(path)` - now calls `localfs.Trash(path)` instead of `localfs.Delete(path)`; sends to OS trash/recycle bin
+- **Local trash** (`internal/fs/trash_linux.go` / `trash_windows.go` / `trash_other.go`): Linux = XDG Trash spec (`~/.local/share/Trash/files/` + `.trashinfo` sidecar, cross-device fallback via Copy+RemoveAll); Windows = `SHFileOperationW` via `syscall.NewLazyDLL("shell32.dll")` with `FOF_ALLOWUNDO` flag (no CGo, compatible with mingw cross-compile); other platforms = permanent delete fallback
 
 ## TransferQueue
 
