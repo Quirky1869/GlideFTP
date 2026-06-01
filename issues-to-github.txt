@@ -1828,3 +1828,161 @@ Each call triggers a separate `ClearTransfers` binding → `queue.Clear()` on th
 Go side → emits `transfer:cleared` with the corresponding status → the frontend
 event handler filters out all matching jobs from the store.
 Both calls are fast in-memory operations with no network involvement.
+
+---
+
+#69
+Title: [Bug] Concurrent transfer option has no effect — transfers happen one by one
+Labels: bug
+Version fixed: v1.7.4
+Description:
+The "Max simultaneous transfers" setting in Settings > Transfers has no visible
+effect. Even when set to 3 (or more), files are transferred one at a time
+regardless of the value chosen.
+
+Two independent root causes:
+
+1. SaveSettings() did not update the queue's semaphore.
+   The transfer queue (Queue) is created at startup with a buffered semaphore
+   channel sized to MaxConcurrentTransfers. When the user saves new settings,
+   SaveSettings() in app.go updated the speed limit via queue.SetSpeedLimit() but
+   never updated the semaphore capacity. Any change made to MaxConcurrentTransfers
+   after startup was therefore silently ignored — the queue kept using the
+   semaphore from startup for the lifetime of the app.
+
+2. FTP serializes all transfers through a single global mutex.
+   FTPClient.Upload() and FTPClient.Download() both acquired c.mu (a sync.Mutex)
+   at the very start of the function and held it until the transfer completed.
+   Because jlaffaye/ftp is not thread-safe on a single connection, the mutex was
+   there to prevent data corruption — but holding it for the full duration of
+   every transfer meant only one goroutine could transfer at a time, making the
+   semaphore in the queue irrelevant for FTP sessions. SFTP was not affected
+   (github.com/pkg/sftp natively supports concurrent requests over a single SSH
+   connection via packet IDs).
+
+Solution (closing comment):
+Fixed in v1.7.4 — two separate fixes.
+
+**Fix 1 — queue.go: SetWorkers() + run() semaphore snapshot**
+
+A new method SetWorkers(n int) was added to Queue:
+
+  func (q *Queue) SetWorkers(n int) {
+      q.mu.Lock()
+      q.workers = n
+      q.sem = make(chan struct{}, n)
+      q.mu.Unlock()
+  }
+
+run() was updated to snapshot q.sem into a local variable before the select,
+so that both the acquire and the deferred release always use the same channel
+even if SetWorkers() replaces q.sem mid-flight:
+
+  q.mu.Lock()
+  sem := q.sem
+  q.mu.Unlock()
+  select {
+  case sem <- struct{}{}:
+  ...
+  }
+  defer func() { <-sem }()
+
+Without this snapshot a goroutine that acquired from the old semaphore would
+have released from the new one (pointing at an empty channel) → deadlock.
+
+**Fix 2 — app.go: propagate the setting change to the queue**
+
+SaveSettings() now calls SetWorkers in addition to SetSpeedLimit:
+
+  func (a *App) SaveSettings(s settings.Settings) error {
+      a.appSettings = &s
+      a.queue.SetWorkers(s.MaxConcurrentTransfers)
+      a.queue.SetSpeedLimit(s.MaxTransferSpeedKBps)
+      return s.Save()
+  }
+
+**Fix 3 — ftp.go: dedicated connection per FTP transfer**
+
+The global mutex on Upload() and Download() was removed. Each call to Upload()
+or Download() now opens its own dedicated FTP connection via a new internal
+dial() helper (same credentials as the primary connection):
+
+  func (c *FTPClient) Upload(ctx context.Context, ...) error {
+      conn, err := c.dial()
+      if err != nil { return err }
+      defer conn.Quit()
+      // ... transfer using conn, no shared lock
+  }
+
+This is the standard approach used by all major FTP clients (FileZilla, etc.):
+since FTP only allows one active data transfer per control connection, N
+concurrent transfers require N separate control connections. The primary
+connection (c.conn) is preserved exclusively for control operations (ListDir,
+MkDir, Delete, Rename, CurrentDir) which continue to be serialized by c.mu as
+before.
+
+---
+
+#70
+Title: [Bug] Transferring a folder fails with "550 Not a regular file"
+Labels: bug
+Version fixed: v1.7.4
+Description:
+Attempting to transfer a folder (either upload or download) results in the
+transfer immediately failing with the error:
+
+  550 /path/to/Folder: Not a regular file
+
+The error appears on every retry attempt, keeping the entry permanently in the
+"Failed" tab.
+
+Root cause:
+QueueUpload() and QueueDownload() passed the path directly to executor.Upload()
+/ executor.Download(), which call conn.Stor() / conn.Retr() (FTP) or
+client.Create() / client.Open() (SFTP) on the given path. Both FTP and SFTP
+protocols only allow RETR/STOR on regular files; issuing them on a directory
+path causes the server to return 550. There was no check for whether the
+queued path was a file or a directory — folders were silently treated as files
+and the transfer always failed.
+
+Solution (closing comment):
+Fixed in v1.7.4.
+
+Two new Go methods were added to app.go for recursive directory transfers:
+
+**QueueUploadDir(localPath, remotePath string)**
+Runs asynchronously (goroutine). Calls enqueueUploadDir() which:
+1. Creates the remote directory via connMgr.MkDir(remotePath).
+2. Lists the local directory with os.ReadDir(localPath).
+3. For each file entry: queue.Add(Upload, src, dst, host).
+4. For each subdirectory: recurse into enqueueUploadDir(src, dst).
+
+**QueueDownloadDir(remotePath, localPath string)**
+Runs asynchronously (goroutine). Calls enqueueDownloadDir() which:
+1. Creates the local directory with os.MkdirAll(localPath, 0755).
+2. Lists the remote directory via connMgr.ListDir(remotePath).
+3. For each file entry: queue.Add(Download, dst, e.Path, host).
+4. For each subdirectory: recurse into enqueueDownloadDir(e.Path, dst).
+
+The result is one transfer queue job per file in the folder tree, each
+independently visible, cancellable, and retryable in the queue panel.
+
+Both methods were exported to the frontend via new entries in
+frontend/wailsjs/go/main/App.js.
+
+**FileBrowser.svelte — doQueueTransfer():**
+The function now checks entry.isDir before deciding which binding to call:
+
+  if (entry.isDir) {
+    if (side === 'local') QueueUploadDir(entry.path, dest);
+    else QueueDownloadDir(entry.path, dest);
+  } else {
+    if (side === 'local') QueueUpload(entry.path, dest);
+    else QueueDownload(entry.path, dest);
+  }
+
+**FileBrowser.svelte — drag-and-drop:**
+handleDragStart() now includes isDir in the serialized drag payload:
+  entries: dragEntries.map(en => ({ path, name, isDir: en.isDir }))
+handleDrop() reads isDir from each entry and routes to QueueUploadDir /
+QueueDownloadDir / QueueUpload / QueueDownload accordingly.

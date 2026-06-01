@@ -73,7 +73,11 @@ export function OpenImportDialog():Promise<main.ImportFileInfo>;
 
 export function QueueDownload(arg1:string,arg2:string):Promise<void>;
 
+export function QueueDownloadDir(arg1:string,arg2:string):Promise<void>;
+
 export function QueueUpload(arg1:string,arg2:string):Promise<void>;
+
+export function QueueUploadDir(arg1:string,arg2:string):Promise<void>;
 
 export function RemoteDelete(arg1:string):Promise<void>;
 

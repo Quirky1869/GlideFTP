@@ -108,14 +108,26 @@ func (q *Queue) Add(dir Direction, localPath, remotePath, remoteHost string) *Jo
 	return job
 }
 
+func (q *Queue) SetWorkers(n int) {
+	q.mu.Lock()
+	q.workers = n
+	q.sem = make(chan struct{}, n)
+	q.mu.Unlock()
+}
+
 func (q *Queue) run(job *Job) {
+	// Snapshot sem so acquire and release use the same channel even if SetWorkers replaces it.
+	q.mu.Lock()
+	sem := q.sem
+	q.mu.Unlock()
+
 	select {
-	case q.sem <- struct{}{}:
+	case sem <- struct{}{}:
 	case <-q.ctx.Done():
 		q.setStatus(job, StatusCancelled, "")
 		return
 	}
-	defer func() { <-q.sem }()
+	defer func() { <-sem }()
 
 	jobCtx, jobCancel := context.WithCancel(q.ctx)
 	q.mu.Lock()

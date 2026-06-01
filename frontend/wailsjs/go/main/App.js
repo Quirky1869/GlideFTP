@@ -134,8 +134,16 @@ export function QueueDownload(arg1, arg2) {
   return window['go']['main']['App']['QueueDownload'](arg1, arg2);
 }
 
+export function QueueDownloadDir(arg1, arg2) {
+  return window['go']['main']['App']['QueueDownloadDir'](arg1, arg2);
+}
+
 export function QueueUpload(arg1, arg2) {
   return window['go']['main']['App']['QueueUpload'](arg1, arg2);
+}
+
+export function QueueUploadDir(arg1, arg2) {
+  return window['go']['main']['App']['QueueUploadDir'](arg1, arg2);
 }
 
 export function RemoteDelete(arg1) {

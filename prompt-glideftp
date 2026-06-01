@@ -268,7 +268,22 @@ ______
 
 68 = Le bouton "vider" dans la file d'attente dans echoués ne fonctionne pas alors que sur "reussis" oui
 
-69 = Faire en sorte sur Linux de lancer l'application autre que par un prompt
+69 = L'option transfert simultané ne fonctionne pas (ex:j'étais à 3 et ça n'a fait que transférer 1 par 1)
+
+70 = Voir pourquoi un dossier ne peut être transférer voir : issue-29.png dans v1.7.4
+
+71 = Mettre par défaut 15min pour le temps de connexion + il faut intégrer un message à l'utilisateur et une déconnexion automatique car actuellement lorsque ça "se déconnecte" on peut juste plus cliquer sur les dossiers ou fichier et les transférés mais il n'y a aucun messages + est ce que tu me confirme que lorsque l'utilisateur bouge la souris ça repart à zéro ? Pour info la quand je met par exemple 50min donc 3000 sec et bien la connexion s'arrête au bout de seuleument quelque minute 5-10minutes et il faut que je me déconnecte puis me reconnecte
+
+72 = Sur le local et le distant il faudrait faire en sorte que le drag and drop puisse être possible + le copier coller de fichier ou dossier  sur ".." et sur un autre dossier (à faire sur les 2 vue possible dans l'appli (arborescence + vue de dossier), en gros il faut pouvoir copier / couper /coller un ou des fichier(s)/dossier(s) directement dans l'application sur les sites respectif (local pour le local et distant pour le distant ; on ne peut evidement pas copier ou oller de local vers distant par exemple car la c'est un transfert) 
+
+73 = Depuis l'application par exemple depuis le local je supprime un fichier il ne se retrouve pas dans la corbeille de mon pc il "disparai" (prendre en compte linux et windows)
+
+
+_____
+
+1.7.5
+
+74 = Faire en sorte sur Linux de lancer l'application autre que par un prompt
 Option 1 - La plus simple : fichier .desktop + script d'install
 Un fichier .desktop (standard freedesktop.org) suffit pour apparaître dans les lanceurs (GNOME, KDE, etc.). Un script install.sh copie l'AppImage + l'icône + le .desktop dans ~/.local/ — sans sudo, fonctionne sur les 3 distros :
 ~/.local/bin/GlideFTP.AppImage

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	gfeCrypto "GlideFTP/internal/crypto"
 	"GlideFTP/internal/connection"
@@ -90,6 +91,7 @@ func (a *App) GetSettings() *settings.Settings {
 
 func (a *App) SaveSettings(s settings.Settings) error {
 	a.appSettings = &s
+	a.queue.SetWorkers(s.MaxConcurrentTransfers)
 	a.queue.SetSpeedLimit(s.MaxTransferSpeedKBps)
 	return s.Save()
 }
@@ -521,6 +523,57 @@ func (a *App) QueueUpload(localPath, remotePath string) {
 
 func (a *App) QueueDownload(remotePath, localPath string) {
 	a.queue.Add(transfer.Download, localPath, remotePath, a.connMgr.GetActiveHost())
+}
+
+// QueueUploadDir recursively enumerates localPath and queues one upload job per file.
+// Remote subdirectories are created before their contents are queued.
+func (a *App) QueueUploadDir(localPath, remotePath string) {
+	go a.enqueueUploadDir(localPath, remotePath)
+}
+
+func (a *App) enqueueUploadDir(localPath, remotePath string) {
+	if err := a.connMgr.MkDir(remotePath); err != nil {
+		return
+	}
+	entries, err := os.ReadDir(localPath)
+	if err != nil {
+		return
+	}
+	host := a.connMgr.GetActiveHost()
+	for _, e := range entries {
+		src := filepath.Join(localPath, e.Name())
+		dst := remotePath + "/" + e.Name()
+		if e.IsDir() {
+			a.enqueueUploadDir(src, dst)
+		} else {
+			a.queue.Add(transfer.Upload, src, dst, host)
+		}
+	}
+}
+
+// QueueDownloadDir recursively enumerates remotePath and queues one download job per file.
+// Local subdirectories are created before their contents are queued.
+func (a *App) QueueDownloadDir(remotePath, localPath string) {
+	go a.enqueueDownloadDir(remotePath, localPath)
+}
+
+func (a *App) enqueueDownloadDir(remotePath, localPath string) {
+	if err := os.MkdirAll(localPath, 0755); err != nil {
+		return
+	}
+	entries, err := a.connMgr.ListDir(remotePath)
+	if err != nil {
+		return
+	}
+	host := a.connMgr.GetActiveHost()
+	for _, e := range entries {
+		dst := filepath.Join(localPath, e.Name)
+		if e.IsDir {
+			a.enqueueDownloadDir(e.Path, dst)
+		} else {
+			a.queue.Add(transfer.Download, dst, e.Path, host)
+		}
+	}
 }
 
 func (a *App) GetTransfers() []*transfer.Job {

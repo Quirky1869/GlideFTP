@@ -2,7 +2,7 @@
   import { t } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
-  import { QueueUpload, QueueDownload, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
+  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
 
@@ -316,8 +316,13 @@
 
   function doQueueTransfer(entry, destNameOverride) {
     const dest = otherPath.replace(/[/\\]?$/, '/') + (destNameOverride || entry.name);
-    if (side === 'local') QueueUpload(entry.path, dest);
-    else QueueDownload(entry.path, dest);
+    if (entry.isDir) {
+      if (side === 'local') QueueUploadDir(entry.path, dest);
+      else QueueDownloadDir(entry.path, dest);
+    } else {
+      if (side === 'local') QueueUpload(entry.path, dest);
+      else QueueDownload(entry.path, dest);
+    }
   }
 
   // ── Conflict resolution ───────────────────────────────────────────────────
@@ -593,7 +598,7 @@
     const isInSelection = selected.some(s => s.path === entry.path);
     const dragEntries = (isInSelection && selected.length > 1) ? selected : [entry];
     e.dataTransfer.setData('application/glideftp', JSON.stringify({
-      entries: dragEntries.map(en => ({ path: en.path, name: en.name })),
+      entries: dragEntries.map(en => ({ path: en.path, name: en.name, isDir: en.isDir })),
       fromSide: side,
     }));
   }
@@ -616,10 +621,15 @@
     try {
       const { entries: dragEntries, fromSide } = JSON.parse(raw);
       if (fromSide === side) return;
-      for (const { path: srcPath, name } of dragEntries) {
+      for (const { path: srcPath, name, isDir } of dragEntries) {
         const dest = path.replace(/[/\\]?$/, '/') + name;
-        if (side === 'remote') QueueUpload(srcPath, dest);
-        else QueueDownload(srcPath, dest);
+        if (isDir) {
+          if (side === 'remote') QueueUploadDir(srcPath, dest);
+          else QueueDownloadDir(srcPath, dest);
+        } else {
+          if (side === 'remote') QueueUpload(srcPath, dest);
+          else QueueDownload(srcPath, dest);
+        }
       }
       queueVisible.set(true);
     } catch {}

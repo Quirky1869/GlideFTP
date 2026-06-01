@@ -16,14 +16,14 @@ import (
 type FTPClient struct {
 	cfg  Config
 	mu   sync.Mutex
-	conn *goftp.ServerConn
+	conn *goftp.ServerConn // for control operations (ListDir, MkDir, Delete, Rename)
 }
 
 func NewFTPClient(cfg Config) *FTPClient {
 	return &FTPClient{cfg: cfg}
 }
 
-func (c *FTPClient) Connect() error {
+func (c *FTPClient) dial() (*goftp.ServerConn, error) {
 	timeout := time.Duration(c.cfg.TimeoutSec) * time.Second
 	if timeout == 0 {
 		timeout = 30 * time.Second
@@ -40,7 +40,7 @@ func (c *FTPClient) Connect() error {
 	addr := fmt.Sprintf("%s:%d", c.cfg.Host, c.cfg.Port)
 	conn, err := goftp.Dial(addr, opts...)
 	if err != nil {
-		return fmt.Errorf("connection failed: %w", err)
+		return nil, fmt.Errorf("connection failed: %w", err)
 	}
 
 	user := c.cfg.User
@@ -52,20 +52,32 @@ func (c *FTPClient) Connect() error {
 
 	if err := conn.Login(user, pass); err != nil {
 		conn.Quit()
-		return fmt.Errorf("login failed: %w", err)
+		return nil, fmt.Errorf("login failed: %w", err)
 	}
 
+	return conn, nil
+}
+
+func (c *FTPClient) Connect() error {
+	conn, err := c.dial()
+	if err != nil {
+		return err
+	}
+	c.mu.Lock()
 	c.conn = conn
+	c.mu.Unlock()
 	return nil
 }
 
 func (c *FTPClient) Disconnect() error {
-	if c.conn == nil {
-		return nil
-	}
-	err := c.conn.Quit()
+	c.mu.Lock()
+	conn := c.conn
 	c.conn = nil
-	return err
+	c.mu.Unlock()
+	if conn != nil {
+		return conn.Quit()
+	}
+	return nil
 }
 
 func (c *FTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
@@ -140,12 +152,22 @@ func (c *FTPClient) CurrentDir() (string, error) {
 	return c.conn.CurrentDir()
 }
 
+// Upload opens a dedicated FTP connection for this transfer so multiple uploads
+// can run concurrently (each on its own control+data connection pair).
 func (c *FTPClient) Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
+	connected := c.conn != nil
+	c.mu.Unlock()
+	if !connected {
 		return fmt.Errorf("not connected")
 	}
+
+	conn, err := c.dial()
+	if err != nil {
+		return err
+	}
+	defer conn.Quit()
+
 	f, err := os.Open(localPath)
 	if err != nil {
 		return err
@@ -156,23 +178,31 @@ func (c *FTPClient) Upload(ctx context.Context, localPath, remotePath string, pr
 	if err != nil {
 		return err
 	}
-	total := info.Size()
 
-	pr := &progressReader{ctx: ctx, r: f, total: total, cb: progress}
-	return c.conn.Stor(remotePath, pr)
+	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), cb: progress}
+	return conn.Stor(remotePath, pr)
 }
 
+// Download opens a dedicated FTP connection for this transfer so multiple downloads
+// can run concurrently (each on its own control+data connection pair).
 func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
+	connected := c.conn != nil
+	c.mu.Unlock()
+	if !connected {
 		return fmt.Errorf("not connected")
 	}
-	// SIZE must be sent on the control connection BEFORE RETR opens the data transfer.
-	// Calling FileSize after Retr violates FTP protocol and corrupts the response stream.
-	size, _ := c.conn.FileSize(remotePath)
 
-	resp, err := c.conn.Retr(remotePath)
+	conn, err := c.dial()
+	if err != nil {
+		return err
+	}
+	defer conn.Quit()
+
+	// SIZE must be sent on the control connection BEFORE RETR opens the data transfer.
+	size, _ := conn.FileSize(remotePath)
+
+	resp, err := conn.Retr(remotePath)
 	if err != nil {
 		return err
 	}
