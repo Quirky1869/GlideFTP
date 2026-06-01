@@ -114,6 +114,16 @@ func (c *SFTPClient) buildAuthMethods() ([]gossh.AuthMethod, error) {
 	return methods, nil
 }
 
+// Keepalive sends an SSH keepalive request to keep the connection alive.
+// If the TCP connection is dead, SendRequest returns an error.
+func (c *SFTPClient) Keepalive() error {
+	if c.ssh == nil {
+		return fmt.Errorf("not connected")
+	}
+	_, _, err := c.ssh.SendRequest("keepalive@openssh.com", true, nil)
+	return err
+}
+
 func (c *SFTPClient) Disconnect() error {
 	if c.client != nil {
 		c.client.Close()

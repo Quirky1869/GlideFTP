@@ -32,7 +32,7 @@ func Default() *Settings {
 		MaxConcurrentTransfers: 3,
 		DefaultLocalDir:        home,
 		DefaultPort:            21,
-		ConnectionTimeoutSec:   30,
+		ConnectionTimeoutSec:   60,
 		ShowHiddenFiles:        false,
 		PassiveMode:            true,
 		AutoReconnect:          false,

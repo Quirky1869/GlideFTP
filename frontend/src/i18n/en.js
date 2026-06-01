@@ -98,7 +98,7 @@ export default {
   defaultLocalDir: 'Default local directory',
   connection: 'Connection',
   defaultPort: 'Default FTP port',
-  timeout: 'Connection timeout (seconds)',
+  timeout: 'Operation timeout (seconds)',
   passiveMode: 'Passive mode (PASV)',
   autoReconnect: 'Auto-reconnect',
   interface: 'Interface',
@@ -172,4 +172,6 @@ export default {
   // Errors
   connectError: 'Connection failed',
   unknownError: 'Unknown error',
+  connectionLost: 'Connection lost',
+  connectionLostDetail: 'The connection to {host} was dropped by the server. Please reconnect.',
 }

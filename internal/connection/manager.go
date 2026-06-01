@@ -29,10 +29,19 @@ type Manager struct {
 	conns        []*connEntry
 	activeID     string
 	isConnecting bool
+	onLost       func(id, host string)
 }
 
 func NewManager() *Manager {
 	return &Manager{}
+}
+
+// SetOnConnectionLost registers a callback invoked when a keepalive detects that
+// a connection was dropped unexpectedly by the remote server.
+func (m *Manager) SetOnConnectionLost(fn func(id, host string)) {
+	m.mu.Lock()
+	m.onLost = fn
+	m.mu.Unlock()
 }
 
 // getActive returns the active entry. Caller must hold m.mu.
@@ -162,7 +171,57 @@ func (m *Manager) doConnect(cfg Config, name string) (string, error) {
 	m.mu.Lock()
 	m.conns = append(m.conns, entry)
 	m.mu.Unlock()
+
+	m.startKeepalive(entry)
 	return id, nil
+}
+
+// startKeepalive runs a goroutine that pings the connection every 60 seconds.
+// If the ping fails the connection is removed from the manager and onLost is called.
+func (m *Manager) startKeepalive(entry *connEntry) {
+	id := entry.id
+	client := entry.client
+	host := entry.cfg.Host
+
+	go func() {
+		ticker := time.NewTicker(60 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			m.mu.Lock()
+			stillPresent := false
+			for _, c := range m.conns {
+				if c.id == id {
+					stillPresent = true
+					break
+				}
+			}
+			onLost := m.onLost
+			m.mu.Unlock()
+
+			if !stillPresent {
+				return // connection was closed normally
+			}
+
+			if err := client.Keepalive(); err != nil {
+				m.mu.Lock()
+				before := len(m.conns)
+				m.conns = removeEntries(m.conns, id)
+				removed := len(m.conns) < before
+				if m.activeID == id {
+					m.activeID = ""
+					if len(m.conns) > 0 {
+						m.activeID = m.conns[len(m.conns)-1].id
+					}
+				}
+				m.mu.Unlock()
+
+				if removed && onLost != nil {
+					onLost(id, host)
+				}
+				return
+			}
+		}
+	}()
 }
 
 // Disconnect closes ALL connections.

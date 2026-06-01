@@ -58,6 +58,7 @@ type RemoteFileEntry struct {
 type Client interface {
 	Connect() error
 	Disconnect() error
+	Keepalive() error
 	ListDir(path string) ([]RemoteFileEntry, error)
 	MkDir(path string) error
 	Delete(path string) error

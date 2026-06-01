@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { t } from './i18n/index.js';
+  import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import { loadSettings, settings } from './stores/settings.js';
   import {
     connectionStatus,
@@ -25,6 +26,7 @@
   let showSettings = false;
   let showSiteManager = false;
   let showDisconnectConfirm = false;
+  let lostNotif = null; // { host } when a connection is dropped by the server
 
   // Resizable split pane
   let leftWidth = 50; // percent
@@ -38,6 +40,11 @@
     const s = await loadSettings();
     await initLocalDir(s?.defaultLocalDir || '');
     await initTransfers();
+    EventsOn('connection:lost', ({ id, host }) => {
+      closeTab(id);
+      lostNotif = { host };
+      setTimeout(() => { lostNotif = null; }, 10000);
+    });
   });
 
   // Auto-refresh both panels when a transfer completes
@@ -98,6 +105,13 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div id="app-root">
+  <!-- ── Connection lost banner ────────────────────────────────── -->
+  {#if lostNotif}
+    <div class="conn-lost-banner">
+      <span>⚠ {$t('connectionLost')} — {$t('connectionLostDetail').replace('{host}', lostNotif.host)}</span>
+      <button class="conn-lost-close" on:click={() => lostNotif = null}>✕</button>
+    </div>
+  {/if}
   <!-- ── Topbar ──────────────────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-left">
@@ -272,6 +286,35 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* ── Connection lost banner ──────────────────────────────────────── */
+.conn-lost-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #7a2020;
+  color: #ffd0d0;
+  font-size: 13px;
+  flex-shrink: 0;
+  animation: slide-down 0.2s ease;
+}
+@keyframes slide-down {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+.conn-lost-close {
+  background: none;
+  border: none;
+  color: #ffd0d0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.conn-lost-close:hover { color: #fff; }
 
 /* ── Topbar ──────────────────────────────────────────────────────── */
 .topbar {

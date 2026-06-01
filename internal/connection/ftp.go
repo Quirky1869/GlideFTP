@@ -69,6 +69,19 @@ func (c *FTPClient) Connect() error {
 	return nil
 }
 
+// Keepalive sends a NOOP command to keep the control connection alive.
+// Uses TryLock so it never blocks if another control operation is already running.
+func (c *FTPClient) Keepalive() error {
+	if !c.mu.TryLock() {
+		return nil // another operation is in progress; connection is alive
+	}
+	defer c.mu.Unlock()
+	if c.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	return c.conn.NoOp()
+}
+
 func (c *FTPClient) Disconnect() error {
 	c.mu.Lock()
 	conn := c.conn

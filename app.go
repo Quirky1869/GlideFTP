@@ -45,6 +45,9 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.queue = transfer.NewQueue(a.appSettings.MaxConcurrentTransfers, emitter)
 	a.queue.SetSpeedLimit(a.appSettings.MaxTransferSpeedKBps)
+	a.connMgr.SetOnConnectionLost(func(id, host string) {
+		runtime.EventsEmit(ctx, "connection:lost", map[string]string{"id": id, "host": host})
+	})
 	a.migratePasswords()
 }
 

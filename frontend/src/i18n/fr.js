@@ -98,7 +98,7 @@ export default {
   defaultLocalDir: 'Répertoire local par défaut',
   connection: 'Connexion',
   defaultPort: 'Port FTP par défaut',
-  timeout: 'Délai de connexion (secondes)',
+  timeout: 'Délai d\'opération (secondes)',
   passiveMode: 'Mode passif (PASV)',
   autoReconnect: 'Reconnexion automatique',
   interface: 'Interface',
@@ -172,4 +172,6 @@ export default {
   // Errors
   connectError: 'Connexion échouée',
   unknownError: 'Erreur inconnue',
+  connectionLost: 'Connexion perdue',
+  connectionLostDetail: 'La connexion à {host} a été coupée par le serveur. Veuillez vous reconnecter.',
 }

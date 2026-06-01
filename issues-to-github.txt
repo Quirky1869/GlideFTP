@@ -1986,3 +1986,96 @@ handleDragStart() now includes isDir in the serialized drag payload:
   entries: dragEntries.map(en => ({ path, name, isDir: en.isDir }))
 handleDrop() reads isDir from each entry and routes to QueueUploadDir /
 QueueDownloadDir / QueueUpload / QueueDownload accordingly.
+
+---
+
+#71
+Title: [Bug] Connection drops silently after a few minutes; timeout setting has no effect on idle
+Labels: bug
+Version fixed: v1.7.4
+Description:
+Several related problems reported together:
+
+1. The connection drops silently after 5-10 minutes of inactivity regardless
+   of the timeout value set in Settings. When it happens the UI gives no
+   feedback — files and folders can no longer be clicked or transferred, but
+   no error message appears and no automatic disconnect occurs.
+
+2. Setting 50 minutes (3000 seconds) in the timeout field does not help — the
+   connection still drops after only 5-10 minutes.
+
+3. The user asked whether moving the mouse resets the idle countdown.
+
+Root cause:
+The "Connection timeout (seconds)" setting controls the TCP dial timeout and
+the ListDir operation timeout — it is NOT an idle inactivity timer. It has no
+effect on how long an idle connection stays open.
+
+The actual cause of the drops is the FTP/SFTP server's own idle timeout
+(typically 5-15 minutes). The server closes the TCP socket after a period of
+inactivity on the control connection. GlideFTP was sending nothing to keep the
+connection alive, so the server would silently drop it.
+
+Moving the mouse does NOT reset the server's idle timer — only network activity
+on the control connection does. Without keepalives, the connection will always
+drop regardless of what the user does on the client side.
+
+The default connection timeout was also set too low (30 seconds) for an
+operation timeout, making slow servers appear to time out during normal use.
+
+Solution (closing comment):
+Fixed in v1.7.4 — three separate changes.
+
+**1. Default timeout raised to 15 minutes (internal/settings/settings.go)**
+ConnectionTimeoutSec default changed from 30 to 900. This applies to:
+- The TCP dial timeout when establishing a new connection.
+- The ListDir operation watchdog (the guard that disconnects if a directory
+  listing hangs for longer than the configured value).
+
+**2. Keepalive goroutine — prevents server-side idle drops (internal/connection/)**
+
+A Keepalive() method was added to the Client interface and implemented by both
+clients:
+
+FTPClient.Keepalive() (ftp.go):
+  Sends a NOOP command on the primary control connection.
+  Uses sync.Mutex.TryLock() so it never blocks if another control operation
+  (ListDir, MkDir, etc.) already holds the lock — in that case the server is
+  clearly active and the keepalive tick is safely skipped.
+
+SFTPClient.Keepalive() (sftp.go):
+  Sends an SSH global request "keepalive@openssh.com" on the underlying SSH
+  connection. OpenSSH responds with a failure reply (not an error) if it does
+  not recognise the request type; what matters is that the TCP roundtrip
+  succeeds. If the TCP socket is dead the call returns an error immediately.
+
+Manager.startKeepalive() (manager.go):
+  Called automatically after every successful connection (doConnect()).
+  Runs a goroutine with a 60-second ticker:
+  - Each tick checks whether the connection ID is still present in the
+    manager's active list; if not (normal user disconnect), the goroutine
+    exits cleanly without calling onLost.
+  - If the ID is still present, calls client.Keepalive().
+  - On keepalive error: removes the entry from the manager, updates activeID
+    if needed, and calls onLost(id, host) only if the entry was actually
+    found and removed (guards against a race with a concurrent normal
+    disconnect).
+
+**3. User notification on unexpected disconnect (app.go + App.svelte)**
+
+app.go startup():
+  Registers a SetOnConnectionLost callback on the manager that emits a Wails
+  event "connection:lost" with { id, host } when a keepalive detects a dead
+  connection.
+
+App.svelte onMount():
+  Subscribes to "connection:lost" via EventsOn:
+  - Calls closeTab(id) to remove the dead tab and update all connection
+    stores (identical to a normal user-initiated tab close).
+  - Sets lostNotif = { host }, showing a dismissible red banner:
+    "⚠ Connection lost — The connection to <host> was dropped by the server.
+    Please reconnect."
+  - The banner auto-dismisses after 10 seconds; the ✕ button dismisses it
+    immediately.
+
+i18n: connectionLost / connectionLostDetail keys added to en.js and fr.js.
