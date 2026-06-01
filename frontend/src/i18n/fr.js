@@ -122,6 +122,9 @@ export default {
   cut: 'Couper',
   copy: 'Copier',
   paste: 'Coller',
+  pasteHere: 'Coller ici',
+  copyDone: 'Copie(s) terminée(s)',
+  cutDone: 'Collage(s) terminé(s)',
 
   // Export / import
   exportSites: 'Exporter les sites',

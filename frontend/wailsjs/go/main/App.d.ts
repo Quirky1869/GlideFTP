@@ -61,6 +61,8 @@ export function GetSites():Promise<Array<sites.Site>>;
 
 export function GetTransfers():Promise<Array<transfer.Job>>;
 
+export function LocalCopy(arg1:string,arg2:string):Promise<void>;
+
 export function LocalDelete(arg1:string):Promise<void>;
 
 export function LocalListDir(arg1:string):Promise<Array<fs.FileEntry>>;
@@ -78,6 +80,10 @@ export function QueueDownloadDir(arg1:string,arg2:string):Promise<void>;
 export function QueueUpload(arg1:string,arg2:string):Promise<void>;
 
 export function QueueUploadDir(arg1:string,arg2:string):Promise<void>;
+
+export function RemoteCopy(arg1:string,arg2:string):Promise<void>;
+
+export function RemoteCopyDir(arg1:string,arg2:string):Promise<void>;
 
 export function RemoteDelete(arg1:string):Promise<void>;
 

@@ -2079,3 +2079,105 @@ App.svelte onMount():
     immediately.
 
 i18n: connectionLost / connectionLostDetail keys added to en.js and fr.js.
+
+---
+
+#72
+Title: [Feature] Intra-panel drag-and-drop, copy and cut/paste for local and remote panels
+Labels: enhancement
+Version fixed: v1.7.4
+Description:
+No way to copy, move, or reorganise files within the same panel. Requested
+behaviours:
+
+- Drag a file or folder onto a subfolder or the ".." row within the same panel
+  to move it there.
+- Ctrl+C / Ctrl+X / Ctrl+V (and right-click Copy / Cut / Paste) to copy or
+  move files and folders within the local panel or within the remote panel.
+- Works in both list view and tree view.
+- Local → Local: real recursive copy (no network involved).
+- Remote → Remote: transparent copy via temp-file download + re-upload (no
+  native FTP/SFTP server-side copy command exists).
+- Cross-panel operations are transfers, not copies — not in scope here.
+- Auto-refresh while the operation is running (first at +1 s, then every 4 s),
+  plus a final refresh when done.
+- Green confirmation banner on success, orange on failure, auto-dismissed
+  after 4 seconds.
+
+Solution (closing comment):
+Implemented in v1.7.4.
+
+**Go backend:**
+
+internal/fs/local.go — Copy(src, dst string) error:
+  Recursive local copy. Detects file vs directory via os.Stat. For files:
+  os.Open → os.Create → io.Copy. For directories: os.MkdirAll + recurse into
+  each entry. Used by the new app.LocalCopy binding.
+
+internal/connection/manager.go — CopyRemote / CopyRemoteDir:
+  CopyRemote(srcPath, destPath): downloads the remote file to a OS temp file
+  (os.CreateTemp), re-uploads it to the destination, then deletes the temp
+  file. Works for both FTP and SFTP without requiring any server-side COPY
+  command. Runs synchronously so the JS caller can await completion.
+  CopyRemoteDir(srcPath, destPath): synchronous recursive variant — MkDir at
+  destination, ListDir at source, recurse into subdirectories, CopyRemote each
+  file. Synchronous so that onRefresh() in the frontend fires only after the
+  full tree is copied.
+
+app.go: LocalCopy, RemoteCopy, RemoteCopyDir — thin wrappers over the above.
+
+frontend/wailsjs/go/main/App.js: LocalCopy, RemoteCopy, RemoteCopyDir
+  bindings added.
+
+**Frontend — clipboard store (connection.js):**
+  export const clipboard = writable(null);
+  Shape: { entries: [{path, name, isDir}], operation: 'copy'|'cut',
+           side: 'local'|'remote' }
+  Shared between both FileBrowser instances so a clipboard set in one panel is
+  visible to the other (though paste is rejected when side !== currentSide).
+  Cleared automatically after a successful cut+paste.
+
+  New helpers: localCopy(src, dest), remoteCopy(src, dest),
+  remoteCopyDir(src, dest).
+
+**Frontend — FileBrowser.svelte:**
+
+Keyboard (handlePanelKeydown):
+  Ctrl+C → copyEntries(selected) — sets clipboard with operation 'copy'.
+  Ctrl+X → cutEntries(selected) — sets clipboard with operation 'cut'.
+  Ctrl+V → pasteToFolder(path) if clipboard.side === side.
+
+Right-click context menu:
+  Cut and Copy buttons always visible on file/folder items.
+  Paste button visible only when $clipboard.side === side.
+  Paste routes to pasteToFolder(contextEntry.isDir ? contextEntry.path : path)
+  so right-clicking a subfolder pastes directly into it.
+
+pasteToFolder(destFolder):
+  Iterates clipboard.entries. For each entry:
+    cut  → onRename(src, dest)       (local or remote move via rename)
+    copy + local → localCopy(src, dest)
+    copy + remote file → remoteCopy(src, dest)
+    copy + remote dir  → await remoteCopyDir(src, dest)
+  Progressive refresh: setTimeout 1 s → onRefresh(), then setInterval 4 s →
+  onRefresh() while the operation is running. Both timers cancelled (stopProgress)
+  before the final onRefresh() + success/failure banner.
+  Success banner (green): "Copie(s) terminée(s)" / "Collage(s) terminé(s)".
+  Error banner (orange): error message from Go.
+  Both auto-dismiss after 4 s.
+
+Intra-panel drag-and-drop (list view + tree view):
+  rowDragOverPath state drives a .drag-target CSS class (accent outline) on
+  the hovered folder row or ".." row.
+  handleRowDragOver(e, folderPath): e.preventDefault() + e.stopPropagation()
+  + set rowDragOverPath.
+  handleDropOnFolder(e, destFolder): reads drag data; if fromSide === side →
+  calls onRename for each entry (move); if fromSide !== side → routes to
+  QueueUpload/QueueDownload/QueueUploadDir/QueueDownloadDir into that specific
+  subfolder (bonus: cross-panel drops can now target a specific subfolder, not
+  just the current directory).
+  ".." row gets drag handlers with parentPath as destination.
+  Tree dir nodes get draggable + dragstart (packs node into drag payload) +
+  dragover/dragleave/drop handlers.
+
+i18n: pasteHere, copyDone, cutDone added to en.js and fr.js.

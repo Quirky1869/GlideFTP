@@ -5,6 +5,7 @@
   import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
+  import { clipboard, localCopy, remoteCopy, remoteCopyDir } from '../stores/connection.js';
 
   export let side = 'local';
   export let path = '';
@@ -36,8 +37,114 @@
   let contextEntry = null;
   let contextIsEmpty = false;
   let dragOver = false;
+  let rowDragOverPath = null; // path of the folder row currently hovered during drag
+  let pasteMsg = null; // { text, ok } — green if ok, orange if !ok
   let panelEl;
   let fileListEl;
+
+  // ── Copy / Cut / Paste ────────────────────────────────────────────────────
+
+  $: parentPath = (() => {
+    const parts = path.replace(/\/+$/, '').split('/').filter(Boolean);
+    parts.pop();
+    return '/' + parts.join('/') || '/';
+  })();
+
+  function cutEntries(ents) {
+    if (!ents || ents.length === 0) return;
+    clipboard.set({ entries: ents.map(e => ({ path: e.path, name: e.name, isDir: e.isDir })), operation: 'cut', side });
+  }
+
+  function copyEntries(ents) {
+    if (!ents || ents.length === 0) return;
+    clipboard.set({ entries: ents.map(e => ({ path: e.path, name: e.name, isDir: e.isDir })), operation: 'copy', side });
+  }
+
+  function showPasteMsg(text, ok) {
+    pasteMsg = { text, ok };
+    setTimeout(() => { pasteMsg = null; }, 4000);
+  }
+
+  async function pasteToFolder(destFolder) {
+    const cb = $clipboard;
+    if (!cb || cb.side !== side) return;
+    pasteMsg = null;
+
+    // Progressive refresh: first at 1s, then every 4s while the operation runs
+    let progressTimer = setTimeout(async () => {
+      await onRefresh();
+      progressTimer = setInterval(() => onRefresh(), 4000);
+    }, 1000);
+    const stopProgress = () => { clearTimeout(progressTimer); clearInterval(progressTimer); };
+
+    try {
+      for (const entry of cb.entries) {
+        const dest = destFolder.replace(/\/?$/, '/') + entry.name;
+        if (entry.path === dest) continue;
+        if (cb.operation === 'cut') {
+          await onRename(entry.path, dest);
+        } else if (side === 'local') {
+          await localCopy(entry.path, dest);
+        } else {
+          if (entry.isDir) await remoteCopyDir(entry.path, dest);
+          else await remoteCopy(entry.path, dest);
+        }
+      }
+      if (cb.operation === 'cut') clipboard.set(null);
+      stopProgress();
+      await onRefresh();
+      showPasteMsg($t(cb.operation === 'cut' ? 'cutDone' : 'copyDone'), true);
+    } catch (e) {
+      stopProgress();
+      await onRefresh();
+      showPasteMsg(e?.message || String(e), false);
+    }
+  }
+
+  // ── Intra-panel drag-and-drop ─────────────────────────────────────────────
+
+  function handleRowDragOver(e, folderPath) {
+    e.preventDefault();
+    e.stopPropagation();
+    rowDragOverPath = folderPath;
+  }
+
+  function handleRowDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) rowDragOverPath = null;
+  }
+
+  async function handleDropOnFolder(e, destFolder) {
+    e.preventDefault();
+    e.stopPropagation();
+    rowDragOverPath = null;
+    dragOver = false;
+    const raw = e.dataTransfer.getData('application/glideftp');
+    if (!raw) return;
+    try {
+      const { entries: dragged, fromSide } = JSON.parse(raw);
+      if (fromSide === side) {
+        // Same-panel: move into destFolder
+        for (const { path: srcPath, name } of dragged) {
+          const dest = destFolder.replace(/\/?$/, '/') + name;
+          if (srcPath !== dest) await onRename(srcPath, dest);
+        }
+        await onRefresh();
+      } else {
+        // Cross-panel: transfer to this specific folder
+        for (const { path: srcPath, name, isDir: entryIsDir } of dragged) {
+          const dest = destFolder.replace(/\/?$/, '/') + name;
+          if (entryIsDir) {
+            if (side === 'remote') QueueUploadDir(srcPath, dest);
+            else QueueDownloadDir(srcPath, dest);
+          } else {
+            if (side === 'remote') QueueUpload(srcPath, dest);
+            else QueueDownload(srcPath, dest);
+          }
+        }
+        queueVisible.set(true);
+      }
+    } catch {}
+  }
 
   // ── Delete confirmation ───────────────────────────────────────────────────
 
@@ -426,6 +533,22 @@
   function handlePanelKeydown(e) {
     if (renamingEntry || editingPath) return;
 
+    if (e.ctrlKey && e.key === 'c' && selected.length > 0) {
+      e.preventDefault();
+      copyEntries(selected);
+      return;
+    }
+    if (e.ctrlKey && e.key === 'x' && selected.length > 0) {
+      e.preventDefault();
+      cutEntries(selected);
+      return;
+    }
+    if (e.ctrlKey && e.key === 'v' && $clipboard?.side === side) {
+      e.preventDefault();
+      pasteToFolder(path);
+      return;
+    }
+
     if (e.key === 'F2' && selected.length === 1) {
       e.preventDefault();
       startRename(selected[0]);
@@ -720,6 +843,9 @@
   {#if deleteError}
     <div class="error-bar">{deleteError}</div>
   {/if}
+  {#if pasteMsg}
+    <div class="paste-msg-bar" class:paste-ok={pasteMsg.ok}>{pasteMsg.text}</div>
+  {/if}
 
   {#if newFolderMode}
     <div class="new-folder-row" on:contextmenu|stopPropagation>
@@ -748,9 +874,15 @@
           class:tree-active={node.isDir && node.path === path}
           class:tree-selected={!node.isDir && node.path === treeSelected}
           class:tree-file-row={!node.isDir}
+          class:drag-target={node.isDir && rowDragOverPath === node.path}
           style="padding-left: {8 + node.depth * 16}px"
+          draggable={true}
           on:click={() => { treeSelected = node.path; if (node.isDir) onNavigate(node.path); }}
           on:dblclick={() => { if (!node.isDir) transferTreeFile(node); }}
+          on:dragstart={(e) => { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('application/glideftp', JSON.stringify({ entries: [{ path: node.path, name: node.name, isDir: node.isDir }], fromSide: side })); }}
+          on:dragover={node.isDir ? (e) => handleRowDragOver(e, node.path) : null}
+          on:dragleave={node.isDir ? handleRowDragLeave : null}
+          on:drop={node.isDir ? (e) => handleDropOnFolder(e, node.path) : null}
           title={node.path}
         >
           {#if node.isDir}
@@ -809,9 +941,13 @@
       <div
         class="file-row is-dir parent-row"
         class:focused={parentFocused}
+        class:drag-target={rowDragOverPath === '__parent__'}
         on:click={() => { parentFocused = false; onNavigateUp(); }}
         on:dblclick={onNavigateUp}
         on:contextmenu|stopPropagation
+        on:dragover={(e) => handleRowDragOver(e, '__parent__')}
+        on:dragleave={handleRowDragLeave}
+        on:drop={(e) => handleDropOnFolder(e, parentPath)}
       >
         <span class="col-name">
           <span class="file-icon">📁</span>
@@ -829,11 +965,15 @@
             class="file-row"
             class:selected={selected.some(s => s.path === entry.path)}
             class:is-dir={entry.isDir}
+            class:drag-target={entry.isDir && rowDragOverPath === entry.path}
             draggable={true}
             on:click={(e) => handleClick(e, entry)}
             on:dblclick={() => handleDblClick(entry)}
             on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry)}
             on:dragstart={(e) => handleDragStart(e, entry)}
+            on:dragover={entry.isDir ? (e) => handleRowDragOver(e, entry.path) : null}
+            on:dragleave={entry.isDir ? handleRowDragLeave : null}
+            on:drop={entry.isDir ? (e) => handleDropOnFolder(e, entry.path) : null}
           >
             <span class="col-name">
               <span class="file-icon">
@@ -886,6 +1026,21 @@
         {/if}
         {$t('transfer')}
       </button>
+      <hr class="menu-sep" />
+      <button on:click={() => { cutEntries(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]); closeContext(); }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="20" r="2"/><circle cx="6" cy="4" r="2"/><line x1="6" y1="6" x2="6" y2="18"/><line x1="6" y1="12" x2="18" y2="4"/><line x1="6" y1="12" x2="18" y2="20"/></svg>
+        {$t('cut')}
+      </button>
+      <button on:click={() => { copyEntries(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]); closeContext(); }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        {$t('copy')}
+      </button>
+      {#if $clipboard?.side === side}
+        <button on:click={() => { pasteToFolder(contextEntry?.isDir ? contextEntry.path : path); closeContext(); }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+          {$t('pasteHere')}
+        </button>
+      {/if}
       <hr class="menu-sep" />
       <button class="danger" on:click={() => handleDelete(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry])}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
@@ -989,6 +1144,13 @@
 
 .browser.drag-over {
   box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.file-row.drag-target,
+.tree-row.drag-target {
+  background: var(--accent-subtle);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 
 .browser-header {
@@ -1121,6 +1283,18 @@
   font-size: 12px;
   padding: 4px 10px;
   flex-shrink: 0;
+}
+
+.paste-msg-bar {
+  font-size: 12px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+  background: #7a3a00;
+  color: #ffd0a0;
+}
+.paste-msg-bar.paste-ok {
+  background: #1a4a1a;
+  color: #a0e8a0;
 }
 
 .new-folder-row {

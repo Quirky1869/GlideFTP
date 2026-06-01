@@ -1,7 +1,9 @@
 package connection
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -444,4 +446,54 @@ func (m *Manager) Rename(oldPath, newPath string) error {
 		return fmt.Errorf("not connected")
 	}
 	return client.Rename(oldPath, newPath)
+}
+
+// CopyRemote copies a single remote file by downloading to a temp file then re-uploading.
+// Works for both FTP and SFTP without requiring a server-side copy command.
+func (m *Manager) CopyRemote(srcPath, destPath string) error {
+	m.mu.Lock()
+	client := m.getActiveClient()
+	m.mu.Unlock()
+	if client == nil {
+		return fmt.Errorf("not connected")
+	}
+
+	tmp, err := os.CreateTemp("", "glideftp-rcopy-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	tmp.Close()
+	defer os.Remove(tmpPath)
+
+	ctx := context.Background()
+	if err := client.Download(ctx, srcPath, tmpPath, nil); err != nil {
+		return err
+	}
+	return client.Upload(ctx, tmpPath, destPath, nil)
+}
+
+// CopyRemoteDir recursively copies a remote directory tree.
+// Runs synchronously so the caller can await completion and refresh the panel.
+func (m *Manager) CopyRemoteDir(srcPath, destPath string) error {
+	if err := m.MkDir(destPath); err != nil {
+		return err
+	}
+	entries, err := m.ListDir(srcPath)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		dst := destPath + "/" + e.Name
+		if e.IsDir {
+			if err := m.CopyRemoteDir(e.Path, dst); err != nil {
+				return err
+			}
+		} else {
+			if err := m.CopyRemote(e.Path, dst); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

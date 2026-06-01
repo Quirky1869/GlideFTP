@@ -480,6 +480,18 @@ func (a *App) LocalMkDir(path string) error {
 	return localfs.MkDir(path)
 }
 
+func (a *App) LocalCopy(srcPath, destPath string) error {
+	return localfs.Copy(srcPath, destPath)
+}
+
+func (a *App) RemoteCopy(srcPath, destPath string) error {
+	return a.connMgr.CopyRemote(srcPath, destPath)
+}
+
+func (a *App) RemoteCopyDir(srcPath, destPath string) error {
+	return a.connMgr.CopyRemoteDir(srcPath, destPath)
+}
+
 func (a *App) LocalDelete(path string) error {
 	return localfs.Delete(path)
 }

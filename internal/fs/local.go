@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -61,6 +62,51 @@ func Delete(path string) error {
 
 func Rename(oldPath, newPath string) error {
 	return os.Rename(oldPath, newPath)
+}
+
+func Copy(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return copyDir(src, dst)
+	}
+	return copyFile(src, dst)
+}
+
+func copyDir(src, dst string) error {
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if err := Copy(filepath.Join(src, e.Name()), filepath.Join(dst, e.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	srcF, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcF.Close()
+	dstF, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstF.Close()
+	_, err = io.Copy(dstF, srcF)
+	return err
 }
 
 func HomeDir() string {

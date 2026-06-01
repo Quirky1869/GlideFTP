@@ -11,7 +11,7 @@
     remotePath, remoteEntries, remoteSelected,
     initLocalDir, refreshLocal, navigateLocalUp,
     refreshRemote,
-    localMkDir, localDelete, localRename,
+    localMkDir, localDelete, localRename, localCopy,
     remoteMkDir, remoteDelete, remoteRename,
     disconnect,
   } from './stores/connection.js';

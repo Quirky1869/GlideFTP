@@ -110,6 +110,10 @@ export function GetTransfers() {
   return window['go']['main']['App']['GetTransfers']();
 }
 
+export function LocalCopy(arg1, arg2) {
+  return window['go']['main']['App']['LocalCopy'](arg1, arg2);
+}
+
 export function LocalDelete(arg1) {
   return window['go']['main']['App']['LocalDelete'](arg1);
 }
@@ -144,6 +148,14 @@ export function QueueUpload(arg1, arg2) {
 
 export function QueueUploadDir(arg1, arg2) {
   return window['go']['main']['App']['QueueUploadDir'](arg1, arg2);
+}
+
+export function RemoteCopy(arg1, arg2) {
+  return window['go']['main']['App']['RemoteCopy'](arg1, arg2);
+}
+
+export function RemoteCopyDir(arg1, arg2) {
+  return window['go']['main']['App']['RemoteCopyDir'](arg1, arg2);
 }
 
 export function RemoteDelete(arg1) {

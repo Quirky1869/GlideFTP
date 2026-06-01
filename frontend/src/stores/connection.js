@@ -3,8 +3,8 @@ import {
   Connect, ConnectAdditional, Disconnect, GetConnectionStatus,
   ConnectToSite, ConnectToSiteAdditional, ConnectWithPassword,
   GetConnections, SwitchConnection, CloseConnection,
-  RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename,
-  LocalListDir, LocalMkDir, LocalDelete, LocalRename,
+  RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename, RemoteCopy, RemoteCopyDir,
+  LocalListDir, LocalMkDir, LocalDelete, LocalRename, LocalCopy,
   GetLocalHome, GetLocalParent,
 } from '../../wailsjs/go/main/App.js';
 
@@ -261,6 +261,12 @@ export async function closeTab(id) {
 export async function localMkDir(path)               { await LocalMkDir(path); }
 export async function localDelete(path)               { await LocalDelete(path); }
 export async function localRename(oldPath, newPath)   { await LocalRename(oldPath, newPath); }
+export async function localCopy(srcPath, destPath)    { await LocalCopy(srcPath, destPath); }
 export async function remoteMkDir(path)               { await RemoteMkDir(path); }
 export async function remoteDelete(path)              { await RemoteDelete(path); }
 export async function remoteRename(oldPath, newPath)  { await RemoteRename(oldPath, newPath); }
+export async function remoteCopy(srcPath, destPath)   { await RemoteCopy(srcPath, destPath); }
+export async function remoteCopyDir(srcPath, destPath) { await RemoteCopyDir(srcPath, destPath); }
+
+// Intra-panel clipboard: { entries: [{path, name, isDir}], operation: 'copy'|'cut', side: 'local'|'remote' }
+export const clipboard = writable(null);
