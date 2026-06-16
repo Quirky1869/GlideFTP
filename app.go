@@ -49,6 +49,12 @@ func (a *App) startup(ctx context.Context) {
 		runtime.EventsEmit(ctx, "connection:lost", map[string]string{"id": id, "host": host})
 	})
 	a.migratePasswords()
+	s := a.appSettings
+	if s.StartMaximized {
+		runtime.WindowMaximise(ctx)
+	} else if s.WindowWidth > 0 && s.WindowHeight > 0 {
+		runtime.WindowSetSize(ctx, s.WindowWidth, s.WindowHeight)
+	}
 }
 
 func (a *App) shutdown(ctx context.Context) {

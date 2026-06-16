@@ -902,7 +902,7 @@
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 10px;
-  width: 700px;
+  width: 780px;
   max-width: 95vw;
   max-height: 85vh;
   display: flex;
@@ -1019,7 +1019,7 @@
 
 .no-sites { padding: 20px; text-align: center; font-size: 12px; color: var(--text-muted); }
 
-.site-detail { flex: 1; overflow-y: auto; padding: 18px; }
+.site-detail { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
 .form { display: flex; flex-direction: column; gap: 12px; }
 
@@ -1097,12 +1097,14 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .btn-primary:hover { background: var(--accent-hover); }
 
 .btn-secondary {
+  display: flex; align-items: center; gap: 6px;
   background: var(--bg-button);
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-secondary);
   padding: 7px 16px; font-size: 13px; cursor: pointer;
 }
+.btn-secondary svg { width: 14px; height: 14px; }
 .btn-secondary:hover { background: var(--bg-button-hover); }
 
 .btn-danger {
@@ -1117,8 +1119,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .btn-danger-outline svg { width: 14px; height: 14px; }
 .btn-primary svg { width: 14px; height: 14px; }
 
-.site-view { display: flex; flex-direction: column; gap: 16px; }
-.site-view-header { display: flex; flex-direction: column; gap: 4px; }
+.site-view { display: flex; flex-direction: column; gap: 16px; align-items: center; width: 100%; }
+.site-view-header { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
 .view-name { font-size: 18px; font-weight: 600; color: var(--text-primary); }
 .view-sub { font-size: 13px; color: var(--text-muted); }
 .view-note {

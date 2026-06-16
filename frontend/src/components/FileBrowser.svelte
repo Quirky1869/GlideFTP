@@ -25,7 +25,11 @@
   async function handleRefresh() {
     if (refreshing) return;
     refreshing = true;
-    await Promise.all([onRefresh(), new Promise(r => setTimeout(r, 500))]);
+    if (treeMode) {
+      await Promise.all([enterTreeMode(), new Promise(r => setTimeout(r, 500))]);
+    } else {
+      await Promise.all([onRefresh(), new Promise(r => setTimeout(r, 500))]);
+    }
     refreshing = false;
   }
 
@@ -112,10 +116,15 @@
       if (cb.operation === 'cut') clipboard.set(null);
       stopProgress();
       await onRefresh();
+      if (treeMode) {
+        if (cb.operation === 'cut') treeRemoveEntries(cb.entries);
+        await treeRefreshDir(destFolder);
+      }
       showPasteMsg($t(cb.operation === 'cut' ? 'cutDone' : 'copyDone'), true);
     } catch (e) {
       stopProgress();
       await onRefresh();
+      if (treeMode) await treeRefreshDir(destFolder);
       showPasteMsg(e?.message || String(e), false);
     }
   }
@@ -147,7 +156,12 @@
           const dest = destFolder.replace(/\/?$/, '/') + name;
           if (srcPath !== dest) await onRename(srcPath, dest);
         }
-        await onRefresh();
+        if (treeMode) {
+          treeRemoveEntries(dragged);
+          await treeRefreshDir(destFolder);
+        } else {
+          await onRefresh();
+        }
       } else {
         // Cross-panel: transfer to this specific folder
         for (const { path: srcPath, name, isDir: entryIsDir } of dragged) {
@@ -194,7 +208,13 @@
       deleteError = lastError;
       setTimeout(() => { deleteError = ''; }, 4000);
     }
-    await onRefresh();
+    if (treeMode) {
+      treeRemoveEntries(entries);
+      treeSelected = null;
+      selected = [];
+    } else {
+      await onRefresh();
+    }
     confirmDeleteEntries = null;
   }
 
@@ -418,9 +438,24 @@
     if (!renameValue || renameValue === entry.name) { renamingEntry = null; return; }
     const sep = entry.path.includes('/') ? '/' : '\\';
     const dir = entry.path.substring(0, entry.path.lastIndexOf(sep) + 1);
+    const newPath = dir + renameValue;
     try {
-      await onRename(entry.path, dir + renameValue);
-      await onRefresh();
+      await onRename(entry.path, newPath);
+      if (treeMode) {
+        const oldPath = entry.path;
+        treeNodes = treeNodes.map(n => {
+          if (n.path === oldPath) return { ...n, name: renameValue, path: newPath };
+          if (n.path.startsWith(oldPath + '/')) return { ...n, path: newPath + n.path.slice(oldPath.length) };
+          return n;
+        });
+        if (treeSelected === oldPath) treeSelected = newPath;
+        const pdir = treeParentDir(oldPath);
+        treeLoaded.delete(pdir);
+        delete treeChildrenMap[pdir];
+        if (entry.isDir) { treeLoaded.delete(oldPath); delete treeChildrenMap[oldPath]; }
+      } else {
+        await onRefresh();
+      }
     } catch {}
     renamingEntry = null;
   }
@@ -432,7 +467,8 @@
     const base = path.replace(/[/\\]?$/, '/');
     try {
       await onMkDir(base + newFolderName);
-      await onRefresh();
+      if (treeMode) await treeRefreshDir(path);
+      else await onRefresh();
     } catch {}
     newFolderName = '';
     newFolderMode = false;
@@ -516,10 +552,10 @@
     }
   }
 
-  async function transferSelected() {
-    if (!selected.length) return;
-    const { conflicts, nonConflicts } = checkConflicts(selected);
-    for (const entry of nonConflicts) doQueueTransfer(entry);
+  function transferEntries(entries) {
+    if (!entries || !entries.length) return;
+    const { conflicts, nonConflicts } = checkConflicts(entries);
+    for (const e of nonConflicts) doQueueTransfer(e);
     if (conflicts.length > 0) {
       conflictState = { mode: 'choose', conflicts };
       if (nonConflicts.length > 0) queueVisible.set(true);
@@ -528,15 +564,14 @@
     }
   }
 
+  async function transferSelected() {
+    if (!selected.length) return;
+    transferEntries(selected);
+  }
+
   async function transferEntry(entry) {
     closeContext();
-    const { conflicts, nonConflicts } = checkConflicts([entry]);
-    for (const e of nonConflicts) doQueueTransfer(e);
-    if (conflicts.length > 0) {
-      conflictState = { mode: 'choose', conflicts };
-    } else {
-      queueVisible.set(true);
-    }
+    transferEntries([entry]);
   }
 
   // ── Keyboard navigation ───────────────────────────────────────────────────
@@ -672,6 +707,43 @@
       expanded: false, loading: false, leaf: !e.isDir,
     }));
     await autoExpandToPath(path);
+  }
+
+  function treeParentDir(entryPath) {
+    const idx = entryPath.lastIndexOf('/');
+    if (idx <= 0) return '/';
+    return entryPath.substring(0, idx);
+  }
+
+  // Refresh a specific directory node in the tree without collapsing the rest.
+  async function treeRefreshDir(dirPath) {
+    treeLoaded.delete(dirPath);
+    delete treeChildrenMap[dirPath];
+    if (dirPath === '/' || dirPath === '') {
+      await enterTreeMode();
+      return;
+    }
+    const idx = treeNodes.findIndex(n => n.path === dirPath && n.isDir);
+    if (idx === -1 || !treeNodes[idx].expanded) return;
+    const depth = treeNodes[idx].depth;
+    let end = idx + 1;
+    while (end < treeNodes.length && treeNodes[end].depth > depth) end++;
+    treeNodes = [...treeNodes.slice(0, idx + 1), ...treeNodes.slice(end)];
+    treeNodes[idx] = { ...treeNodes[idx], expanded: false, leaf: false };
+    treeNodes = [...treeNodes];
+    await expandTreeNode(idx);
+  }
+
+  // Remove entries from treeNodes directly after delete/move operations.
+  function treeRemoveEntries(entries) {
+    treeNodes = treeNodes.filter(n =>
+      !entries.some(e => e.path === n.path || (e.isDir && n.path.startsWith(e.path + '/')))
+    );
+    entries.forEach(e => {
+      const pdir = treeParentDir(e.path);
+      treeLoaded.delete(pdir);
+      delete treeChildrenMap[pdir];
+    });
   }
 
   function transferTreeFile(node) {
@@ -881,7 +953,7 @@
   {/if}
 
   {#if treeMode}
-    <div class="tree-list">
+    <div class="tree-list" on:contextmenu={handleBrowserContextMenu}>
       {#if treeNodes.length === 0}
         <div class="tree-loading">
           <svg class="tree-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -902,6 +974,7 @@
           on:dragover={node.isDir ? (e) => handleRowDragOver(e, node.path) : null}
           on:dragleave={node.isDir ? handleRowDragLeave : null}
           on:drop={node.isDir ? (e) => handleDropOnFolder(e, node.path) : null}
+          on:contextmenu|stopPropagation={(e) => { const ent = { path: node.path, name: node.name, isDir: node.isDir, size: node.size || 0, modTime: node.modTime || '' }; treeSelected = node.path; selected = [ent]; handleFileContextMenu(e, ent); }}
           title={node.path}
         >
           {#if node.isDir}
@@ -924,7 +997,20 @@
             <span class="tree-toggle-spacer"></span>
           {/if}
           <span class="file-icon">{node.isDir ? '📁' : '📄'}</span>
-          <span class="tree-name">{node.name}</span>
+          <span class="tree-name">
+            {#if renamingEntry?.path === node.path}
+              <input
+                class="tree-rename-input"
+                type="text"
+                bind:value={renameValue}
+                on:click|stopPropagation
+                on:keydown={(e) => { if (e.key === 'Enter') doRename(renamingEntry); if (e.key === 'Escape') renamingEntry = null; }}
+                autofocus
+              />
+            {:else}
+              {node.name}
+            {/if}
+          </span>
           {#if !node.isDir}
             <span class="tree-file-size">{formatBytes(node.size || 0)}</span>
             <button class="tree-transfer-btn" on:click|stopPropagation={() => transferTreeFile(node)} title={$t('transfer')}>
@@ -1037,7 +1123,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         {$t('rename')}
       </button>
-      <button on:click={() => transferEntry(contextEntry)}>
+      <button on:click={() => { const ents = selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]; closeContext(); transferEntries(ents); }}>
         {#if side === 'local'}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         {:else}
@@ -1595,6 +1681,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+}
+
+.tree-rename-input {
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 1px 5px;
+  outline: none;
+  width: 160px;
+  max-width: 100%;
 }
 
 .tree-toggle-spacer {

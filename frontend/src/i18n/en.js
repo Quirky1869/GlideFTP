@@ -108,6 +108,10 @@ export default {
   showHiddenFiles: 'Show hidden files',
   confirmOnDelete: 'Confirm before deleting',
   dateFormat: 'Date format',
+  windowWidth: 'Window width (px)',
+  windowHeight: 'Window height (px)',
+  startMaximized: 'Open maximized',
+  resetToDefault: 'Reset to default',
   saveSettings: 'Save',
   settingsSaved: 'Settings saved',
 

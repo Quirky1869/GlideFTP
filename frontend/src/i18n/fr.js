@@ -108,6 +108,10 @@ export default {
   showHiddenFiles: 'Afficher les fichiers cachés',
   confirmOnDelete: 'Confirmer avant suppression',
   dateFormat: 'Format de date',
+  windowWidth: 'Largeur de fenêtre (px)',
+  windowHeight: 'Hauteur de fenêtre (px)',
+  startMaximized: 'Ouvrir maximisé',
+  resetToDefault: 'Remettre par défaut',
   saveSettings: 'Enregistrer',
   settingsSaved: 'Paramètres enregistrés',
 

@@ -179,6 +179,9 @@ export namespace settings {
 	    accentColor: string;
 	    maxConnections: number;
 	    connectCardShadow: boolean;
+	    windowWidth: number;
+	    windowHeight: number;
+	    startMaximized: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -201,6 +204,9 @@ export namespace settings {
 	        this.accentColor = source["accentColor"];
 	        this.maxConnections = source["maxConnections"];
 	        this.connectCardShadow = source["connectCardShadow"];
+	        this.windowWidth = source["windowWidth"];
+	        this.windowHeight = source["windowHeight"];
+	        this.startMaximized = source["startMaximized"];
 	    }
 	}
 

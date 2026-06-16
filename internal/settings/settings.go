@@ -22,6 +22,9 @@ type Settings struct {
 	AccentColor            string `json:"accentColor"`
 	MaxConnections         int    `json:"maxConnections"`
 	ConnectCardShadow      bool   `json:"connectCardShadow"`
+	WindowWidth            int    `json:"windowWidth"`
+	WindowHeight           int    `json:"windowHeight"`
+	StartMaximized         bool   `json:"startMaximized"`
 }
 
 func Default() *Settings {
@@ -42,6 +45,9 @@ func Default() *Settings {
 		AccentColor:            "#5B8AF5",
 		MaxConnections:         3,
 		ConnectCardShadow:      false,
+		WindowWidth:            1400,
+		WindowHeight:           900,
+		StartMaximized:         false,
 	}
 }
 

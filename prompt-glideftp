@@ -283,7 +283,28 @@ _____
 
 1.7.5
 
-74 = Faire en sorte sur Linux de lancer l'application autre que par un prompt
+74 = Quand je clic sur plusieurs fichiers et que je fait clique droit dessus, il ne transfère pas tous les fichiers sélectionnés, mais seulement celui sur lequel j'ai fait le clic droit (par contre si je clique sur la flèche en haut prévu à cet effet ça marche) 
+
+75 = Dans la vue arborescence, le refresh ne fonctionne pas (ni sur l'hôte ni sur le serveur distant) 
+
+76 = Dans gérer les sites, il faut centrer pleinement la partie de droite car lorsqu'il y a beaucoup de sites, rien n'est centré (voir photo dans v1.7.5/issue-30.jpg) 
+
+77 = Faire en sorte dans les options de pouvoir choisir la taille de la fenêtre à l'ouverture pour la hauteur et la longueur (voir si possibilité d'ajouter une option pour que ça s'ouvre en plein écran ; le but serait d'avoir une option avec un bouton "on/off" et si on décide de le mettre en plein écran, alors l'option pour paramétrer la hauteur et la longueur est grisée et impossible à changer car le plein écran prime) 
+
+78 = Dans paramètres, mettre un petit bouton à côté de chaque texte (à droite du texte) pour pouvoir remettre par défaut chaque paramètre (sauf la couleur et le répertoire local par défaut) 
+
+79 = "Edit site" button in Site Manager detail view renders as an oversized card
+
+80 = Right-click context menu shows only "New folder" in tree view
+
+81 = Tree view does not update after delete, paste, drag-drop, or new folder
+
+82 = Rename via right-click does nothing in tree view
+_____
+
+1.7.6
+
+??? = Faire en sorte sur Linux de lancer l'application autre que par un prompt
 Option 1 - La plus simple : fichier .desktop + script d'install
 Un fichier .desktop (standard freedesktop.org) suffit pour apparaître dans les lanceurs (GNOME, KDE, etc.). Un script install.sh copie l'AppImage + l'icône + le .desktop dans ~/.local/ — sans sudo, fonctionne sur les 3 distros :
 ~/.local/bin/GlideFTP.AppImage
@@ -297,3 +318,4 @@ Option 2 - Packages natifs (plus professionnel)
 - Fedora/RHEL → .rpm via rpmbuild ou fpm
 
 L'outil fpm (Effing Package Management) permet de générer les 3 formats depuis une seule endre les 3 systèmes de packaging.
+

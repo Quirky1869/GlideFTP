@@ -2251,3 +2251,350 @@ The pFrom path is encoded as a double-null-terminated UTF-16 multi-string
 
 Falls back to permanent deletion (os.RemoveAll) on unsupported platforms so
 the package still compiles everywhere.
+
+---
+
+1.7.5
+
+#74
+Title: [Bug] Right-click "Transfer" in context menu ignores multi-selection — only transfers the right-clicked file
+Labels: bug
+Version fixed: v1.7.5
+Description:
+When multiple files are selected and the user right-clicks one of them and
+chooses "Transfer", only the right-clicked file is transferred. The rest of
+the selection is ignored.
+The toolbar Transfer button (↗) correctly transfers all selected files, so
+the issue is specific to the context menu path.
+
+Solution (closing comment):
+Fixed in v1.7.5 in FileBrowser.svelte.
+
+Root cause: the context menu "Transfer" button called `transferEntry(contextEntry)`
+directly, which only handles a single entry, ignoring the selection entirely.
+The Cut, Copy, and Delete entries in the same menu already used the correct
+pattern:
+  `selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]`
+but Transfer did not.
+
+Fix: a shared `transferEntries(entries)` function was factored out (holds the
+conflict-check + queue logic). `transferSelected()` and `transferEntry()` both
+delegate to it. The context menu button was changed to:
+  const ents = selected.some(s => s.path === contextEntry?.path)
+               ? selected : [contextEntry];
+  closeContext(); transferEntries(ents);
+This makes Transfer consistent with Cut / Copy / Delete.
+
+---
+
+#75
+Title: [Bug] Refresh button does nothing in tree view
+Labels: bug
+Version fixed: v1.7.5
+Description:
+In tree view mode, clicking the Refresh button (↻) has no visible effect.
+The tree stays stale even after creating, deleting, or renaming files on the
+server from another client.
+In list view mode the button works correctly.
+
+Solution (closing comment):
+Fixed in v1.7.5 in FileBrowser.svelte.
+
+Root cause: `handleRefresh()` called `onRefresh()`, which refreshes only the
+flat `entries` list used by the list view. The tree data (`treeNodes`,
+`treeLoaded`, `treeChildrenMap`) is independent and was never touched.
+
+Fix: `handleRefresh()` now detects `treeMode` and branches:
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    refreshing = true;
+    if (treeMode) {
+      await Promise.all([enterTreeMode(), new Promise(r => setTimeout(r, 500))]);
+    } else {
+      await Promise.all([onRefresh(), new Promise(r => setTimeout(r, 500))]);
+    }
+    refreshing = false;
+  }
+
+`enterTreeMode()` clears `treeLoaded`, `treeChildrenMap`, and `treeNodes`, then
+re-fetches from `/` and re-expands the current path — a full in-place rebuild
+that preserves the spinner animation timing.
+
+---
+
+#76
+Title: [UI] Site Manager detail panel content not centered when many sites are listed
+Labels: bug, ui
+Version fixed: v1.7.5
+Description:
+In the Site Manager, when many sites fill the left panel, the right-side
+detail area (site name, protocol/host, note, and action buttons) is
+left-aligned instead of being horizontally and vertically centered.
+The "no selection" state (placeholder icon) is correctly centered, but the
+selected-site view is not.
+Ref: _images/issues/v1.7.5/issue-30.jpg
+
+Solution (closing comment):
+Fixed in v1.7.5 in SiteManager.svelte.
+
+Three CSS changes:
+- `.site-detail`: added `display: flex; flex-direction: column;
+  align-items: center; justify-content: center;` so the content is centered
+  in both axes within the right panel.
+- `.site-view`: added `align-items: center; width: 100%;` so each child
+  element centers horizontally while the wrapper keeps its full width.
+- `.site-view-header`: added `align-items: center; text-align: center;`
+  so the site name and subtitle text are centered.
+Modal width increased from 700 px to 780 px to give the three action buttons
+comfortable horizontal room when rendered side by side.
+
+---
+
+#77
+Title: [Feature] Configurable window size and maximized-on-startup option in Settings
+Labels: enhancement
+Version fixed: v1.7.5
+Description:
+The GlideFTP window always opens at a fixed size (1400×900). Users who prefer
+a smaller window or a maximized start have no way to configure this without
+editing internal files.
+Requested: a width stepper, a height stepper, and an "Open maximized" toggle
+in Settings > Interface. When "Open maximized" is enabled, the width and height
+controls should be disabled (grayed out).
+
+Solution (closing comment):
+Implemented in v1.7.5.
+
+**internal/settings/settings.go:**
+Three new fields added to the Settings struct (with defaults matching the
+previously hardcoded values):
+  WindowWidth  int  \`json:"windowWidth"\`   // default 1400
+  WindowHeight int  \`json:"windowHeight"\`  // default 900
+  StartMaximized bool \`json:"startMaximized"\` // default false
+
+**main.go:**
+Reads WindowWidth / WindowHeight from settings before calling wails.Run() so
+the window opens at the right size from the first frame:
+  s, _ := settings.Load()
+  w, h := s.WindowWidth, s.WindowHeight
+  if w <= 0 { w = 1400 }
+  if h <= 0 { h = 900 }
+  wails.Run(&options.App{ Width: w, Height: h, ... })
+
+**app.go — startup():**
+After other initialization, applies the stored window configuration:
+  if s.StartMaximized {
+    runtime.WindowMaximise(ctx)
+  } else if s.WindowWidth > 0 && s.WindowHeight > 0 {
+    runtime.WindowSetSize(ctx, s.WindowWidth, s.WindowHeight)
+  }
+
+**SettingsPanel.svelte — Interface section:**
+Three new rows added after "Confirm before deleting":
+- "Open maximized" toggle switch (`startMaximized`).
+- "Window width (px)" stepper (range 800–3840, step 50),
+  disabled and grayed out (`class:row-disabled`) when `startMaximized` is true.
+- "Window height (px)" stepper (range 600–2160, step 50),
+  same disabled behavior.
+New CSS: `.row-disabled { opacity: 0.4; pointer-events: none; }`.
+
+**i18n:** `windowWidth`, `windowHeight`, `startMaximized` keys added to
+en.js and fr.js.
+
+---
+
+#78
+Title: [Feature] "Reset to default" button for each setting in the Settings panel
+Labels: enhancement, ui
+Version fixed: v1.7.5
+Description:
+Once a setting has been changed there is no quick way to revert it to its
+factory default without knowing what the default value is.
+Requested: a small button next to each setting label that resets that
+individual setting to its default value.
+Excluded by the user: the accent color picker and the default local directory
+field (those already have their own reset mechanism or are path-specific).
+
+Solution (closing comment):
+Implemented in v1.7.5 in SettingsPanel.svelte.
+
+A `DEFAULTS` constant in the script holds the canonical default value for
+every resettable key (matching `settings.Default()` in Go):
+  theme, language, maxConcurrentTransfers, defaultPort,
+  connectionTimeoutSec, showHiddenFiles, passiveMode, autoReconnect,
+  confirmOnDelete, dateFormat, maxTransferSpeedKBps, maxConnections,
+  connectCardShadow, windowWidth, windowHeight, startMaximized.
+
+`resetSetting(key)` sets `form = { ...form, [key]: DEFAULTS[key] }`.
+
+A small `↺` button (class `.reset-btn`) was added inside every `<label>`
+that has a resettable key, using `on:click|stopPropagation` to avoid
+triggering the label's own click target. Styled as subtle/muted (opacity 0.45)
+until hovered (full opacity, accent color), so it does not visually compete
+with the setting control.
+
+The version badge in the Settings panel footer was also updated from v1.7.4
+to v1.7.5.
+
+---
+
+#79
+Title: [Bug] "Edit site" button in Site Manager detail view renders as an oversized card
+Labels: bug, ui
+Version fixed: v1.7.5
+Description:
+After the right-panel centering fix (#76), the "Modifier le site" / "Edit site"
+button in the Site Manager action row renders as a large card (roughly 100×100 px)
+with a big pencil icon, dwarfing the "Connect" and "Delete site" buttons beside it.
+Ref: _images/issues/v1.7.5/issue-31.jpg
+
+Root cause: `.btn-secondary` lacked both `display: flex; align-items: center;
+gap: 6px;` and a `.btn-secondary svg { width: 14px; height: 14px; }` rule.
+The SVG inside the button therefore rendered at its intrinsic/default size
+under WebKit-GTK instead of the 14 px used by `.btn-primary` and
+`.btn-danger-outline`.
+
+Solution (closing comment):
+Fixed in v1.7.5 in SiteManager.svelte.
+
+`.btn-secondary` updated to match the other action button classes:
+  .btn-secondary {
+    display: flex; align-items: center; gap: 6px;
+    ...existing padding / border / color...
+  }
+  .btn-secondary svg { width: 14px; height: 14px; }
+
+All three action buttons (Connect, Edit, Delete) now render at the same height
+and with the same small icon size.
+
+---
+
+#80
+Title: [Bug] Right-click context menu shows only "New folder" in tree view
+Labels: bug
+Version fixed: v1.7.5
+Description:
+In tree view, right-clicking any file or folder shows only the "New folder"
+option (the empty-area context menu). The file-specific options — Rename,
+Transfer, Cut, Copy, Paste, Delete — are never shown.
+In list view the full context menu works correctly.
+Ref: _images/issues/v1.7.5/issue-32.jpg
+
+Root cause: the `.tree-row` divs had no `on:contextmenu` handler. Right-click
+events bubbled up to the `.tree-list` container's parent, which was bound to
+`handleBrowserContextMenu` (the empty-area handler that only offers "New
+folder").
+
+Solution (closing comment):
+Fixed in v1.7.5 in FileBrowser.svelte.
+
+Two changes:
+1. `.tree-list` div: `on:contextmenu={handleBrowserContextMenu}` added so
+   right-clicking an empty area in tree mode still shows "New folder".
+2. Each `.tree-row` div: `on:contextmenu|stopPropagation` added. The handler
+   builds an entry object from the node (`{ path, name, isDir, size, modTime }`)
+   sets `treeSelected = node.path` and `selected = [ent]` (so the existing
+   context menu logic — including the selection-aware transfer/cut/copy/delete
+   checks — works without modification), then calls `handleFileContextMenu(e, ent)`.
+The `stopPropagation` prevents the event from reaching the browser-context
+handler, so only the file-specific menu is shown for non-empty rows.
+
+---
+
+#81
+Title: [Bug] Tree view does not update after delete, paste, drag-drop, or new folder
+Labels: bug
+Version fixed: v1.7.5
+Description:
+In tree view, performing any file mutation — deleting a file, pasting a file
+into a folder, moving a file by drag-and-drop within the same panel, or
+creating a new folder — does not update the visible tree. The item remains
+visible after deletion, the pasted file does not appear, etc. The user must
+manually click Refresh, then switch back to list view and re-expand all folders
+to see the current state.
+
+Root cause: `doDeleteAll()`, `pasteToFolder()`, `handleDropOnFolder()`, and
+`handleNewFolder()` all called `onRefresh()` after completing their operation.
+`onRefresh()` only reloads the flat `entries` list used by the list view; it
+has no effect on the tree state (`treeNodes`, `treeLoaded`, `treeChildrenMap`).
+
+Solution (closing comment):
+Fixed in v1.7.5 in FileBrowser.svelte.
+
+Three new helpers were added:
+
+`treeParentDir(entryPath)`: returns the parent directory of a given path.
+
+`treeRefreshDir(dirPath)`: refreshes a single directory node in the tree
+in-place — clears the cache entry for that directory, then collapses and
+re-expands the corresponding `treeNodes` entry so only that subtree is
+reloaded. For the root `/`, falls back to a full `enterTreeMode()`. Returns
+immediately if the directory is not currently expanded (no visual change
+needed).
+
+`treeRemoveEntries(entries)`: removes a set of entries (and their descendant
+nodes if they are directories) from `treeNodes` directly, then clears the
+parent directory's cache entry. Used for deletes and moves where no new
+content needs to be shown.
+
+Each mutating operation was updated to branch on `treeMode`:
+
+- **Delete** (`doDeleteAll`): calls `treeRemoveEntries(entries)` then clears
+  `treeSelected` and `selected`. No network refetch required — the nodes are
+  removed immediately.
+- **Paste copy** (`pasteToFolder`): after `onRefresh()`, also calls
+  `treeRefreshDir(destFolder)` to reload the destination directory.
+- **Paste cut** (`pasteToFolder`): additionally calls `treeRemoveEntries` on
+  the source entries before refreshing the destination.
+- **New folder** (`handleNewFolder`): calls `treeRefreshDir(path)` instead
+  of `onRefresh()`.
+- **Drag-drop same panel** (`handleDropOnFolder`): calls `treeRemoveEntries`
+  on the moved items, then `treeRefreshDir(destFolder)`.
+
+---
+
+#82
+Title: [Bug] Rename via right-click does nothing in tree view
+Labels: bug
+Version fixed: v1.7.5
+Description:
+In tree view, right-clicking a file or folder and choosing "Rename" has no
+visible effect. The inline rename input never appears.
+In list view, rename works correctly (an inline text input replaces the file
+name in the row).
+
+Root cause: `startRename(entry)` sets `renamingEntry` which triggers an
+`{#if renamingEntry?.path === entry.path}` block inside the `.file-list`
+section. In tree mode the `.file-list` block is not rendered at all (replaced
+by `.tree-list`), so `renamingEntry` was set but no input was ever shown.
+
+Solution (closing comment):
+Fixed in v1.7.5 in FileBrowser.svelte.
+
+The `.tree-name` span in each tree row was updated to include the same
+conditional input pattern used in the list view:
+
+  <span class="tree-name">
+    {#if renamingEntry?.path === node.path}
+      <input
+        class="tree-rename-input"
+        type="text"
+        bind:value={renameValue}
+        on:click|stopPropagation
+        on:keydown={(e) => {
+          if (e.key === 'Enter') doRename(renamingEntry);
+          if (e.key === 'Escape') renamingEntry = null;
+        }}
+        autofocus
+      />
+    {:else}
+      {node.name}
+    {/if}
+  </span>
+
+`doRename()` was also updated to handle tree mode: instead of calling
+`onRefresh()`, it mutates `treeNodes` directly — updating the node's `name`
+and `path` (and all descendant paths if it was a directory), updating
+`treeSelected` if the renamed node was selected, and clearing the cache for
+the parent directory. This keeps the tree in sync without a full rebuild.
