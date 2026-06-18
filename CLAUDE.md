@@ -8,18 +8,27 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 
 Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemple.png`.
 
+**Project tracking files** (keep in sync after each session):
+- `prompt-glideftp` - original design spec + chronological list of all issues as described by the user (raw French, by version). Add new issues here when they arrive.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#84. Add new entries after each fix.
+
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
 ## Build & Run
 
 ```bash
 # Recommended - use the build script at project root
-./make.sh                  # Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
-./make.sh linux            # Linux only             → build/bin/linux/GlideFTP
-./make.sh windows          # Windows only           → build/bin/windows/GlideFTP.exe
-./make.sh appimage         # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
-./make.sh appimage-arch    # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                      # Linux binary + Windows exe + Arch AppImage + Debian AppImage + .deb + .rpm
+./make.sh linux                # Linux only             → build/bin/linux/GlideFTP
+./make.sh windows              # Windows only           → build/bin/windows/GlideFTP.exe
+./make.sh appimage             # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
+./make.sh appimage-arch        # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian      # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh deb 1.7.5            # .deb package (Docker - Ubuntu 22.04) → build/bin/linux/GlideFTP-Linux-v1.7.5.deb
+./make.sh rpm 1.7.5            # .rpm package (Docker - Fedora 40)    → build/bin/linux/GlideFTP-Linux-v1.7.5.rpm
+./make.sh packages 1.7.5       # .deb + .rpm together
+#   Version arg required for deb/rpm/packages/all; OR create a VERSION file: echo '1.7.5' > VERSION
+#   deb/rpm use Docker (same docker/podman requirement as appimage-debian)
 #   appimage-debian uses Docker (requires docker or podman); first run builds Ubuntu 22.04 image (~10 min)
 #   Arch AppImage:   linuxdeploy bundles Arch libs; requires GLIBC 2.38+ on target
 #   Debian AppImage: built in Ubuntu 22.04 container; bundles Ubuntu libs; requires GLIBC 2.35+ (Ubuntu 22.04+/Debian 12+/Arch)
@@ -28,15 +37,17 @@ Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}`
 #   icon resized to 256x256 with magick (Arch) / convert (Debian container, ImageMagick 6)
 
 # Create distribution archives (requires built binaries first)
-./create-archive.sh 1.7.1                            # all 8 archives (Linux+Windows+ArchAppImage+DebianAppImage × gz+tar)
-./create-archive.sh -p linux 1.7.1                   # Linux binary archives only (includes README.md)
-./create-archive.sh -p appimage 1.7.1                # both AppImage variants (Arch + Debian)
-./create-archive.sh -p appimage-arch 1.7.1           # Arch AppImage archives only
-./create-archive.sh -p appimage-debian 1.7.1         # Debian AppImage archives only
-./create-archive.sh -p windows -t gz 1.7.1           # Windows .tar.gz only
+./create-archive.sh 1.7.5                            # all archives (Linux+Windows+ArchAppImage+DebianAppImage × gz+tar)
+./create-archive.sh -p linux 1.7.5                   # Linux binary archives only (includes README.md + glideftp.desktop + glideftp.png)
+./create-archive.sh -p appimage 1.7.5                # both AppImage variants (Arch + Debian)
+./create-archive.sh -p appimage-arch 1.7.5           # Arch AppImage archives only
+./create-archive.sh -p appimage-debian 1.7.5         # Debian AppImage archives only
+./create-archive.sh -p windows -t gz 1.7.5           # Windows .tar.gz only
 # Version must be X.Y.Z (3 numbers) - script refuses anything else
-# Linux binary archives include README.md with libwebkit2gtk-4.1 install instructions
+# Linux binary archives include: GlideFTP binary, glideftp.desktop, glideftp.png, README.md
+#   (glideftp.desktop + glideftp.png needed by PKGBUILD for AUR installation)
 # AppImage archives contain only the .AppImage (self-contained, webkit helpers bundled)
+# .deb and .rpm are NOT archived - they are uploaded directly to GitHub releases as-is
 
 # Manual - Linux (system has webkit2gtk-4.1, the tag is mandatory)
 wails build -tags webkit2_41        # → build/bin/GlideFTP (then move to build/bin/linux/)
@@ -75,9 +86,19 @@ magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/wi
 GlideFTP/
 ├── main.go                        # Wails entry point (1280×800)
 ├── app.go                         # All Go→JS bindings (the only Wails-bound struct)
+├── packaging/
+│   ├── glideftp.desktop           # Shared desktop entry (Exec=glideftp) used by .deb, .rpm, and PKGBUILD
+│   ├── PKGBUILD                   # AUR binary package (glideftp-bin): installs from GitHub release archive
+│   └── glideftp.spec              # RPM spec template (@VERSION@ and @CHANGELOG_DATE@ replaced by build-rpm.sh)
+├── .github/
+│   └── workflows/
+│       └── release.yml            # GitHub Actions: triggered by tag push v*.*.* → builds all artefacts → draft release
 ├── docker/
 │   ├── Dockerfile.appimage        # Ubuntu 22.04 build environment (Go 1.25, Node 20, webkit2gtk-4.1-dev, linuxdeploy)
-│   └── build-appimage.sh          # Script run inside the container: rsync source → wails build → linuxdeploy → AppImage
+│   ├── build-appimage.sh          # Script run inside the container: rsync source → wails build → linuxdeploy → AppImage
+│   ├── Dockerfile.rpm             # Fedora 40 minimal image with rpm-build + rpmdevtools
+│   ├── build-deb.sh               # Builds .deb inside glideftp-debian-builder container (reuses Dockerfile.appimage)
+│   └── build-rpm.sh               # Builds .rpm inside glideftp-rpm-builder container (uses Dockerfile.rpm)
 ├── internal/
 │   ├── connection/
 │   │   ├── types.go               # Shared types: Config, ConnInfo, RemoteFileEntry, Client interface
@@ -151,9 +172,14 @@ GlideFTP/
 - **Quick connect button** (`ConnectionBar.svelte`): button to the left of the disconnect button, only visible when connected. Shows ↑ when idle; clicking enters quick connect mode - all inputs unlock and clear, host input gets focus, button becomes → (accent colored). Clicking → shows a keep-or-replace dialog (`quickConnectDialog = { cfg }`, `position: fixed; top: 48px`) with "Keep and open new" (if under `maxConnections`), "Replace current", and "Cancel". "Replace" calls `addConnectionAdHoc(cfg)` then `closeTab(oldId)` - safe replace that preserves the old connection until the new one succeeds. Clicking outside the connection bar exits quick connect mode and restores old field values. If host is empty when → is clicked, the host input border blinks red 3 times (`@keyframes host-error-blink`, 1.2s) via `class:host-error` - no text, no layout shift. Multi-connection case (2+ tabs): triggers the existing disconnect-all dialog instead of keep-or-replace.
 - **Password security - system keyring**: passwords are stored in the OS keyring (gnome-keyring/kwallet on Linux via D-Bus, Windows Credential Manager/DPAPI on Windows). `sites.json` on disk **never contains passwords** - `sites.go save()` always strips them. `app.GetSites()` enriches sites with passwords from keyring before returning to the frontend. `app.CreateSite`/`UpdateSite` extract the password, clear it from the struct, then call `keyringMgr.Set()`. `app.DeleteSite` also calls `keyringMgr.Delete()`. On startup `migratePasswords()` migrates any plaintext passwords still in old `sites.json` to keyring then re-saves the file stripped. `needsKeyring(authType)` returns false for `anonymous`, `ask_password`, `interactive` - those auth types never store a password. If keyring is unavailable `GetKeyringStatus()` returns `"keyring_unavailable"` and `SiteManager.svelte` shows a yellow warning banner; passwords simply won't be saved (user should switch to `ask_password`).
 - **Password security - encrypted export (.gfe)**: export dialog offers two choices - "without passwords" (plain JSON) or "with passwords" (encrypted `.gfe`). The `.gfe` binary format: `[4B magic "GFEX"][1B version][32B random salt][12B random nonce][ciphertext+GCM tag]`. Key derivation: `Argon2id(passphrase, salt, time=3, memory=64MB, threads=4)` → 32-byte AES-256 key. Encryption: AES-256-GCM (provides confidentiality + integrity). On import, `IsEncrypted()` checks magic bytes; if encrypted, frontend shows passphrase prompt before calling `DoImportSites(path, passphrase)`. Works cross-platform (Linux↔Windows) because the format is purely binary/Go stdlib - no OS-specific primitives.
+- **Export site selection** (`SiteManager.svelte`): clicking "Exporter les sites" first enters `exportSelectMode` (all sites pre-selected). Left panel: "Tout sélectionner" toggle with checkbox (full/partial/empty state) + per-site checkboxes. Right panel (no-selection area): shows "Sélectionner les sites à exporter" + Valider/Annuler buttons. Valider opens the existing with/without-password dialog which then calls `ExportSitesPlainSelected(ids[])` or `ExportSitesEncryptedSelected(passphrase, ids[])`. State: `exportSelectMode bool`, `exportSelectedIds Set`. Helper `filterSitesByIDs(all, ids)` in app.go filters by ID (returns all if ids empty). i18n keys: `exportSelectTitle`, `exportSelectAll`, `exportValidate`.
 - **Intra-panel clipboard** (`connection.js`): `clipboard` writable store `{ entries, operation: 'copy'|'cut', side }`. Shared between both FileBrowser instances. `pasteToFolder(destFolder)` in `FileBrowser.svelte` checks `clipboard.side === side` before pasting. Same-directory paste calls `uniqueCopyName(name, usedNames)` which generates `name (copie).ext` → `name (copie 1).ext` etc.; `usedNames` is pre-seeded from `entries` and updated per-item in the batch to avoid duplicates. Remote copy = `CopyRemote` (download to temp + re-upload, synchronous). Progressive refresh: 1s delay then every 4s during operation, final refresh on completion. Green/orange banner with auto-dismiss 4s.
 - **Local trash** (`internal/fs/trash_linux.go` / `trash_windows.go`): `LocalDelete` calls `localfs.Trash()` not `localfs.Delete()`. Linux: XDG spec - move to `~/.local/share/Trash/files/` + `.trashinfo` sidecar, collision avoidance, cross-device fallback. Windows: `SHFileOperationW` via `syscall.NewLazyDLL("shell32.dll")` with `FOF_ALLOWUNDO` - no CGo, mingw compatible. Remote deletes are always permanent (no server-side trash in FTP/SFTP).
-- **Release notes**: one `v{version}.md` file per release at project root (EN + FR, features + bugfixes + download table). `SettingsPanel.svelte` footer badge must be updated to match on each release.
+- **Release notes**: one `v{version}.md` file per release at project root (EN + FR, features + bugfixes + download table). `SettingsPanel.svelte` footer badge must be updated to match on each release. File starts with `## 🇬🇧 English` (no `#` title - format validated by user on v1.7.5).
+- **Release workflow**: `git tag v1.7.X && git push origin v1.7.X` triggers `.github/workflows/release.yml` which builds all artefacts and creates a draft GitHub release. The Arch AppImage is NOT built in CI (needs Arch libs) - build locally with `./make.sh appimage-arch` and upload to the draft manually before publishing.
+- **Native packages**: `.deb` (Depends: libwebkit2gtk-4.1-0) and `.rpm` (Requires: webkit2gtk4.1) are binary packages - no compilation inside the package, just the pre-built binary + desktop entry + icon. Both built via Docker containers (`docker/build-deb.sh` in Ubuntu, `docker/build-rpm.sh` in Fedora 40).
+- **AUR package** (`glideftp-bin`): `packaging/PKGBUILD` installs from the Linux `.tar.gz` release archive. The archive must contain `GlideFTP`, `glideftp.desktop`, and `glideftp.png` (ensured by `create-archive.sh`). AUR publication: clone `ssh://aur@aur.archlinux.org/glideftp-bin.git`, copy PKGBUILD, update `pkgver` + `sha256sums_x86_64`, run `makepkg --printsrcinfo > .SRCINFO`, push. AUR account registration is sometimes disabled temporarily - check aur.archlinux.org. **Local test**: `./make.sh linux && ./create-archive.sh -p linux -t gz 1.7.5`, then `mkdir /tmp/t && cp packaging/PKGBUILD /tmp/t/ && cp GlideFTP-Linux-v1.7.5.tar.gz /tmp/t/glideftp-bin-1.7.5.tar.gz && cd /tmp/t && makepkg -si`. The filename must match `<pkgname>-<pkgver>.tar.gz` (the part before `::` in `source_x86_64`). `sha256sums=('SKIP')` bypasses integrity check for local testing. Uninstall: `sudo pacman -R glideftp-bin`.
+- **VERSION file**: optional file at project root (`echo '1.7.5' > VERSION`). Used by `make.sh deb/rpm/packages` if no version arg is passed.
 
 ## WebKit-GTK UI Patterns (Linux)
 
@@ -228,8 +254,11 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `manager.ConnectNew()` - adds a connection without removing existing ones; new connection becomes active
 - `manager.CloseOne(id)` - closes specific connection; if it was active, switches to the most-recently-added remaining one
 - `manager.SwitchTo(id)` - makes a connection active without reconnecting
-- `app.ExportSitesPlain()` - file-dialog, exports sites as plain JSON without passwords
-- `app.ExportSitesEncrypted(passphrase)` - file-dialog, exports sites as `.gfe` (Argon2id+AES-256-GCM encrypted); fetches passwords from keyring before encrypting
+- `app.ExportSitesPlain()` - file-dialog, exports all sites as plain JSON without passwords (legacy, kept for compatibility)
+- `app.ExportSitesEncrypted(passphrase)` - file-dialog, exports all sites as `.gfe` encrypted (legacy, kept for compatibility)
+- `app.ExportSitesPlainSelected(ids []string)` - exports only the given site IDs as plain JSON; if ids empty exports all
+- `app.ExportSitesEncryptedSelected(passphrase string, ids []string)` - exports only the given site IDs as `.gfe`; if ids empty exports all
+- `filterSitesByIDs(all []sites.Site, ids []string) []sites.Site` - helper that filters sites by ID set; returns all if ids empty
 - `app.OpenImportDialog()` - opens file-dialog, reads first bytes, returns `ImportFileInfo{Path, NeedsPassphrase}`
 - `app.DoImportSites(path, passphrase)` - imports from plain JSON or `.gfe`; stores passwords in keyring; returns count
 - `app.GetKeyringStatus()` - returns `""` if keyring available, `"keyring_unavailable"` otherwise

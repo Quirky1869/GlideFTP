@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GlideFTP
+Comment=FTP/SFTP desktop client
+Comment[fr]=Client FTP/SFTP de bureau
+Exec=glideftp
+Icon=glideftp
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=FTP;SFTP;file;transfer;

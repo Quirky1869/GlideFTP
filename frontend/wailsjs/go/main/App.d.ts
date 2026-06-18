@@ -37,7 +37,11 @@ export function DoImportSites(arg1:string,arg2:string):Promise<number>;
 
 export function ExportSitesEncrypted(arg1:string):Promise<void>;
 
+export function ExportSitesEncryptedSelected(arg1:string,arg2:Array<string>):Promise<void>;
+
 export function ExportSitesPlain():Promise<void>;
+
+export function ExportSitesPlainSelected(arg1:Array<string>):Promise<void>;
 
 export function GetActiveConnectionID():Promise<string>;
 

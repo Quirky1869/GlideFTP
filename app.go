@@ -218,6 +218,82 @@ func (a *App) ExportSitesEncrypted(passphrase string) error {
 	return os.WriteFile(path, encrypted, 0600)
 }
 
+// ExportSitesPlainSelected exports the given sites (by ID) as plain JSON without passwords.
+// If ids is empty all sites are exported.
+func (a *App) ExportSitesPlainSelected(ids []string) error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export sites",
+		DefaultFilename: "glideftp-sites.json",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	selected := filterSitesByIDs(a.siteMgr.GetAll(), ids)
+	for i := range selected {
+		selected[i].Password = ""
+	}
+	data, err := json.MarshalIndent(selected, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+// ExportSitesEncryptedSelected exports the given sites (by ID) with passwords, encrypted.
+// If ids is empty all sites are exported.
+func (a *App) ExportSitesEncryptedSelected(passphrase string, ids []string) error {
+	if passphrase == "" {
+		return fmt.Errorf("la passphrase ne peut pas être vide")
+	}
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export sites (chiffré)",
+		DefaultFilename: "glideftp-sites.gfe",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "GlideFTP Export", Pattern: "*.gfe"},
+		},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	selected := filterSitesByIDs(a.siteMgr.GetAll(), ids)
+	for i := range selected {
+		if pwd, kerr := a.keyringMgr.Get(selected[i].ID); kerr == nil && pwd != "" {
+			selected[i].Password = pwd
+		}
+	}
+	plaintext, err := json.MarshalIndent(selected, "", "  ")
+	if err != nil {
+		return err
+	}
+	encrypted, err := gfeCrypto.Encrypt(plaintext, passphrase)
+	if err != nil {
+		return fmt.Errorf("chiffrement échoué : %w", err)
+	}
+	return os.WriteFile(path, encrypted, 0600)
+}
+
+// filterSitesByIDs returns only those sites whose ID appears in ids.
+// If ids is empty all sites are returned.
+func filterSitesByIDs(all []sites.Site, ids []string) []sites.Site {
+	if len(ids) == 0 {
+		return all
+	}
+	set := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		set[id] = true
+	}
+	out := make([]sites.Site, 0, len(ids))
+	for _, s := range all {
+		if set[s.ID] {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 // ImportFileInfo is returned by OpenImportDialog to tell the frontend what kind of file was selected.
 type ImportFileInfo struct {
 	Path            string `json:"path"`

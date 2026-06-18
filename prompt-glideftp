@@ -304,18 +304,21 @@ _____
 
 1.7.6
 
-??? = Faire en sorte sur Linux de lancer l'application autre que par un prompt
-Option 1 - La plus simple : fichier .desktop + script d'install
-Un fichier .desktop (standard freedesktop.org) suffit pour apparaître dans les lanceurs (GNOME, KDE, etc.). Un script install.sh copie l'AppImage + l'icône + le .desktop dans ~/.local/ — sans sudo, fonctionne sur les 3 distros :
-~/.local/bin/GlideFTP.AppImage
-~/.local/share/icons/GlideFTP.png
-~/.local/share/applications/GlideFTP.desktop
-C'est 20-30 lignes de bash. L'appli apparaît dans le menu application immédiatement.
+83 = Faire en sorte sur Linux de lancer l'application autre que par un prompt
+Approche choisie : packages natifs (.deb, .rpm, AUR PKGBUILD) + GitHub Actions pour automatiser les releases
+- packaging/glideftp.desktop → fichier d'entrée bureau partagé (Exec=glideftp)
+- packaging/PKGBUILD → paquet AUR binaire "glideftp-bin" (installe depuis l'archive GitHub releases)
+- packaging/glideftp.spec → template RPM (Fedora 40)
+- docker/Dockerfile.rpm + build-deb.sh + build-rpm.sh → build des paquets dans des containers Docker
+- .github/workflows/release.yml → push d'un tag v*.*.* → build tout → draft release GitHub automatique
+- make.sh étendu : ./make.sh deb 1.7.6 | rpm 1.7.6 | packages 1.7.6 | -h
+- create-archive.sh modifié : archive Linux inclut maintenant glideftp.desktop + glideftp.png
+- Arch AppImage non buildée en CI (nécessite libs Arch) → à uploader manuellement sur la draft
 
-Option 2 - Packages natifs (plus professionnel)
-- Debian/Ubuntu → .deb via dpkg-deb ou fpm
-- Arch → PKGBUILD publié sur l'AUR
-- Fedora/RHEL → .rpm via rpmbuild ou fpm
-
-L'outil fpm (Effing Package Management) permet de générer les 3 formats depuis une seule endre les 3 systèmes de packaging.
-
+84 = Dans "Gérer les sites" quand on clique sur "Exporter les sites" il n'y a pas moyen de choisir quels sites on veut exporter, cela exporte forcément tous les sites
+Il faut que l'utilisateur puisse sélectionner les sites qu'il veut exporter avant d'avoir le pop-up qui demande avec ou sans mot de passe
+Comportement attendu (voir v1.7.6/issue-34.png) :
+- Remplacer "+ Nouveau site" par "Tout sélectionner" avec une case à cocher (cochée par défaut = tous sélectionnés)
+- Changer "Gérer les sites" par "Sélectionner les sites à exporter" dans la zone de droite
+- Ajouter 2 boutons centrés : Valider et Annuler
+- Chaque site dans la liste a sa propre case à cocher

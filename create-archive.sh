@@ -242,9 +242,11 @@ make_linux_gz() {
   local staging
   staging="$(mktemp -d)"
   cp build/bin/linux/GlideFTP "$staging/"
+  cp packaging/glideftp.desktop "$staging/"
+  cp build/appicon.png "$staging/glideftp.png"
   _write_linux_readme "$staging"
   echo "→ $out"
-  tar -czvf "$out" -C "$staging" GlideFTP README.md
+  tar -czvf "$out" -C "$staging" GlideFTP glideftp.desktop glideftp.png README.md
   rm -rf "$staging"
 }
 
@@ -259,9 +261,11 @@ make_linux_tar() {
   local staging
   staging="$(mktemp -d)"
   cp build/bin/linux/GlideFTP "$staging/"
+  cp packaging/glideftp.desktop "$staging/"
+  cp build/appicon.png "$staging/glideftp.png"
   _write_linux_readme "$staging"
   echo "→ $out"
-  tar -cvf "$out" -C "$staging" GlideFTP README.md
+  tar -cvf "$out" -C "$staging" GlideFTP glideftp.desktop glideftp.png README.md
   rm -rf "$staging"
 }
 

@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, GetKeyringStatus, ExportSitesPlain, ExportSitesEncrypted, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
@@ -19,6 +19,10 @@
   // Export dialog
   let showExportDialog = false;
   let exportStep = 'choice'; // 'choice' | 'passphrase'
+
+  // Export selection state
+  let exportSelectMode = false;
+  let exportSelectedIds = new Set();
   let exportPassphrase = '';
   let exportPassphraseConfirm = '';
   let exportPassphraseError = '';
@@ -343,6 +347,18 @@
   }
 
   function openExportDialog() {
+    // First enter selection mode (all sites pre-selected)
+    exportSelectedIds = new Set(sites.map(s => s.id));
+    exportSelectMode = true;
+  }
+
+  function cancelExportSelect() {
+    exportSelectMode = false;
+    exportSelectedIds = new Set();
+  }
+
+  function confirmExportSelect() {
+    exportSelectMode = false;
     exportStep = 'choice';
     exportPassphrase = '';
     exportPassphraseConfirm = '';
@@ -352,10 +368,27 @@
     showExportDialog = true;
   }
 
+  function toggleExportSite(id) {
+    exportSelectedIds = new Set(exportSelectedIds);
+    if (exportSelectedIds.has(id)) exportSelectedIds.delete(id);
+    else exportSelectedIds.add(id);
+  }
+
+  function toggleExportAll() {
+    if (exportSelectedIds.size === sites.length) {
+      exportSelectedIds = new Set();
+    } else {
+      exportSelectedIds = new Set(sites.map(s => s.id));
+    }
+  }
+
+  $: exportAllChecked = exportSelectedIds.size === sites.length && sites.length > 0;
+  $: exportNoneChecked = exportSelectedIds.size === 0;
+
   async function doExportPlain() {
     showExportDialog = false;
     try {
-      await ExportSitesPlain();
+      await ExportSitesPlainSelected([...exportSelectedIds]);
     } catch (e) {
       if (e) alert(e.toString());
     }
@@ -380,7 +413,7 @@
     }
     showExportDialog = false;
     try {
-      await ExportSitesEncrypted(exportPassphrase);
+      await ExportSitesEncryptedSelected(exportPassphrase, [...exportSelectedIds]);
     } catch (e) {
       if (e) alert(e.toString());
     }
@@ -464,17 +497,33 @@
     <div class="modal-body">
       <!-- Site list -->
       <div class="site-list">
-        <button class="new-site-btn" on:click={newSite}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          {$t('newSite')}
-        </button>
+        {#if exportSelectMode}
+          <!-- Select-all toggle -->
+          <button class="new-site-btn" on:click={toggleExportAll}>
+            <span class="export-checkbox" class:checked={exportAllChecked} class:partial={!exportAllChecked && !exportNoneChecked}>
+              {#if exportAllChecked}<svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><polyline points="2,6 5,9 10,3"/></svg>{/if}
+            </span>
+            {$t('exportSelectAll')}
+          </button>
+        {:else}
+          <button class="new-site-btn" on:click={newSite}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            {$t('newSite')}
+          </button>
+        {/if}
 
         {#each sites as site (site.id)}
           <div
             class="site-item"
-            class:active={selectedSite?.id === site.id}
-            on:click={() => selectSite(site)}
+            class:active={!exportSelectMode && selectedSite?.id === site.id}
+            class:export-selectable={exportSelectMode}
+            on:click={() => exportSelectMode ? toggleExportSite(site.id) : selectSite(site)}
           >
+            {#if exportSelectMode}
+              <span class="export-checkbox" class:checked={exportSelectedIds.has(site.id)}>
+                {#if exportSelectedIds.has(site.id)}<svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><polyline points="2,6 5,9 10,3"/></svg>{/if}
+              </span>
+            {/if}
             <span class="site-protocol">{site.protocol.toUpperCase()}</span>
             <div class="site-info">
               <span class="site-name">{site.name}</span>
@@ -643,7 +692,15 @@
         {:else}
           <div class="no-selection">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10H3M16 2v4M8 2v4M3 6h18v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6z"/></svg>
-            <p>{$t('manageSites')}</p>
+            {#if exportSelectMode}
+              <p>{$t('exportSelectTitle')}</p>
+              <div class="export-select-actions">
+                <button class="btn-primary" disabled={exportSelectedIds.size === 0} on:click={confirmExportSelect}>{$t('exportValidate')}</button>
+                <button class="btn-secondary" on:click={cancelExportSelect}>{$t('cancel')}</button>
+              </div>
+            {:else}
+              <p>{$t('manageSites')}</p>
+            {/if}
           </div>
         {/if}
       </div>
@@ -1170,6 +1227,33 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .no-selection svg { width: 48px; height: 48px; opacity: 0.3; }
 .no-selection p { font-size: 13px; }
+
+.export-select-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ── Export selection checkbox ── */
+.export-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 2px solid var(--border);
+  background: var(--bg-input);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+.export-checkbox.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.export-checkbox.partial {
+  border-color: var(--accent);
+}
+.export-checkbox svg { width: 10px; height: 10px; }
+
+.export-selectable { cursor: pointer; }
+.export-selectable:hover { background: var(--bg-hover); }
 
 /* ── Password prompt ──────────────────────────────────────────────────── */
 .pwd-overlay {

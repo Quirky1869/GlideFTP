@@ -2598,3 +2598,161 @@ conditional input pattern used in the list view:
 and `path` (and all descendant paths if it was a directory), updating
 `treeSelected` if the renamed node was selected, and clearing the cache for
 the parent directory. This keeps the tree in sync without a full rebuild.
+
+---
+
+1.7.6
+
+#83
+Title: [Feature] Native Linux package distribution (.deb, .rpm, AUR PKGBUILD) + GitHub Actions release automation
+Labels: enhancement, build, linux
+Version fixed: v1.7.6
+Description:
+GlideFTP was only available as a raw binary or AppImage, requiring users to
+launch it from a terminal. No native package existed for Debian/Ubuntu (.deb),
+Fedora/RHEL (.rpm), or Arch Linux (AUR). Each release also required fully
+manual steps to build and publish all artefacts.
+
+Solution (closing comment):
+Implemented in v1.7.6.
+
+**packaging/ directory (new):**
+- `glideftp.desktop` - shared FreeDesktop desktop entry (Exec=glideftp,
+  Categories=Network;FileTransfer;). Used by .deb, .rpm and the PKGBUILD.
+- `PKGBUILD` - AUR binary package `glideftp-bin`. Sources the Linux .tar.gz
+  release archive from GitHub releases. Installs binary to /usr/bin/glideftp,
+  desktop entry and icon to standard XDG paths.
+  sha256sums_x86_64=('SKIP') for local testing; update with real hash before
+  publishing to AUR.
+- `glideftp.spec` - RPM spec template. @VERSION@ and @CHANGELOG_DATE@ are
+  replaced at build time by docker/build-rpm.sh.
+
+**Docker containers:**
+- `docker/Dockerfile.rpm` - Fedora 40 minimal image with rpm-build +
+  rpmdevtools. No Go/Node — binary is pre-built and mounted from host.
+- `docker/build-deb.sh` - runs inside glideftp-debian-builder (Ubuntu 22.04,
+  already used for the Debian AppImage). Builds the .deb with dpkg-deb.
+  Output: build/bin/linux/GlideFTP-Linux-v{version}.deb
+- `docker/build-rpm.sh` - runs inside glideftp-rpm-builder (Fedora 40).
+  Calls rpmdev-setuptree + rpmbuild -bb (binary RPM, no compilation).
+  Output: build/bin/linux/GlideFTP-Linux-v{version}.rpm
+
+**make.sh extended (new targets):**
+  ./make.sh deb    <version>   .deb package (Docker - Ubuntu 22.04)
+  ./make.sh rpm    <version>   .rpm package (Docker - Fedora 40)
+  ./make.sh packages <version> .deb + .rpm
+  ./make.sh -h                 show full help with all targets and version info
+  Version can be passed as 2nd argument or read from a VERSION file at root.
+  ./make.sh all also builds .deb + .rpm (requires version).
+
+**create-archive.sh modified:**
+  The Linux binary archives (.tar.gz and .tar) now include glideftp.desktop
+  and glideftp.png alongside the binary and README.md. This is required so
+  the AUR PKGBUILD can extract all three files from a single source archive.
+
+**.github/workflows/release.yml (new):**
+  Trigger: push of a tag matching v[0-9]+.[0-9]+.[0-9]+ or manual dispatch.
+  Runner: ubuntu-22.04.
+  Steps: checkout, set up Go 1.25 + Node 20, install system deps (webkit2gtk,
+  mingw-w64, imagemagick), install Wails CLI, build Linux binary, build
+  Windows binary, build Debian AppImage (Docker), build .deb (Docker), build
+  .rpm (Docker), create distribution archives, create draft GitHub release with
+  all artefacts and release notes from v{version}.md.
+  Docker layer caching via GitHub Actions cache (scope=debian-builder,
+  scope=rpm-builder) to speed up repeated runs.
+  Note: Arch AppImage is NOT built in CI (requires Arch Linux system libs).
+  Build it locally with ./make.sh appimage-arch then upload to the draft
+  manually before publishing.
+
+**Dependency names per distro:**
+  Debian/Ubuntu : libwebkit2gtk-4.1-0
+  Fedora/RHEL   : webkit2gtk4.1
+  Arch Linux    : webkit2gtk-4.1
+
+**AUR publication (one-time setup):**
+  git clone ssh://aur@aur.archlinux.org/glideftp-bin.git
+  cp packaging/PKGBUILD glideftp-bin/
+  # Update pkgver and sha256sums_x86_64 with sha256sum of the release archive
+  makepkg --printsrcinfo > .SRCINFO
+  git add PKGBUILD .SRCINFO && git commit -m "Release v{version}" && git push
+  Note: AUR account registration is sometimes temporarily disabled (anti-spam).
+
+**Local PKGBUILD test on Arch/Garuda:**
+  ./make.sh linux && ./create-archive.sh -p linux -t gz {version}
+  mkdir /tmp/pkgt && cp packaging/PKGBUILD /tmp/pkgt/
+  cp GlideFTP-Linux-v{version}.tar.gz /tmp/pkgt/glideftp-bin-{version}.tar.gz
+  cd /tmp/pkgt && makepkg -si
+  # Uninstall: sudo pacman -R glideftp-bin
+
+---
+
+#84
+Title: [Feature] Select individual sites to export in Site Manager
+Labels: enhancement, ui
+Version fixed: v1.7.6
+Description:
+Clicking "Export sites" in the Site Manager immediately shows the
+with/without-password dialog and always exports all saved sites. There is no
+way to export only a subset of sites.
+Ref: _images/issues/v1.7.6/issue-34.png
+
+Solution (closing comment):
+Implemented in v1.7.6 in SiteManager.svelte and app.go.
+
+**Flow:**
+Clicking "Export sites" now enters a selection step first:
+1. exportSelectMode = true, all sites pre-selected (exportSelectedIds = Set of
+   all site IDs).
+2. Left panel: "Tout sélectionner" / "Select all" toggle replaces the
+   "+ New site" button. Each site row shows a checkbox on the left.
+   Clicking a site row toggles its selection. Clicking the top toggle
+   selects all or deselects all (three visual states: all checked, partial,
+   none).
+3. Right panel (no-selection area): shows "Sélectionner les sites à exporter"
+   / "Select sites to export" + two centered buttons: Valider / Validate
+   (disabled when 0 sites selected) and Annuler / Cancel.
+4. Valider: exits select mode and opens the existing export dialog
+   (with or without passwords).
+5. Annuler: exits select mode with no action.
+
+**Frontend — SiteManager.svelte:**
+New state:
+  exportSelectMode bool
+  exportSelectedIds Set<string>
+  exportAllChecked  reactive (size === sites.length && sites.length > 0)
+  exportNoneChecked reactive (size === 0)
+
+New functions:
+  openExportDialog()     — now enters exportSelectMode instead of showExportDialog
+  cancelExportSelect()   — resets exportSelectMode + exportSelectedIds
+  confirmExportSelect()  — exits select mode, opens showExportDialog
+  toggleExportSite(id)   — toggles one site in exportSelectedIds
+  toggleExportAll()      — selects all or deselects all
+
+doExportPlain() and doExportEncrypted() now call the new Selected variants
+passing [...exportSelectedIds] as the IDs list.
+
+CSS: .export-checkbox (16px square, accent fill when checked, partial border
+when intermediate), .export-selectable (cursor pointer on site rows in select
+mode).
+
+**Go — app.go:**
+Two new methods alongside the existing ones (kept for compatibility):
+  ExportSitesPlainSelected(ids []string) error
+    Same as ExportSitesPlain but filters to the given site IDs.
+  ExportSitesEncryptedSelected(passphrase string, ids []string) error
+    Same as ExportSitesEncrypted but filters to the given site IDs.
+  Both fall back to exporting all sites if ids is empty.
+
+Helper:
+  filterSitesByIDs(all []sites.Site, ids []string) []sites.Site
+    Returns only sites whose ID appears in ids. Returns all if ids is empty.
+
+**JS bindings:**
+ExportSitesPlainSelected and ExportSitesEncryptedSelected added manually to
+frontend/wailsjs/go/main/App.js.
+
+**i18n:**
+  exportSelectTitle : "Sélectionner les sites à exporter" / "Select sites to export"
+  exportSelectAll   : "Tout sélectionner" / "Select all"
+  exportValidate    : "Valider" / "Validate"

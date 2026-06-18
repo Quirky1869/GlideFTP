@@ -1,22 +1,45 @@
 #!/usr/bin/env bash
-# Build GlideFTP for Linux, Windows, and/or as an AppImage.
+# Build GlideFTP for Linux, Windows, AppImage, and native packages.
 # Usage:
-#   ./build.sh                  → Linux binary + Windows exe + Arch AppImage + Debian AppImage (via Docker)
-#   ./build.sh linux            → Linux binary only               → build/bin/linux/GlideFTP
-#   ./build.sh windows          → Windows exe only (requires mingw-w64-gcc)
-#   ./build.sh appimage         → Arch AppImage + Debian AppImage  → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
-#   ./build.sh appimage-arch    → Arch AppImage only              → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-#   ./build.sh appimage-debian  → Debian/Ubuntu AppImage (Docker) → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+#   ./make.sh                       → Linux binary + Windows exe + Arch AppImage + Debian AppImage + .deb + .rpm
+#   ./make.sh linux                 → Linux binary only               → build/bin/linux/GlideFTP
+#   ./make.sh windows               → Windows exe only (requires mingw-w64-gcc)
+#   ./make.sh appimage              → Arch AppImage + Debian AppImage
+#   ./make.sh appimage-arch         → Arch AppImage only
+#   ./make.sh appimage-debian       → Debian/Ubuntu AppImage (Docker)
+#   ./make.sh deb    1.7.5          → .deb binary package (Docker - Ubuntu 22.04)
+#   ./make.sh rpm    1.7.5          → .rpm binary package (Docker - Fedora 40)
+#   ./make.sh packages 1.7.5        → .deb + .rpm
+#
+# Version argument (required for deb/rpm/packages/all):
+#   Pass as 2nd argument: ./make.sh deb 1.7.5
+#   Or create a VERSION file at project root: echo '1.7.5' > VERSION
 #
 # Install mingw on Arch Linux:
 #   sudo pacman -S mingw-w64-gcc
-# Install Docker or Podman for Debian AppImage:
+# Install Docker or Podman for Debian AppImage / .deb / .rpm:
 #   sudo pacman -S docker  (then: sudo systemctl enable --now docker)
 #   or: sudo pacman -S podman
 
 set -e
 
 TARGET="${1:-all}"
+VERSION_ARG="${2:-}"
+
+get_version() {
+  if [ -n "$VERSION_ARG" ]; then
+    echo "$VERSION_ARG"
+    return
+  fi
+  if [ -f "VERSION" ]; then
+    cat VERSION
+    return
+  fi
+  echo "ERROR: Version required for this target." >&2
+  echo "       Pass it as second argument: ./make.sh $TARGET 1.7.5" >&2
+  echo "       Or create a VERSION file:   echo '1.7.5' > VERSION" >&2
+  exit 1
+}
 
 # Download a file; prefers curl, falls back to wget
 _download() {
@@ -169,14 +192,115 @@ build_appimage_debian() {
   echo "   ✓ build/bin/linux/GlideFTP-Debian-x86_64.AppImage"
 }
 
+build_deb() {
+  local version="$1"
+  echo "→ Building .deb package (via Docker — Ubuntu 22.04)…"
+
+  if [ ! -f "build/bin/linux/GlideFTP" ]; then
+    echo "ERROR: build/bin/linux/GlideFTP not found. Run ./make.sh linux first."
+    exit 1
+  fi
+
+  local DOCKER_CMD
+  if command -v docker &>/dev/null; then
+    DOCKER_CMD="docker"
+  elif command -v podman &>/dev/null; then
+    DOCKER_CMD="podman"
+  else
+    echo "ERROR: docker or podman not found."
+    echo "       Install: sudo pacman -S docker && sudo systemctl enable --now docker"
+    exit 1
+  fi
+
+  "$DOCKER_CMD" build -t glideftp-debian-builder -f docker/Dockerfile.appimage .
+
+  "$DOCKER_CMD" run --rm \
+    -v "$(pwd):/src" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
+    glideftp-debian-builder \
+    bash /src/docker/build-deb.sh "$version"
+
+  echo "   ✓ build/bin/linux/GlideFTP-Linux-v${version}.deb"
+}
+
+build_rpm() {
+  local version="$1"
+  echo "→ Building .rpm package (via Docker — Fedora 40)…"
+
+  if [ ! -f "build/bin/linux/GlideFTP" ]; then
+    echo "ERROR: build/bin/linux/GlideFTP not found. Run ./make.sh linux first."
+    exit 1
+  fi
+
+  local DOCKER_CMD
+  if command -v docker &>/dev/null; then
+    DOCKER_CMD="docker"
+  elif command -v podman &>/dev/null; then
+    DOCKER_CMD="podman"
+  else
+    echo "ERROR: docker or podman not found."
+    exit 1
+  fi
+
+  "$DOCKER_CMD" build -t glideftp-rpm-builder -f docker/Dockerfile.rpm .
+
+  "$DOCKER_CMD" run --rm \
+    -v "$(pwd):/src" \
+    -e HOST_UID="$(id -u)" \
+    -e HOST_GID="$(id -g)" \
+    glideftp-rpm-builder \
+    bash /src/docker/build-rpm.sh "$version"
+
+  echo "   ✓ build/bin/linux/GlideFTP-Linux-v${version}.rpm"
+}
+
+show_help() {
+  cat <<EOF
+Usage: $0 <target> [version]
+
+Targets (no version required):
+  linux            Build Linux binary              → build/bin/linux/GlideFTP
+  windows          Build Windows exe               → build/bin/windows/GlideFTP.exe
+  appimage         Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
+  appimage-arch    Arch AppImage only
+  appimage-debian  Debian/Ubuntu AppImage (Docker)
+
+Targets (version required — e.g. 1.7.6):
+  deb      <version>   .deb binary package (Docker - Ubuntu 22.04)  → build/bin/linux/GlideFTP-Linux-v<version>.deb
+  rpm      <version>   .rpm binary package (Docker - Fedora 40)     → build/bin/linux/GlideFTP-Linux-v<version>.rpm
+  packages <version>   .deb + .rpm
+  all      <version>   Everything above
+
+Version can also be read from a VERSION file at the project root:
+  echo '1.7.6' > VERSION
+  ./make.sh all          (no version argument needed)
+
+Examples:
+  ./make.sh linux
+  ./make.sh deb 1.7.6
+  ./make.sh all 1.7.6
+  echo '1.7.6' > VERSION && ./make.sh all
+
+Requirements:
+  mingw-w64-gcc   for Windows cross-compile  (sudo pacman -S mingw-w64-gcc)
+  docker/podman   for appimage-debian, deb, rpm
+EOF
+  exit 0
+}
+
 case "$TARGET" in
-  linux)                  build_linux ;;
-  windows)                build_windows ;;
-  appimage)               build_appimage; build_appimage_debian ;;
-  appimage-arch)          build_appimage ;;
-  appimage-debian)        build_appimage_debian ;;
-  all)                    build_linux; build_windows; build_appimage; build_appimage_debian ;;
-  *)        echo "Usage: $0 [linux|windows|appimage|appimage-arch|appimage-debian|all]"; exit 1 ;;
+  -h|--help|help)   show_help ;;
+  linux)            build_linux ;;
+  windows)          build_windows ;;
+  appimage)         build_appimage; build_appimage_debian ;;
+  appimage-arch)    build_appimage ;;
+  appimage-debian)  build_appimage_debian ;;
+  deb)              build_deb "$(get_version)" ;;
+  rpm)              build_rpm "$(get_version)" ;;
+  packages)         build_deb "$(get_version)"; build_rpm "$(get_version)" ;;
+  all)              build_linux; build_windows; build_appimage; build_appimage_debian; build_deb "$(get_version)"; build_rpm "$(get_version)" ;;
+  *)                echo "Unknown target '$TARGET'. Run ./make.sh -h for help."; exit 1 ;;
 esac
 
 echo ""
@@ -185,3 +309,5 @@ ls -lh build/bin/linux/GlideFTP 2>/dev/null || true
 ls -lh build/bin/linux/GlideFTP-Arch-x86_64.AppImage 2>/dev/null || true
 ls -lh build/bin/linux/GlideFTP-Debian-x86_64.AppImage 2>/dev/null || true
 ls -lh build/bin/windows/GlideFTP.exe 2>/dev/null || true
+ls -lh build/bin/linux/GlideFTP-Linux-v*.deb 2>/dev/null || true
+ls -lh build/bin/linux/GlideFTP-Linux-v*.rpm 2>/dev/null || true

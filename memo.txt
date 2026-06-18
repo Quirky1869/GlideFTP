@@ -116,3 +116,35 @@ pkg-config --list-all | grep -i webkit
 git tag -a v1.6.1 -m "Stable version"
 git push origin v1.6.1
 GOPROXY=https://proxy.golang.org go list -m github.com/Quirky1869/GlideFTP@v1.6.1
+
+
+======================================
+
+Workflow complet pour une release
+
+# 1. Build tout en local
+./make.sh linux
+./make.sh windows
+./make.sh appimage        # Arch + Debian AppImages
+./make.sh packages 1.7.6  # .deb + .rpm
+
+# 2. Crée les archives
+./create-archive.sh 1.7.6
+
+# 3. Pousse le tag → GitHub Actions fait le reste automatiquement
+git tag v1.7.6 && git push origin v1.7.6
+
+# 4. Va sur GitHub → Releases → draft créée → ajoute l'Arch AppImage → Publish
+
+---
+AUR (à faire une seule fois)
+
+# Créer un compte sur aur.archlinux.org, ajouter ta clé SSH, puis :
+git clone ssh://aur@aur.archlinux.org/glideftp-bin.git
+cp packaging/PKGBUILD glideftp-bin/
+cd glideftp-bin
+# Mettre à jour pkgver et sha256sum dans PKGBUILD
+makepkg --printsrcinfo > .SRCINFO
+git add PKGBUILD .SRCINFO && git commit -m "Release 1.7.6" && git push
+
+Pour chaque release, il faut mettre à jour pkgver dans le PKGBUILD et recalculer le sha256sum de l'archive Linux. Le sha256sum est : sha256sum GlideFTP-Linux-v1.7.6.tar.gz.

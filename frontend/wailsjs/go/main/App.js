@@ -62,8 +62,16 @@ export function ExportSitesEncrypted(arg1) {
   return window['go']['main']['App']['ExportSitesEncrypted'](arg1);
 }
 
+export function ExportSitesEncryptedSelected(arg1, arg2) {
+  return window['go']['main']['App']['ExportSitesEncryptedSelected'](arg1, arg2);
+}
+
 export function ExportSitesPlain() {
   return window['go']['main']['App']['ExportSitesPlain']();
+}
+
+export function ExportSitesPlainSelected(arg1) {
+  return window['go']['main']['App']['ExportSitesPlainSelected'](arg1);
 }
 
 export function GetActiveConnectionID() {

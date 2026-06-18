@@ -132,6 +132,9 @@ export default {
 
   // Export / import
   exportSites: 'Exporter les sites',
+  exportSelectTitle: 'Sélectionner les sites à exporter',
+  exportSelectAll: 'Tout sélectionner',
+  exportValidate: 'Valider',
   importSites: 'Importer des sites',
   importedCount: 'sites importés',
   exportChoiceTitle: 'Exporter les sites',
