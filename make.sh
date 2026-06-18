@@ -296,10 +296,10 @@ case "$TARGET" in
   appimage)         build_appimage; build_appimage_debian ;;
   appimage-arch)    build_appimage ;;
   appimage-debian)  build_appimage_debian ;;
-  deb)              build_deb "$(get_version)" ;;
-  rpm)              build_rpm "$(get_version)" ;;
-  packages)         build_deb "$(get_version)"; build_rpm "$(get_version)" ;;
-  all)              build_linux; build_windows; build_appimage; build_appimage_debian; build_deb "$(get_version)"; build_rpm "$(get_version)" ;;
+  deb)              VER=$(get_version) || exit 1; build_deb "$VER" ;;
+  rpm)              VER=$(get_version) || exit 1; build_rpm "$VER" ;;
+  packages)         VER=$(get_version) || exit 1; build_deb "$VER"; build_rpm "$VER" ;;
+  all)              VER=$(get_version) || exit 1; build_linux; build_windows; build_appimage; build_appimage_debian; build_deb "$VER"; build_rpm "$VER" ;;
   *)                echo "Unknown target '$TARGET'. Run ./make.sh -h for help."; exit 1 ;;
 esac
 

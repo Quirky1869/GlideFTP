@@ -19,7 +19,8 @@
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
 - **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
-- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; export/import sites as JSON or encrypted `.gfe`
+- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; selective export (choose which sites to include); export/import as JSON or encrypted `.gfe`
+- **Native Linux packages** - available as `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), and on the AUR (`glideftp-bin`) for Arch Linux; automatic releases via GitHub Actions on each version tag
 - **Secure password storage** - passwords are stored in the OS keyring (gnome-keyring/kwallet on Linux, Windows Credential Manager on Windows), never in plain text on disk
 - **Ask-password auth** - password is never saved; prompted at connect time
 - **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive (or SSH Key) and vice versa
@@ -51,6 +52,9 @@
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` - see below |
 | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Debian/Ubuntu** | **Recommended** - self-contained, Ubuntu 22.04+ / Debian 12+ / Arch |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Arch** | For Arch / modern Fedora |
+| `GlideFTP-Linux-vX.Y.Z.deb` | Debian / Ubuntu | `sudo apt install ./GlideFTP-Linux-vX.Y.Z.deb` |
+| `GlideFTP-Linux-vX.Y.Z.rpm` | Fedora / RHEL | `sudo dnf install GlideFTP-Linux-vX.Y.Z.rpm` |
+| AUR: `glideftp-bin` | Arch Linux | `yay -S glideftp-bin` |
 
 #### Linux - pre-built binary
 
@@ -159,15 +163,18 @@ cd GlideFTP
 **Using the build script (recommended):**
 
 ```bash
-./make.sh                  # all: Linux binary + Windows exe + Arch AppImage + Debian AppImage
-./make.sh linux            # Linux binary only    → build/bin/linux/GlideFTP
-./make.sh windows          # Windows exe only     → build/bin/windows/GlideFTP.exe
-./make.sh appimage-arch    # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian  # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                    # all: Linux binary + Windows exe + AppImages + .deb + .rpm
+./make.sh linux              # Linux binary only    → build/bin/linux/GlideFTP
+./make.sh windows            # Windows exe only     → build/bin/windows/GlideFTP.exe
+./make.sh appimage-arch      # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian    # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh deb 1.7.6          # .deb package         → build/bin/linux/GlideFTP-Linux-v1.7.6.deb
+./make.sh rpm 1.7.6          # .rpm package         → build/bin/linux/GlideFTP-Linux-v1.7.6.rpm
+./make.sh -h                 # show all targets and options
 ```
 
 > `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
-> `appimage-debian` requires **Docker** or **Podman** - builds inside an Ubuntu 22.04 container on first run (~10 min).
+> `appimage-debian`, `deb`, and `rpm` require **Docker** or **Podman**.
 
 **Manual commands:**
 
@@ -228,7 +235,8 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
 - **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
 - **Onglets multi-connexion** - ouvrez plusieurs serveurs simultanément ; des onglets style navigateur apparaissent entre la barre d'outils et les panneaux de fichiers ; limite configurable (1 à 5) dans les paramètres
-- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; exportez/importez les sites en JSON ou en `.gfe` chiffré
+- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; export sélectif (choisissez quels sites inclure) ; exportez/importez en JSON ou en `.gfe` chiffré
+- **Paquets Linux natifs** - disponible en `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), et sur l'AUR (`glideftp-bin`) pour Arch Linux ; releases automatisées via GitHub Actions à chaque tag de version
 - **Stockage sécurisé des mots de passe** - les mots de passe sont stockés dans le keyring système (gnome-keyring/kwallet sur Linux, Gestionnaire de mots de passe Windows), jamais en clair sur le disque
 - **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
 - **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive (ou Clé SSH) et inversement
@@ -260,6 +268,9 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` - voir ci-dessous |
 | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Debian/Ubuntu** | **Recommandé** - autonome, Ubuntu 22.04+ / Debian 12+ / Arch |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Arch** | Pour Arch / Fedora récente |
+| `GlideFTP-Linux-vX.Y.Z.deb` | Debian / Ubuntu | `sudo apt install ./GlideFTP-Linux-vX.Y.Z.deb` |
+| `GlideFTP-Linux-vX.Y.Z.rpm` | Fedora / RHEL | `sudo dnf install GlideFTP-Linux-vX.Y.Z.rpm` |
+| AUR : `glideftp-bin` | Arch Linux | `yay -S glideftp-bin` |
 
 #### Linux - binaire pré-compilé
 
@@ -365,18 +376,21 @@ git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
 ```
 
-**Via le script de build (recommandé) :**  
+**Via le script de build (recommandé) :**
 
 ```bash
-./make.sh                  # tout : binaire Linux + exe Windows + AppImage Arch + AppImage Debian
-./make.sh linux            # Linux seulement       → build/bin/linux/GlideFTP
-./make.sh windows          # Windows seulement     → build/bin/windows/GlideFTP.exe
-./make.sh appimage-arch    # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian  # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh                    # tout : binaire Linux + exe Windows + AppImages + .deb + .rpm
+./make.sh linux              # Linux seulement       → build/bin/linux/GlideFTP
+./make.sh windows            # Windows seulement     → build/bin/windows/GlideFTP.exe
+./make.sh appimage-arch      # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./make.sh appimage-debian    # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh deb 1.7.6          # paquet .deb           → build/bin/linux/GlideFTP-Linux-v1.7.6.deb
+./make.sh rpm 1.7.6          # paquet .rpm           → build/bin/linux/GlideFTP-Linux-v1.7.6.rpm
+./make.sh -h                 # afficher toutes les cibles et options
 ```
 
 > `appimage` nécessite `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  
-> `appimage-debian` nécessite **Docker** ou **Podman** - construit dans un container Ubuntu 22.04 au premier run (~10 min).
+> `appimage-debian`, `deb` et `rpm` nécessitent **Docker** ou **Podman**.
 
 **Commandes manuelles :**  
 

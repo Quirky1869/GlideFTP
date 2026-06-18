@@ -27,5 +27,5 @@ install -Dm644 %{_sourcedir}/glideftp.png     %{buildroot}%{_datadir}/icons/hico
 %{_datadir}/icons/hicolor/256x256/apps/glideftp.png
 
 %changelog
-* @CHANGELOG_DATE@ Quirky1869 <mikec18reggae@gmail.com> - @VERSION@-1
+* @CHANGELOG_DATE@ Quirky1869 <quirky1869@users.noreply.github.com> - @VERSION@-1
 - Release @VERSION@
