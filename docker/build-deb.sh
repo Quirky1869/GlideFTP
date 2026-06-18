@@ -28,7 +28,7 @@ Section: net
 Priority: optional
 Architecture: amd64
 Depends: libwebkit2gtk-4.1-0
-Maintainer: Quirky1869 <mikec18reggae@gmail.com>
+Maintainer: Quirky1869 <quirky1869@users.noreply.github.com>
 Homepage: https://github.com/Quirky1869/GlideFTP
 Description: Desktop FTP/SFTP client with dual-panel interface
  GlideFTP is a modern desktop FTP/SFTP client built with Go, Wails v2 and Svelte.
