@@ -50,7 +50,7 @@
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Requires WebView2 (built into Windows 10/11) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` - see below |
-| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Debian/Ubuntu** | **Recommended** - self-contained, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Debian/Ubuntu** | **Recommended** - self-contained, Ubuntu 22.04+ / Debian 12+ |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Arch** | For Arch / modern Fedora |
 | `GlideFTP-Linux-vX.Y.Z.deb` | Debian / Ubuntu | `sudo apt install ./GlideFTP-Linux-vX.Y.Z.deb` |
 | `GlideFTP-Linux-vX.Y.Z.rpm` | Fedora / RHEL | `sudo dnf install GlideFTP-Linux-vX.Y.Z.rpm` |
@@ -266,7 +266,7 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 |---|---|---|
 | `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Nécessite WebView2 (intégré à Windows 10/11) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` - voir ci-dessous |
-| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Debian/Ubuntu** | **Recommandé** - autonome, Ubuntu 22.04+ / Debian 12+ / Arch |
+| `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Debian/Ubuntu** | **Recommandé** - autonome, Ubuntu 22.04+ / Debian 12+ |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Arch** | Pour Arch / Fedora récente |
 | `GlideFTP-Linux-vX.Y.Z.deb` | Debian / Ubuntu | `sudo apt install ./GlideFTP-Linux-vX.Y.Z.deb` |
 | `GlideFTP-Linux-vX.Y.Z.rpm` | Fedora / RHEL | `sudo dnf install GlideFTP-Linux-vX.Y.Z.rpm` |
@@ -296,7 +296,7 @@ chmod +x GlideFTP
 
 #### Linux - stockage des mots de passe (keyring)
 
-GlideFTP stocke les mots de passe dans le **keyring système** (gnome-keyring ou kwallet). Ces démons sont généralement pré-installés sur les environnements de bureau courants. Si aucun démon keyring n'est actif, une bannière d'avertissement s'affiche dans le Gestionnaire de sites et les mots de passe ne seront pas enregistrés (utilisez l'auth "Demander le mot de passe" à la place).
+GlideFTP stocke les mots de passe dans le **keyring système** (gnome-keyring ou kwallet). Ces démons sont généralement pré-installés sur les environnements de bureau courants. Si aucun démon keyring n'est actif, une bannière d'avertissement s'affiche dans le Gestionnaire de sites et les mots de passe ne seront pas enregistrés (utilisez l'auth "Demander le mot de passe" à la place).  
 
 Pour vérifier si un démon keyring est disponible :
 
@@ -376,7 +376,7 @@ git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
 ```
 
-**Via le script de build (recommandé) :**
+**Via le script de build (recommandé) :**  
 
 ```bash
 ./make.sh                    # tout : binaire Linux + exe Windows + AppImages + .deb + .rpm

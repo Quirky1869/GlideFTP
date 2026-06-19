@@ -303,6 +303,54 @@ make_appimage_debian_tar() {
   tar -cvf "$out" -C build/bin/linux GlideFTP-Debian-x86_64.AppImage
 }
 
+# ── PKGBUILD auto-update ─────────────────────────────────────────────────────
+# Called after the Linux .tar.gz is built; updates pkgver and sha256sums in packaging/PKGBUILD.
+update_pkgbuild() {
+  local archive="GlideFTP-Linux-v${VERSION}.tar.gz"
+
+  if [ ! -f "packaging/PKGBUILD" ]; then
+    echo "⚠  packaging/PKGBUILD not found — skipping AUR update"
+    return
+  fi
+
+  if [ ! -f "$archive" ]; then
+    echo "⚠  $archive not found — skipping AUR update"
+    return
+  fi
+
+  local hash
+  hash=$(sha256sum "$archive" | cut -d' ' -f1)
+
+  sed -i \
+    -e "s/^pkgver=.*/pkgver=${VERSION}/" \
+    -e "s/sha256sums_x86_64=('[^']*')/sha256sums_x86_64=('${hash}')/" \
+    packaging/PKGBUILD
+
+  echo "→ packaging/PKGBUILD updated  (pkgver=${VERSION}, sha256=${hash:0:16}...)"
+}
+
+copy_packages() {
+  local deb="build/bin/linux/GlideFTP-Linux-v${VERSION}.deb"
+  local rpm="build/bin/linux/GlideFTP-Linux-v${VERSION}.rpm"
+  local copied=0
+
+  if [ -f "$deb" ]; then
+    cp "$deb" "GlideFTP-Linux-v${VERSION}.deb"
+    echo "→ GlideFTP-Linux-v${VERSION}.deb"
+    copied=1
+  else
+    echo "⚠  .deb not found (run: ./make.sh deb ${VERSION})"
+  fi
+
+  if [ -f "$rpm" ]; then
+    cp "$rpm" "GlideFTP-Linux-v${VERSION}.rpm"
+    echo "→ GlideFTP-Linux-v${VERSION}.rpm"
+    copied=1
+  else
+    echo "⚠  .rpm not found (run: ./make.sh rpm ${VERSION})"
+  fi
+}
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 echo "GlideFTP archive builder - version v${VERSION}"
 echo "Platform: $PLATFORM  |  Type: $TYPE"
@@ -312,7 +360,7 @@ echo "----------------------------------------------"
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_windows_gz
 
 [[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
-  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_linux_gz
+  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_linux_gz && update_pkgbuild
 
 [[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-arch" || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_arch_gz
@@ -331,6 +379,8 @@ echo "----------------------------------------------"
 
 [[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-debian" || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_appimage_debian_tar
+
+[[ "$PLATFORM" == "all" ]] && copy_packages
 
 echo "──────────────────────────────────────────────"
 echo "Done."
