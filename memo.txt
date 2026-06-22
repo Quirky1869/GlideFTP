@@ -127,6 +127,8 @@ Workflow complet pour une release
 ./make.sh windows
 ./make.sh appimage        # Arch + Debian AppImages
 ./make.sh packages 1.7.6  # .deb + .rpm
+ou
+./make.sh all x.y.z
 
 # 2. Crée les archives
 ./create-archive.sh 1.7.6
@@ -134,10 +136,10 @@ Workflow complet pour une release
 # 3. Pousse le tag → GitHub Actions fait le reste automatiquement
 git tag v1.7.6 && git push origin v1.7.6
 
-# 4. Va sur GitHub → Releases → draft créée → ajoute l'Arch AppImage → Publish
+# 4. Go to GitHub → Releases → draft créée → ajout Arch AppImage → Publish
 
 ---
-AUR (à faire une seule fois)
+AUR
 
 # Créer un compte sur aur.archlinux.org, ajouter ta clé SSH, puis :
 git clone ssh://aur@aur.archlinux.org/glideftp-bin.git
