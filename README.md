@@ -85,7 +85,9 @@ GlideFTP stores passwords in the **system keyring** (gnome-keyring or kwallet). 
 To check whether a keyring daemon is available:
 
 ```bash
-pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "no keyring daemon found"
+pgrep -f gnome-keyring-daemon || pgrep -f kwalletd6 || echo "no keyring daemon found"
+or
+pacman -Qs gnome-keyring ; pacman -Qs kwallet
 ```
 
 To install one if missing:
@@ -301,7 +303,9 @@ GlideFTP stocke les mots de passe dans le **keyring système** (gnome-keyring ou
 Pour vérifier si un démon keyring est disponible :
 
 ```bash
-pgrep gnome-keyring-daemon || pgrep kwalletd6 || echo "aucun démon keyring trouvé"
+pgrep -f gnome-keyring-daemon || pgrep -f kwalletd6 || echo "aucun démon keyring trouvé"
+ou
+pacman -Qs gnome-keyring ; pacman -Qs kwallet
 ```
 
 Pour en installer un si nécessaire :
