@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Runs inside the Ubuntu 22.04 container.
-# Source is mounted at /src; only /src/build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+# Source is mounted at /src; only /src/build/bin/linux/GlideFTP-Debian-x86_64-v<version>.AppImage
 # is written back to the host.
 set -e
+
+VERSION="${1:?Usage: build-appimage.sh <version>}"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -69,9 +71,10 @@ export OUTPUT="/tmp/GlideFTP-Debian-x86_64.AppImage"
 ARCH=x86_64 linuxdeploy-plugin-appimage --appdir "$APPDIR"
 
 mkdir -p /src/build/bin/linux
-mv "$OUTPUT" /src/build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+DEST="/src/build/bin/linux/GlideFTP-Debian-x86_64-v${VERSION}.AppImage"
+mv "$OUTPUT" "$DEST"
 
 # Restore host ownership so the file isn't root-owned on the host
 if [ -n "${HOST_UID:-}" ] && [ -n "${HOST_GID:-}" ]; then
-    chown "${HOST_UID}:${HOST_GID}" /src/build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+    chown "${HOST_UID}:${HOST_GID}" "$DEST"
 fi

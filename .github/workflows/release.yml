@@ -71,10 +71,10 @@ jobs:
 
       # ── Native builds ────────────────────────────────────────────────────────
       - name: Build Linux binary
-        run: ./make.sh linux
+        run: ./make.sh linux ${{ steps.ver.outputs.version }}
 
       - name: Build Windows binary
-        run: ./make.sh windows
+        run: ./make.sh windows ${{ steps.ver.outputs.version }}
 
       # ── Docker-based builds ──────────────────────────────────────────────────
       - name: Set up Docker Buildx
@@ -97,7 +97,7 @@ jobs:
             -e HOST_UID="$(id -u)" \
             -e HOST_GID="$(id -g)" \
             glideftp-debian-builder \
-            bash /src/docker/build-appimage.sh
+            bash /src/docker/build-appimage.sh ${{ steps.ver.outputs.version }}
 
       - name: Build .deb package
         run: |

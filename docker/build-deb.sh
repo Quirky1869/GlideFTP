@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Runs inside the Ubuntu 22.04 container (glideftp-debian-builder).
-# Builds a binary .deb from the pre-built binary already at /src/build/bin/linux/GlideFTP.
+# Builds a binary .deb from the pre-built binary at /src/build/bin/linux/GlideFTP-v<version>.
 set -e
 
 VERSION="${1:?Usage: build-deb.sh <version>}"
 
-BINARY="/src/build/bin/linux/GlideFTP"
+BINARY="/src/build/bin/linux/GlideFTP-v${VERSION}"
 DESKTOP="/src/packaging/glideftp.desktop"
 ICON="/src/build/appicon.png"
 OUTPUT="/src/build/bin/linux/GlideFTP-Linux-v${VERSION}.deb"

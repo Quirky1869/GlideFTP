@@ -19,16 +19,22 @@ Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}`
 ```bash
 # Recommended - use the build script at project root
 ./make.sh                      # Linux binary + Windows exe + Arch AppImage + Debian AppImage + .deb + .rpm
-./make.sh linux                # Linux only             → build/bin/linux/GlideFTP
-./make.sh windows              # Windows only           → build/bin/windows/GlideFTP.exe
-./make.sh appimage             # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64.AppImage
-./make.sh appimage-arch        # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian      # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./make.sh linux 1.7.5          # Linux only             → build/bin/linux/GlideFTP-v1.7.5
+./make.sh windows 1.7.5        # Windows only           → build/bin/windows/GlideFTP-v1.7.5.exe
+./make.sh appimage 1.7.5       # Arch AppImage + Debian AppImage → build/bin/linux/GlideFTP-{Arch,Debian}-x86_64-v1.7.5.AppImage
+./make.sh appimage-arch 1.7.5  # Arch AppImage only    → build/bin/linux/GlideFTP-Arch-x86_64-v1.7.5.AppImage
+./make.sh appimage-debian 1.7.5 # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64-v1.7.5.AppImage
 ./make.sh deb 1.7.5            # .deb package (Docker - Ubuntu 22.04) → build/bin/linux/GlideFTP-Linux-v1.7.5.deb
 ./make.sh rpm 1.7.5            # .rpm package (Docker - Fedora 40)    → build/bin/linux/GlideFTP-Linux-v1.7.5.rpm
 ./make.sh packages 1.7.5       # .deb + .rpm together
-#   Version arg required for deb/rpm/packages/all; OR create a VERSION file: echo '1.7.6' > VERSION
+#   Version arg required for ALL targets (linux/windows/appimage*/deb/rpm/packages/all);
+#   OR create a VERSION file: echo '1.7.6' > VERSION
 #   make.sh uses VER=$(get_version) || exit 1 pattern - fails immediately before any build if version missing
+#   Every target writes ONLY the versioned filename to build/bin/ - no unversioned duplicate is
+#   left behind. build_linux/build_windows mv the wails output straight to the versioned name;
+#   build_appimage sets linuxdeploy's $OUTPUT to the versioned name directly; docker/build-appimage.sh
+#   takes VERSION as its 1st arg and writes the versioned name inside the container.
+#   deb/rpm/appimage-arch read build/bin/linux/GlideFTP-v<version> as their input binary.
 #   deb/rpm use Docker (same docker/podman requirement as appimage-debian)
 #   appimage-debian uses Docker (requires docker or podman); first run builds Ubuntu 22.04 image (~10 min)
 #   Arch AppImage:   linuxdeploy bundles Arch libs; requires GLIBC 2.38+ on target
@@ -96,7 +102,7 @@ GlideFTP/
 │       └── release.yml            # GitHub Actions: triggered by tag push v*.*.* → builds all artefacts → draft release
 ├── docker/
 │   ├── Dockerfile.appimage        # Ubuntu 22.04 build environment (Go 1.25, Node 20, webkit2gtk-4.1-dev, linuxdeploy)
-│   ├── build-appimage.sh          # Script run inside the container: rsync source → wails build → linuxdeploy → AppImage
+│   ├── build-appimage.sh          # Takes VERSION as 1st arg; rsync source → wails build → linuxdeploy → writes GlideFTP-Debian-x86_64-v<version>.AppImage
 │   ├── Dockerfile.rpm             # Fedora 40 minimal image with rpm-build + rpmdevtools
 │   ├── build-deb.sh               # Builds .deb inside glideftp-debian-builder container (reuses Dockerfile.appimage)
 │   └── build-rpm.sh               # Builds .rpm inside glideftp-rpm-builder container (uses Dockerfile.rpm)
@@ -177,11 +183,11 @@ GlideFTP/
 - **Intra-panel clipboard** (`connection.js`): `clipboard` writable store `{ entries, operation: 'copy'|'cut', side }`. Shared between both FileBrowser instances. `pasteToFolder(destFolder)` in `FileBrowser.svelte` checks `clipboard.side === side` before pasting. Same-directory paste calls `uniqueCopyName(name, usedNames)` which generates `name (copie).ext` → `name (copie 1).ext` etc.; `usedNames` is pre-seeded from `entries` and updated per-item in the batch to avoid duplicates. Remote copy = `CopyRemote` (download to temp + re-upload, synchronous). Progressive refresh: 1s delay then every 4s during operation, final refresh on completion. Green/orange banner with auto-dismiss 4s.
 - **Local trash** (`internal/fs/trash_linux.go` / `trash_windows.go`): `LocalDelete` calls `localfs.Trash()` not `localfs.Delete()`. Linux: XDG spec - move to `~/.local/share/Trash/files/` + `.trashinfo` sidecar, collision avoidance, cross-device fallback. Windows: `SHFileOperationW` via `syscall.NewLazyDLL("shell32.dll")` with `FOF_ALLOWUNDO` - no CGo, mingw compatible. Remote deletes are always permanent (no server-side trash in FTP/SFTP).
 - **Release notes**: one `v{version}.md` file per release at project root (EN + FR, features + bugfixes + download table). `SettingsPanel.svelte` footer badge must be updated to match on each release. File starts with `## 🇬🇧 English` (no `#` title - format validated by user on v1.7.5).
-- **Release workflow**: `git tag v1.7.X && git push origin v1.7.X` triggers `.github/workflows/release.yml`. CI runs on ubuntu-22.04: builds Linux binary + Windows binary natively, then Debian AppImage + .deb (Docker Ubuntu 22.04) + .rpm (Docker Fedora 40), then `create-archive.sh`, then creates a **draft** GitHub release with all artefacts + body from `v{version}.md` if it exists. The Arch AppImage is NOT built in CI (needs Arch libs) - build locally with `./make.sh appimage-arch` and upload to the draft manually before publishing. The CI never touches the AUR - that is always a manual step.
+- **Release workflow**: `git tag v1.7.X && git push origin v1.7.X` triggers `.github/workflows/release.yml`. CI runs on ubuntu-22.04: builds Linux binary + Windows binary natively (`./make.sh linux <ver>` / `./make.sh windows <ver>` - CI passes the version explicitly), then Debian AppImage (`docker/build-appimage.sh <ver>`) + .deb (Docker Ubuntu 22.04) + .rpm (Docker Fedora 40), then `create-archive.sh`, then creates a **draft** GitHub release with all artefacts + body from `v{version}.md` if it exists. The Arch AppImage is NOT built in CI (needs Arch libs) - build locally with `./make.sh appimage-arch <ver>` and upload to the draft manually before publishing. The CI never touches the AUR - that is always a manual step.
 - **release.yml can also be triggered manually** from GitHub Actions tab (workflow_dispatch) by typing the version number - useful for testing without pushing a tag.
-- **Native packages**: `.deb` (Depends: libwebkit2gtk-4.1-0) and `.rpm` (Requires: webkit2gtk4.1) are binary packages - no compilation inside the package, just the pre-built binary + desktop entry + icon. Both built via Docker containers (`docker/build-deb.sh` in Ubuntu, `docker/build-rpm.sh` in Fedora 40).
-- **AUR package** (`glideftp-bin`): `packaging/PKGBUILD` installs from the Linux `.tar.gz` release archive. The archive must contain `GlideFTP`, `glideftp.desktop`, and `glideftp.png` (ensured by `create-archive.sh`). AUR publication: clone `ssh://aur@aur.archlinux.org/glideftp-bin.git`, copy PKGBUILD, update `pkgver` + `sha256sums_x86_64`, run `makepkg --printsrcinfo > .SRCINFO`, push. AUR account registration is sometimes disabled temporarily - check aur.archlinux.org. **Local test**: `./make.sh linux && ./create-archive.sh -p linux -t gz 1.7.5`, then `mkdir /tmp/t && cp packaging/PKGBUILD /tmp/t/ && cp GlideFTP-Linux-v1.7.5.tar.gz /tmp/t/glideftp-bin-1.7.5.tar.gz && cd /tmp/t && makepkg -si`. The filename must match `<pkgname>-<pkgver>.tar.gz` (the part before `::` in `source_x86_64`). `sha256sums=('SKIP')` bypasses integrity check for local testing. Uninstall: `sudo pacman -R glideftp-bin`.
-- **VERSION file**: optional file at project root (`echo '1.7.6' > VERSION`). Used by `make.sh deb/rpm/packages/all` if no version arg is passed. Without it, `./make.sh all` fails immediately with a clear error before any build starts.
+- **Native packages**: `.deb` (Depends: libwebkit2gtk-4.1-0) and `.rpm` (Requires: webkit2gtk4.1) are binary packages - no compilation inside the package, just the pre-built binary + desktop entry + icon. Both built via Docker containers (`docker/build-deb.sh` in Ubuntu, `docker/build-rpm.sh` in Fedora 40); both read `build/bin/linux/GlideFTP-v<version>` as the source binary (not a plain `GlideFTP`).
+- **AUR package** (`glideftp-bin`): `packaging/PKGBUILD` installs from the Linux `.tar.gz` release archive. The archive must contain `GlideFTP`, `glideftp.desktop`, and `glideftp.png` (ensured by `create-archive.sh` - it renames the versioned source binary back to plain `GlideFTP` inside the staging dir before archiving, so PKGBUILD/`glideftp.spec` extraction paths are unaffected by the versioned filename). AUR publication: clone `ssh://aur@aur.archlinux.org/glideftp-bin.git`, copy PKGBUILD, update `pkgver` + `sha256sums_x86_64`, run `makepkg --printsrcinfo > .SRCINFO`, push. AUR account registration is sometimes disabled temporarily - check aur.archlinux.org. **Local test**: `./make.sh linux 1.7.5 && ./create-archive.sh -p linux -t gz 1.7.5`, then `mkdir /tmp/t && cp packaging/PKGBUILD /tmp/t/ && cp GlideFTP-Linux-v1.7.5.tar.gz /tmp/t/glideftp-bin-1.7.5.tar.gz && cd /tmp/t && makepkg -si`. The filename must match `<pkgname>-<pkgver>.tar.gz` (the part before `::` in `source_x86_64`). `sha256sums=('SKIP')` bypasses integrity check for local testing. Uninstall: `sudo pacman -R glideftp-bin`.
+- **VERSION file**: optional file at project root (`echo '1.7.6' > VERSION`). Used by every `make.sh` target (`linux`/`windows`/`appimage*`/`deb`/`rpm`/`packages`/`all`) if no version arg is passed - version is required everywhere now, not just deb/rpm/all. Without it and no arg, `make.sh` fails immediately with a clear error before any build starts.
 - **AUR - auto-update PKGBUILD**: `create-archive.sh` automatically updates `packaging/PKGBUILD` when building the Linux `.tar.gz` (platform `linux` or `all`). `update_pkgbuild()` runs `sed` to replace `pkgver` and `sha256sums_x86_64=('SKIP')` with the real version and computed hash. No manual `sha256sum` needed. After `create-archive.sh`, just push `packaging/PKGBUILD` to AUR. CI never touches AUR - always manual. AUR registration sometimes temporarily disabled.
 - **copy_packages()** in `create-archive.sh`: when platform is `all`, copies `.deb` and `.rpm` from `build/bin/linux/` to the project root alongside the `.tar.gz`/`.tar` archives. Prints a warning (but does not abort) if either file is missing - build it first with `./make.sh deb/rpm VERSION`.
 

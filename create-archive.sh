@@ -41,7 +41,7 @@ Examples:
   $SCRIPT_NAME -p appimage-arch -t gz 1.7.0       # Arch AppImage .tar.gz only
   $SCRIPT_NAME -p appimage-debian -t tar 1.7.0    # Debian AppImage .tar only
   $SCRIPT_NAME -p windows -t tar 1.7.0            # Windows .tar only
-  $SCRIPT_NAME --platform all --type gz 2.0.0
+  $SCRIPT_NAME --platform all --type gz 1.7.0
 EOF
 }
 
@@ -234,14 +234,14 @@ EOF
 make_windows_gz() {
   local out="GlideFTP-Windows-v${VERSION}.tar.gz"
   echo "→ $out"
-  tar -czvf "$out" ./build/bin/windows/GlideFTP.exe
+  tar -czvf "$out" "./build/bin/windows/GlideFTP-v${VERSION}.exe"
 }
 
 make_linux_gz() {
   local out="GlideFTP-Linux-v${VERSION}.tar.gz"
   local staging
   staging="$(mktemp -d)"
-  cp build/bin/linux/GlideFTP "$staging/"
+  cp "build/bin/linux/GlideFTP-v${VERSION}" "$staging/GlideFTP"
   cp packaging/glideftp.desktop "$staging/"
   cp build/appicon.png "$staging/glideftp.png"
   _write_linux_readme "$staging"
@@ -253,14 +253,14 @@ make_linux_gz() {
 make_windows_tar() {
   local out="GlideFTP-Windows-v${VERSION}.tar"
   echo "→ $out"
-  tar -cvf "$out" ./build/bin/windows/GlideFTP.exe
+  tar -cvf "$out" "./build/bin/windows/GlideFTP-v${VERSION}.exe"
 }
 
 make_linux_tar() {
   local out="GlideFTP-Linux-v${VERSION}.tar"
   local staging
   staging="$(mktemp -d)"
-  cp build/bin/linux/GlideFTP "$staging/"
+  cp "build/bin/linux/GlideFTP-v${VERSION}" "$staging/GlideFTP"
   cp packaging/glideftp.desktop "$staging/"
   cp build/appicon.png "$staging/glideftp.png"
   _write_linux_readme "$staging"
@@ -273,10 +273,10 @@ make_appimage_arch_gz() {
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar.gz"
   local staging
   staging="$(mktemp -d)"
-  cp build/bin/linux/GlideFTP-Arch-x86_64.AppImage "$staging/"
+  cp "build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage" "$staging/"
   _write_arch_appimage_readme "$staging"
   echo "→ $out"
-  tar -czvf "$out" -C "$staging" GlideFTP-Arch-x86_64.AppImage README.md
+  tar -czvf "$out" -C "$staging" "GlideFTP-Arch-x86_64-v${VERSION}.AppImage" README.md
   rm -rf "$staging"
 }
 
@@ -284,23 +284,23 @@ make_appimage_arch_tar() {
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar"
   local staging
   staging="$(mktemp -d)"
-  cp build/bin/linux/GlideFTP-Arch-x86_64.AppImage "$staging/"
+  cp "build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage" "$staging/"
   _write_arch_appimage_readme "$staging"
   echo "→ $out"
-  tar -cvf "$out" -C "$staging" GlideFTP-Arch-x86_64.AppImage README.md
+  tar -cvf "$out" -C "$staging" "GlideFTP-Arch-x86_64-v${VERSION}.AppImage" README.md
   rm -rf "$staging"
 }
 
 make_appimage_debian_gz() {
   local out="GlideFTP-Linux-Debian-AppImage-v${VERSION}.tar.gz"
   echo "→ $out"
-  tar -czvf "$out" -C build/bin/linux GlideFTP-Debian-x86_64.AppImage
+  tar -czvf "$out" -C build/bin/linux "GlideFTP-Debian-x86_64-v${VERSION}.AppImage"
 }
 
 make_appimage_debian_tar() {
   local out="GlideFTP-Linux-Debian-AppImage-v${VERSION}.tar"
   echo "→ $out"
-  tar -cvf "$out" -C build/bin/linux GlideFTP-Debian-x86_64.AppImage
+  tar -cvf "$out" -C build/bin/linux "GlideFTP-Debian-x86_64-v${VERSION}.AppImage"
 }
 
 # ── PKGBUILD auto-update ─────────────────────────────────────────────────────

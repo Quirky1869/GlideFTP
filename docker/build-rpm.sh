@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Runs inside the Fedora 40 container (glideftp-rpm-builder).
-# Builds a binary .rpm from the pre-built binary at /src/build/bin/linux/GlideFTP.
+# Builds a binary .rpm from the pre-built binary at /src/build/bin/linux/GlideFTP-v<version>.
 set -e
 
 VERSION="${1:?Usage: build-rpm.sh <version>}"
 
-BINARY="/src/build/bin/linux/GlideFTP"
+BINARY="/src/build/bin/linux/GlideFTP-v${VERSION}"
 DESKTOP="/src/packaging/glideftp.desktop"
 ICON="/src/build/appicon.png"
 SPEC_TPL="/src/packaging/glideftp.spec"
