@@ -129,9 +129,9 @@ chmod +x GlideFTP-Arch-x86_64.AppImage
 ./GlideFTP-Arch-x86_64.AppImage
 ```
 
-### Build from source
+# Build from source
 
-#### Prerequisites
+### Prerequisites
 
 - [Go](https://go.dev/dl/) 1.21+
 - [Node.js](https://nodejs.org/) 18+
@@ -155,7 +155,7 @@ sudo apt install libwebkit2gtk-4.1-dev
 sudo dnf install webkit2gtk4.1-devel
 ```
 
-#### Build
+### Build
 
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
@@ -191,7 +191,7 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 > **Note:** Windows uses WebView2 (built into Windows 10/11), so the `-tags webkit2_41` flag is not needed for Windows builds.
 
-#### Run
+### Run
 
 ```bash
 # Linux binary
@@ -347,9 +347,9 @@ chmod +x GlideFTP-Arch-x86_64.AppImage
 ./GlideFTP-Arch-x86_64.AppImage
 ```
 
-### Compiler depuis les sources
+# Compiler depuis les sources
 
-#### Prérequis
+### Prérequis
 
 - [Go](https://go.dev/dl/) 1.21+
 - [Node.js](https://nodejs.org/) 18+
@@ -373,7 +373,7 @@ sudo apt install libwebkit2gtk-4.1-dev
 sudo dnf install webkit2gtk4.1-devel
 ```
 
-#### Compiler
+### Compiler
 
 ```bash
 git clone https://github.com/Quirky1869/GlideFTP.git
@@ -409,7 +409,7 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 > **Note :** Windows utilise WebView2 (intégré à Windows 10/11), le flag `-tags webkit2_41` n'est donc pas nécessaire pour les builds Windows.
 
-#### Lancer
+### Lancer
 
 ```bash
 # Binaire Linux
