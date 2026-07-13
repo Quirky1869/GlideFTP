@@ -14,7 +14,7 @@ conflicts=('glideftp')
 source_x86_64=(
     "${pkgname}-${pkgver}.tar.gz::https://github.com/Quirky1869/GlideFTP/releases/download/v${pkgver}/GlideFTP-Linux-v${pkgver}.tar.gz"
 )
-sha256sums_x86_64=('ef487e878f85faabad602b3c00d9907029c1d8f4a89c4d527812069353a9a902')
+sha256sums_x86_64=('57fd636063fc06a740c30aa97c5496952d7615667d10740c745a16e927b15950')
 
 package() {
     install -Dm755 "${srcdir}/GlideFTP"           "${pkgdir}/usr/bin/glideftp"
