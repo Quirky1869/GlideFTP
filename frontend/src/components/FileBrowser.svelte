@@ -469,16 +469,57 @@
 
   // ── New folder ────────────────────────────────────────────────────────────
 
+  let newFolderTargetPath = '';
+  // { clickedPath, clickedName } while asking "current folder or the
+  // right-clicked folder?" after right-clicking a directory.
+  let newFolderChoice = null;
+
+  function folderBaseName(p) {
+    if (!p) return '';
+    const clean = p.replace(/[/\\]+$/, '');
+    const sep = clean.includes('/') ? '/' : '\\';
+    const idx = clean.lastIndexOf(sep);
+    return (idx >= 0 ? clean.slice(idx + 1) : clean) || clean || p;
+  }
+
+  function startNewFolder(targetPath) {
+    newFolderTargetPath = targetPath;
+    newFolderName = '';
+    newFolderMode = true;
+    closeContext();
+  }
+
+  // Right-click "New folder" on a file/folder entry: a file has no
+  // ambiguity (always creates in the current folder); a folder asks
+  // whether to create it in the current folder or inside that folder.
+  function requestNewFolderForEntry(entry) {
+    if (!entry || !entry.isDir) {
+      startNewFolder(path);
+      return;
+    }
+    newFolderChoice = { clickedPath: entry.path, clickedName: entry.name };
+    closeContext();
+  }
+
+  function chooseNewFolderTarget(useClicked) {
+    const targetPath = useClicked ? newFolderChoice.clickedPath : path;
+    newFolderChoice = null;
+    startNewFolder(targetPath);
+  }
+
   async function handleNewFolder() {
     if (!newFolderName) { newFolderMode = false; return; }
-    const base = path.replace(/[/\\]?$/, '/');
+    const targetPath = newFolderTargetPath || path;
+    const base = targetPath.replace(/[/\\]?$/, '/');
     try {
       await onMkDir(base + newFolderName);
-      if (treeMode) await treeRefreshDir(path);
+      if (showSearchResults) await refreshAfterSearchMutation();
+      else if (treeMode) await treeRefreshDir(targetPath);
       else await onRefresh();
     } catch {}
     newFolderName = '';
     newFolderMode = false;
+    newFolderTargetPath = '';
   }
 
   // ── Transfer ──────────────────────────────────────────────────────────────
@@ -1040,7 +1081,7 @@
       <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
-      <button class="icon-btn" on:click={() => { newFolderMode = true; closeContext(); }} title={$t('newFolder')}>
+      <button class="icon-btn" on:click={() => startNewFolder(path)} title={$t('newFolder')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
       </button>
       {#if selected.length > 0}
@@ -1064,15 +1105,18 @@
 
   {#if newFolderMode}
     <div class="new-folder-row" on:contextmenu|stopPropagation>
+      {#if newFolderTargetPath && newFolderTargetPath !== path}
+        <span class="new-folder-target" title={newFolderTargetPath}>{$t('newFolderIn')} {folderBaseName(newFolderTargetPath)}</span>
+      {/if}
       <input
         type="text"
         bind:value={newFolderName}
         placeholder={$t('newFolder')}
         autofocus
-        on:keydown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') { newFolderMode = false; newFolderName = ''; } }}
+        on:keydown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') { newFolderMode = false; newFolderName = ''; newFolderTargetPath = ''; } }}
       />
       <button on:click={handleNewFolder}>{$t('save')}</button>
-      <button on:click={() => { newFolderMode = false; newFolderName = ''; }}>{$t('cancel')}</button>
+      <button on:click={() => { newFolderMode = false; newFolderName = ''; newFolderTargetPath = ''; }}>{$t('cancel')}</button>
     </div>
   {/if}
 
@@ -1319,7 +1363,7 @@
     on:click|stopPropagation
   >
     {#if contextIsEmpty}
-      <button on:click={() => { newFolderMode = true; closeContext(); }}>
+      <button on:click={() => startNewFolder(path)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         {$t('newFolder')}
       </button>
@@ -1335,6 +1379,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
         {/if}
         {$t('transfer')}
+      </button>
+      <button on:click={() => requestNewFolderForEntry(contextEntry)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        {$t('newFolder')}
       </button>
       <hr class="menu-sep" />
       <button on:click={() => { cutEntries(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]); closeContext(); }}>
@@ -1357,6 +1405,27 @@
         {$t('delete')}
       </button>
     {/if}
+  </div>
+{/if}
+
+<!-- New folder: choose current folder vs the right-clicked folder -->
+{#if newFolderChoice}
+  <div class="confirm-overlay" on:click|self={() => newFolderChoice = null}>
+    <div class="confirm-box" on:click|stopPropagation use:trapFocus>
+      <div class="confirm-icon confirm-icon-neutral">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+      </div>
+      <div class="confirm-msg">{$t('newFolderWhereTitle')}</div>
+      <div class="conflict-actions">
+        <button class="conflict-replace-btn" on:click={() => chooseNewFolderTarget(false)}>
+          {$t('newFolderCurrentDir')} ({folderBaseName(path)})
+        </button>
+        <button class="conflict-rename-btn" on:click={() => chooseNewFolderTarget(true)}>
+          {$t('newFolderClickedDir')} ({newFolderChoice.clickedName})
+        </button>
+        <button class="confirm-cancel-btn" on:click={() => newFolderChoice = null}>{$t('cancel')}</button>
+      </div>
+    </div>
   </div>
 {/if}
 
@@ -1609,10 +1678,20 @@
 
 .new-folder-row {
   display: flex;
+  align-items: center;
   gap: 6px;
   padding: 6px 10px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.new-folder-target {
+  color: var(--accent);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
   flex-shrink: 0;
 }
 .new-folder-row input {
@@ -1803,6 +1882,7 @@
   box-shadow: 0 16px 48px rgba(0,0,0,0.4);
 }
 .confirm-icon svg { width: 36px; height: 36px; color: var(--danger); }
+.confirm-icon-neutral svg { color: var(--accent); }
 .confirm-msg { font-size: 15px; font-weight: 600; color: var(--text-primary); }
 .confirm-name {
   font-size: 12px;
