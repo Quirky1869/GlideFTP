@@ -182,6 +182,8 @@ export namespace settings {
 	    windowWidth: number;
 	    windowHeight: number;
 	    startMaximized: boolean;
+	    closeSiteManagerOnClickOutside: boolean;
+	    doubleClickNavigateUp: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -207,6 +209,8 @@ export namespace settings {
 	        this.windowWidth = source["windowWidth"];
 	        this.windowHeight = source["windowHeight"];
 	        this.startMaximized = source["startMaximized"];
+	        this.closeSiteManagerOnClickOutside = source["closeSiteManagerOnClickOutside"];
+	        this.doubleClickNavigateUp = source["doubleClickNavigateUp"];
 	    }
 	}
 

@@ -103,6 +103,8 @@ export default {
   autoReconnect: 'Reconnexion automatique',
   interface: 'Interface',
   connectCardShadow: 'Ombre d\'accentuation du panneau de connexion',
+  closeSiteManagerOnClickOutside: 'Fermer "Gérer les sites" en cliquant à côté',
+  doubleClickNavigateUp: 'Double-cliquer sur ".." pour aller au dossier parent',
   treeView: 'Vue arborescente',
   listView: 'Vue liste',
   showHiddenFiles: 'Afficher les fichiers cachés',

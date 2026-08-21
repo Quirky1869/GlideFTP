@@ -62,6 +62,8 @@
     windowWidth: 1400,
     windowHeight: 900,
     startMaximized: false,
+    closeSiteManagerOnClickOutside: true,
+    doubleClickNavigateUp: false,
   };
 
   function resetSetting(key) {
@@ -86,10 +88,12 @@
         <label>{$t('theme')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('theme')} title={$t('resetToDefault')}>↺</button></label>
         <div class="toggle-group">
           <button class="toggle-btn" class:active={form.theme === 'dark'} on:click={() => form = { ...form, theme: 'dark' }}>
-            🌙 {$t('themeDark')}
+            <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            {$t('themeDark')}
           </button>
           <button class="toggle-btn" class:active={form.theme === 'light'} on:click={() => form = { ...form, theme: 'light' }}>
-            ☀️ {$t('themeLight')}
+            <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            {$t('themeLight')}
           </button>
         </div>
       </div>
@@ -211,6 +215,26 @@
           class:on={form.connectCardShadow}
           on:click={() => toggle('connectCardShadow')}
           aria-pressed={form.connectCardShadow}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
+        <label>{$t('closeSiteManagerOnClickOutside')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('closeSiteManagerOnClickOutside')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.closeSiteManagerOnClickOutside}
+          on:click={() => toggle('closeSiteManagerOnClickOutside')}
+          aria-pressed={form.closeSiteManagerOnClickOutside}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
+        <label>{$t('doubleClickNavigateUp')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('doubleClickNavigateUp')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.doubleClickNavigateUp}
+          on:click={() => toggle('doubleClickNavigateUp')}
+          aria-pressed={form.doubleClickNavigateUp}
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
@@ -370,6 +394,9 @@ h3 {
 .toggle-group { display: flex; gap: 4px; }
 
 .toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: var(--bg-button);
   border: 1px solid var(--border);
   border-radius: 5px;
@@ -383,6 +410,11 @@ h3 {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
+}
+.theme-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 /* ── Color row ── */

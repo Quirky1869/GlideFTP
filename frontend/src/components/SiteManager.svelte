@@ -348,6 +348,8 @@
 
   function openExportDialog() {
     // First enter selection mode (all sites pre-selected)
+    editMode = false;
+    selectedSite = null;
     exportSelectedIds = new Set(sites.map(s => s.id));
     exportSelectMode = true;
   }
@@ -470,7 +472,7 @@
   ];
 </script>
 
-<div class="modal-backdrop" on:click|self={onClose}>
+<div class="modal-backdrop" on:click|self={() => { if ($settings?.closeSiteManagerOnClickOutside !== false) onClose(); }}>
   <div class="modal" use:trapFocus>
     <div class="modal-header">
       <span class="modal-title">{$t('savedSites')}</span>

@@ -103,6 +103,8 @@ export default {
   autoReconnect: 'Auto-reconnect',
   interface: 'Interface',
   connectCardShadow: 'Connection card accent shadow',
+  closeSiteManagerOnClickOutside: 'Close "Manage sites" by clicking outside',
+  doubleClickNavigateUp: 'Double-click ".." to go to parent folder',
   treeView: 'Tree view',
   listView: 'List view',
   showHiddenFiles: 'Show hidden files',

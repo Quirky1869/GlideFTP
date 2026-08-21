@@ -2756,3 +2756,184 @@ frontend/wailsjs/go/main/App.js.
   exportSelectTitle : "Sélectionner les sites à exporter" / "Select sites to export"
   exportSelectAll   : "Tout sélectionner" / "Select all"
   exportValidate    : "Valider" / "Validate"
+
+---
+
+#85
+Title: [Bug] Cannot validate site export when a site is already selected in Site Manager
+Labels: bug, ui
+Version fixed: v1.7.6
+Description:
+In Site Manager, if the user clicks on an already saved site (its detail
+panel opens on the right) and then clicks "Export sites", the export
+selection panel (checkboxes + "Select sites to export" + Validate/Cancel
+buttons, added in #84) does not appear. The previously opened site's detail
+panel (Connect / Edit / Delete buttons) stays displayed instead, so the user
+has no way to validate the export.
+Ref: _images/issues/v1.7.6/issue-35.png
+
+Solution (closing comment):
+Fixed in v1.7.6 in SiteManager.svelte.
+
+**Root cause:**
+The right panel template is a single if/else-if/else chain:
+  {#if editMode} edit form
+  {:else if selectedSite} site detail view (Connect/Edit/Delete)
+  {:else} no-selection panel — shows the export-select UI when
+          exportSelectMode is true
+  {/if}
+
+openExportDialog() (called by the "Export sites" button) only set
+exportSelectMode = true and pre-filled exportSelectedIds — it never reset
+selectedSite (or editMode). So if a site was already selected (or being
+edited) when the button was clicked, the {:else if selectedSite} branch kept
+rendering its detail/edit view instead of falling through to the
+{:else} branch that hosts the Validate/Cancel export panel.
+
+**Fix:**
+openExportDialog() now also resets editMode = false and selectedSite = null
+before entering exportSelectMode, guaranteeing the no-selection/export-select
+panel is shown regardless of what was open in the right panel beforehand.
+
+---
+
+#86
+Title: [UI] Replace Dark/Light theme toggle emoji icons with SVG icons
+Labels: enhancement, ui
+Version fixed: v1.7.6
+Description:
+In Settings > Appearance, the theme toggle ("Sombre"/"Dark" and
+"Clair"/"Light") used raw emoji (🌙 and ☀️) as icons. Emoji rendering is
+inconsistent across platforms/fonts (color, weight, alignment vs the rest of
+the app's line-icon SVGs). Requested to replace them with clean line-style
+SVG icons (crescent moon / sun with rays) matching the icon style used
+elsewhere in the app (e.g. the accent color picker icon), same for both
+languages since only the icon changes, not the label.
+
+Solution (closing comment):
+Implemented in v1.7.6 in SettingsPanel.svelte.
+
+**Frontend — SettingsPanel.svelte:**
+Replaced the 🌙 / ☀️ emoji in the theme `.toggle-group` buttons with inline
+SVGs (viewBox 24x24, fill none, stroke currentColor, stroke-width 2 — same
+convention as the existing accent-color-picker icon):
+  Dark  : crescent moon path
+          `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`
+  Light : sun (circle + 8 rays)
+          `<circle cx="12" cy="12" r="5"/>` + 8 `<line>` rays
+
+**CSS:**
+  .toggle-btn now `display: flex; align-items: center; gap: 6px` so the icon
+  and label align on one line (previously text-only, no flex needed).
+  New `.theme-icon` class: 14x14px, `flex-shrink: 0`.
+
+No i18n changes — themeDark / themeLight labels (Sombre/Dark, Clair/Light)
+are unchanged, only the icon markup changed.
+
+---
+
+#87
+Title: [Feature] Setting to prevent "Manage sites" from closing on outside click
+Labels: enhancement, settings
+Version fixed: v1.7.6
+Description:
+Clicking anywhere outside the "Manage sites" modal (on the backdrop) closes
+it immediately. It's easy to misclick while filling in a site's details and
+lose everything just entered. Requested a setting to control this: when
+enabled (default), clicking outside closes the modal like today; when
+disabled, only the ✕ button closes it.
+
+Solution (closing comment):
+Implemented in v1.7.6 in settings.go, SettingsPanel.svelte and
+SiteManager.svelte.
+
+**Go — internal/settings/settings.go:**
+New field:
+  CloseSiteManagerOnClickOutside bool `json:"closeSiteManagerOnClickOutside"`
+Default: true (preserves current behavior for existing users - an old
+settings.json without the key unmarshals over Default(), so it still lands
+on true).
+
+**Frontend — SettingsPanel.svelte:**
+New toggle in the "Interface" section, right under "Connection card accent
+shadow":
+  closeSiteManagerOnClickOutside — standard `.sw` switch button (WebKit-GTK
+  pattern: button-based toggle, not a hidden checkbox), with its own reset
+  (↺) button. Added to DEFAULTS map (true) so reset restores the default.
+
+**Frontend — SiteManager.svelte:**
+The modal backdrop click handler now checks the setting before closing:
+  on:click|self={() => { if ($settings?.closeSiteManagerOnClickOutside !== false) onClose(); }}
+`!== false` so the modal still closes on outside click while settings are
+loading (undefined) or for any user who already has the value `true` -
+only an explicit `false` blocks the outside-click close. The ✕ button in
+the modal header is untouched and always closes the modal regardless of
+this setting.
+
+**i18n:**
+  closeSiteManagerOnClickOutside :
+    FR "Fermer "Gérer les sites" en cliquant à côté"
+    EN "Close "Manage sites" by clicking outside"
+
+---
+
+#88
+Title: [Feature] Setting to require a double-click on ".." to go to the parent folder
+Labels: enhancement, settings
+Version fixed: v1.7.6
+Description:
+The ".." row (and the "parent folder" toolbar arrow) navigates to the
+parent folder on a single click. Requested a setting to require a
+double-click instead, to avoid accidental navigation. Must apply to both
+panels (local and remote) and both view modes (list view and tree view).
+
+Solution (closing comment):
+Implemented in v1.7.6 in settings.go, SettingsPanel.svelte and
+FileBrowser.svelte.
+
+**Go — internal/settings/settings.go:**
+New field:
+  DoubleClickNavigateUp bool `json:"doubleClickNavigateUp"`
+Default: false (preserves current single-click behavior).
+
+**Frontend — SettingsPanel.svelte:**
+New toggle in the "Interface" section, right after "Close Manage sites by
+clicking outside":
+  doubleClickNavigateUp — standard `.sw` switch with its own reset (↺)
+  button. Added to DEFAULTS map (false).
+
+**Frontend — FileBrowser.svelte:**
+FileBrowser is instantiated once per panel (local/remote), so the setting
+applies to both automatically — no per-side wiring needed.
+
+New reactive flag:
+  $: dblClickUp = $settings?.doubleClickNavigateUp === true;
+
+Two places gated by dblClickUp (both are the only "go to parent folder"
+affordances, covering list view and tree view respectively — tree view has
+no ".." row of its own):
+
+1. List view ".." row (`.parent-row`):
+   New handleParentClick() replaces the inline single-click handler:
+     - dblClickUp = false (default): click navigates up immediately
+       (parentFocused = false; onNavigateUp()) — unchanged behavior.
+     - dblClickUp = true: click only sets parentFocused = true (highlights
+       the row, same visual state as ArrowUp keyboard navigation) without
+       navigating. on:dblclick={onNavigateUp} still navigates on double-click
+       regardless of the setting.
+
+2. Toolbar "parent folder" arrow button (browser-header, shown in both list
+   and tree view since it's outside the {#if treeMode} block):
+     on:click={() => { if (!dblClickUp) onNavigateUp(); }}
+     on:dblclick={onNavigateUp}
+   Same logic: single click navigates only when the setting is off; double
+   click always navigates.
+
+Keyboard navigation (ArrowUp to focus "..", Enter to navigate) is
+unchanged — Enter is an explicit activation, treated the same as a
+double-click regardless of the setting.
+
+**i18n:**
+  doubleClickNavigateUp :
+    FR "Double-cliquer sur ".." pour aller au dossier parent"
+    EN "Double-click ".." to go to parent folder"

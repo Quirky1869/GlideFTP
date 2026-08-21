@@ -578,6 +578,16 @@
 
   let parentFocused = false;
   $: if (path) parentFocused = false;
+  $: dblClickUp = $settings?.doubleClickNavigateUp === true;
+
+  function handleParentClick() {
+    if (dblClickUp) {
+      parentFocused = true;
+    } else {
+      parentFocused = false;
+      onNavigateUp();
+    }
+  }
 
   function scrollEntryIntoView(idx) {
     const rows = fileListEl?.querySelectorAll('.file-row:not(.parent-row)');
@@ -867,7 +877,7 @@
   <div class="browser-header" on:contextmenu|stopPropagation>
     <span class="side-label">{side === 'local' ? $t('local') : $t('remote')}</span>
     <div class="path-nav">
-      <button class="icon-btn" on:click={onNavigateUp} title="Parent folder">
+      <button class="icon-btn" on:click={() => { if (!dblClickUp) onNavigateUp(); }} on:dblclick={onNavigateUp} title="Parent folder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <div class="path-edit-wrap">
@@ -1047,7 +1057,7 @@
         class="file-row is-dir parent-row"
         class:focused={parentFocused}
         class:drag-target={rowDragOverPath === '__parent__'}
-        on:click={() => { parentFocused = false; onNavigateUp(); }}
+        on:click={handleParentClick}
         on:dblclick={onNavigateUp}
         on:contextmenu|stopPropagation
         on:dragover={(e) => handleRowDragOver(e, '__parent__')}
