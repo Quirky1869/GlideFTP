@@ -138,6 +138,10 @@ export function LocalRename(arg1, arg2) {
   return window['go']['main']['App']['LocalRename'](arg1, arg2);
 }
 
+export function LocalSearch(arg1, arg2, arg3) {
+  return window['go']['main']['App']['LocalSearch'](arg1, arg2, arg3);
+}
+
 export function OpenImportDialog() {
   return window['go']['main']['App']['OpenImportDialog']();
 }
@@ -180,6 +184,10 @@ export function RemoteMkDir(arg1) {
 
 export function RemoteRename(arg1, arg2) {
   return window['go']['main']['App']['RemoteRename'](arg1, arg2);
+}
+
+export function RemoteSearch(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RemoteSearch'](arg1, arg2, arg3);
 }
 
 export function RemoveTransfer(arg1) {

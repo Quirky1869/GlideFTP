@@ -17,6 +17,7 @@
   export let onMkDir = async (_path) => {};
   export let onDelete = async (_path) => {};
   export let onRename = async (_old, _new) => {};
+  export let onSearch = async (_path, _query, _recursive) => [];
   export let otherPath = '';
   export let otherEntries = [];
 
@@ -208,7 +209,10 @@
       deleteError = lastError;
       setTimeout(() => { deleteError = ''; }, 4000);
     }
-    if (treeMode) {
+    if (showSearchResults) {
+      selected = [];
+      await refreshAfterSearchMutation();
+    } else if (treeMode) {
       treeRemoveEntries(entries);
       treeSelected = null;
       selected = [];
@@ -331,7 +335,7 @@
         ? selected.filter(s => s.path !== entry.path)
         : [...selected, entry];
     } else if (e.shiftKey && selected.length > 0) {
-      const all = sortedEntries;
+      const all = showSearchResults ? sortedSearchResults : sortedEntries;
       const lastPath = selected[selected.length - 1].path;
       const li = all.findIndex(e => e.path === lastPath);
       const ci = all.findIndex(e => e.path === entry.path);
@@ -393,11 +397,12 @@
     const top = Math.min(y1, y2);
     const bottom = Math.max(y1, y2);
     const rows = fileListEl.querySelectorAll('.file-row:not(.parent-row)');
+    const source = showSearchResults ? sortedSearchResults : sortedEntries;
     const newSelected = [];
     rows.forEach((row, idx) => {
       const rect = row.getBoundingClientRect();
       if (rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top) {
-        if (sortedEntries[idx]) newSelected.push(sortedEntries[idx]);
+        if (source[idx]) newSelected.push(source[idx]);
       }
     });
     selected = newSelected;
@@ -441,7 +446,9 @@
     const newPath = dir + renameValue;
     try {
       await onRename(entry.path, newPath);
-      if (treeMode) {
+      if (showSearchResults) {
+        await refreshAfterSearchMutation();
+      } else if (treeMode) {
         const oldPath = entry.path;
         treeNodes = treeNodes.map(n => {
           if (n.path === oldPath) return { ...n, name: renameValue, path: newPath };
@@ -578,6 +585,7 @@
 
   let parentFocused = false;
   $: if (path) parentFocused = false;
+  $: if (path) closeSearch();
   $: dblClickUp = $settings?.doubleClickNavigateUp === true;
 
   function handleParentClick() {
@@ -675,6 +683,109 @@
       } else if (selected.length === 1 && selected[0].isDir) {
         onNavigate(selected[0].path);
       }
+    }
+  }
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  // Works the same in list view and tree view: while active, the results
+  // replace whichever view is currently shown. Non-recursive search filters
+  // the already-loaded `entries` (instant, no backend call); recursive
+  // search calls onSearch() (LocalSearch/RemoteSearch) with a debounce.
+
+  let searchMode = false;
+  let searchQuery = '';
+  let searchRecursive = true;
+  let searching = false;
+  let searchResults = [];
+  let searchDebounceTimer = null;
+  let searchReqId = 0;
+  let searchInputEl;
+
+  $: searchQueryTrim = searchQuery.trim();
+  $: showSearchResults = searchMode && searchQueryTrim.length > 0;
+  $: nonRecursiveResults = searchQueryTrim
+    ? entries.filter(e => e.name.toLowerCase().includes(searchQueryTrim.toLowerCase()))
+    : [];
+  $: searchDisplayResults = searchRecursive ? searchResults : nonRecursiveResults;
+  $: sortedSearchResults = [...searchDisplayResults].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  });
+
+  function toggleSearch() {
+    if (searchMode) {
+      closeSearch();
+    } else {
+      searchMode = true;
+      setTimeout(() => searchInputEl?.focus(), 0);
+    }
+  }
+
+  function closeSearch() {
+    searchMode = false;
+    searchQuery = '';
+    searchResults = [];
+    searching = false;
+    clearTimeout(searchDebounceTimer);
+  }
+
+  function handleSearchKeydown(e) {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      closeSearch();
+      panelEl?.focus({ preventScroll: true });
+    }
+  }
+
+  function onSearchInput() {
+    clearTimeout(searchDebounceTimer);
+    if (!searchRecursive) return;
+    searchDebounceTimer = setTimeout(runRecursiveSearch, 350);
+  }
+
+  async function toggleSearchRecursive() {
+    searchRecursive = !searchRecursive;
+    clearTimeout(searchDebounceTimer);
+    if (searchRecursive && searchQueryTrim) await runRecursiveSearch();
+    else searchResults = [];
+  }
+
+  async function runRecursiveSearch() {
+    const q = searchQueryTrim;
+    if (!q) { searchResults = []; searching = false; return; }
+    const reqId = ++searchReqId;
+    searching = true;
+    try {
+      const res = await onSearch(path, q, true);
+      if (reqId === searchReqId) searchResults = res || [];
+    } catch {
+      if (reqId === searchReqId) searchResults = [];
+    } finally {
+      if (reqId === searchReqId) searching = false;
+    }
+  }
+
+  // Called after a mutation (delete/rename) made while search results are shown.
+  async function refreshAfterSearchMutation() {
+    await onRefresh();
+    if (searchRecursive && searchQueryTrim) await runRecursiveSearch();
+  }
+
+  function relativeSearchPath(entryPath) {
+    const base = path.replace(/[\\/]+$/, '');
+    if (!entryPath.startsWith(base)) return '';
+    const rest = entryPath.slice(base.length).replace(/^[\\/]/, '');
+    const sep = rest.includes('/') ? '/' : '\\';
+    const idx = rest.lastIndexOf(sep);
+    return idx > 0 ? rest.slice(0, idx) : '';
+  }
+
+  function handleSearchResultDblClick(entry) {
+    if (entry.isDir) {
+      onNavigate(entry.path);
+      closeSearch();
+    } else {
+      transferEntry(entry);
     }
   }
 
@@ -923,6 +1034,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="3" y2="18"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="9" x2="9" y2="15"/></svg>
         {/if}
       </button>
+      <button class="icon-btn" class:active={searchMode} on:click={toggleSearch} title={$t('search')}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
       <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh')}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
@@ -962,7 +1076,88 @@
     </div>
   {/if}
 
-  {#if treeMode}
+  {#if searchMode}
+    <div class="search-row" on:contextmenu|stopPropagation>
+      <svg class="search-row-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input
+        type="text"
+        bind:value={searchQuery}
+        bind:this={searchInputEl}
+        placeholder={$t('searchPlaceholder')}
+        autofocus
+        on:input={onSearchInput}
+        on:keydown={handleSearchKeydown}
+      />
+      <button
+        class="icon-btn small"
+        class:active={searchRecursive}
+        on:click={toggleSearchRecursive}
+        title={$t('searchRecursive')}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="4" x2="3" y2="14"/><path d="M3 14a4 4 0 0 0 4 4h5"/><polyline points="9 15 12 18 9 21"/></svg>
+      </button>
+      {#if searching}
+        <svg class="tree-spin search-row-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      {/if}
+      <button class="icon-btn small" on:click={closeSearch} title={$t('close')}>✕</button>
+    </div>
+  {/if}
+
+  {#if showSearchResults}
+    <div
+      class="file-list"
+      bind:this={fileListEl}
+      on:mousedown={handleListMouseDown}
+    >
+      <div class="file-list-header" on:contextmenu|stopPropagation>
+        <span class="col-name">{$t('searchResults')}{sortedSearchResults.length ? ` (${sortedSearchResults.length})` : ''}</span>
+      </div>
+
+      {#if searching && sortedSearchResults.length === 0}
+        <div class="tree-loading">
+          <svg class="tree-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        </div>
+      {:else if sortedSearchResults.length === 0}
+        <div class="empty">{$t('noSearchResults')}</div>
+      {:else}
+        {#each sortedSearchResults as entry (entry.path)}
+          <div
+            class="file-row"
+            class:selected={selected.some(s => s.path === entry.path)}
+            class:is-dir={entry.isDir}
+            draggable={true}
+            on:click={(e) => handleClick(e, entry)}
+            on:dblclick={() => handleSearchResultDblClick(entry)}
+            on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry)}
+            on:dragstart={(e) => handleDragStart(e, entry)}
+          >
+            <span class="col-name">
+              <span class="file-icon">
+                {#if entry.isDir}📁{:else}📄{/if}
+              </span>
+              {#if renamingEntry?.path === entry.path}
+                <input
+                  class="rename-input"
+                  type="text"
+                  bind:value={renameValue}
+                  on:click|stopPropagation
+                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  autofocus
+                />
+              {:else}
+                <span class="file-name">{entry.name}</span>
+                {#if searchRecursive && relativeSearchPath(entry.path)}
+                  <span class="search-result-path">{relativeSearchPath(entry.path)}</span>
+                {/if}
+              {/if}
+            </span>
+            <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            <span class="col-date">{formatDate(entry.modTime)}</span>
+          </div>
+        {/each}
+      {/if}
+    </div>
+  {:else if treeMode}
     <div class="tree-list" on:contextmenu={handleBrowserContextMenu}>
       {#if treeNodes.length === 0}
         <div class="tree-loading">
@@ -1438,6 +1633,53 @@
   padding: 3px 10px;
   font-size: 12px;
   cursor: pointer;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.search-row-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.search-row input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 3px 8px;
+  font-size: 12px;
+  outline: none;
+  min-width: 0;
+}
+.icon-btn.small {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.icon-btn.small svg { width: 13px; height: 13px; }
+.search-row-spin {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.search-result-path {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-left: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-list {

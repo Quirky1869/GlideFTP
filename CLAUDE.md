@@ -10,7 +10,7 @@ Design spec (French) in `prompt-glideftp`. UI reference sketch in `_images/exemp
 
 **Project tracking files** (keep in sync after each session):
 - `prompt-glideftp` - original design spec + chronological list of all issues as described by the user (raw French, by version). Add new issues here when they arrive.
-- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#88. Add new entries after each fix.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#89. Add new entries after each fix.
 
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 

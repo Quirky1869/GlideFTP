@@ -5,8 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
+
+// searchResultLimit caps how many matches Search returns, to keep a
+// recursive search over a huge tree from hanging the UI.
+const searchResultLimit = 500
 
 type FileEntry struct {
 	Name    string    `json:"name"`
@@ -50,6 +55,63 @@ func ListDir(dir string, showHidden bool) ([]FileEntry, error) {
 	})
 
 	return result, nil
+}
+
+// Search looks for entries whose name contains query (case-insensitive)
+// inside dir. When recursive is true it also descends into every
+// subdirectory; otherwise it only looks at dir's direct children.
+func Search(dir, query string, recursive, showHidden bool) ([]FileEntry, error) {
+	q := strings.ToLower(query)
+	var result []FileEntry
+	err := searchWalk(dir, q, recursive, showHidden, &result)
+	if err != nil && len(result) == 0 {
+		return nil, err
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].IsDir != result[j].IsDir {
+			return result[i].IsDir
+		}
+		return result[i].Name < result[j].Name
+	})
+	return result, nil
+}
+
+func searchWalk(dir, q string, recursive, showHidden bool, result *[]FileEntry) error {
+	if len(*result) >= searchResultLimit {
+		return nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if len(*result) >= searchResultLimit {
+			return nil
+		}
+		hidden := len(e.Name()) > 0 && e.Name()[0] == '.'
+		if !showHidden && hidden {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		fullPath := filepath.Join(dir, e.Name())
+		if strings.Contains(strings.ToLower(e.Name()), q) {
+			*result = append(*result, FileEntry{
+				Name:    e.Name(),
+				Path:    fullPath,
+				IsDir:   e.IsDir(),
+				Size:    info.Size(),
+				ModTime: info.ModTime(),
+				Mode:    info.Mode().String(),
+			})
+		}
+		if recursive && e.IsDir() {
+			_ = searchWalk(fullPath, q, recursive, showHidden, result)
+		}
+	}
+	return nil
 }
 
 func MkDir(path string) error {

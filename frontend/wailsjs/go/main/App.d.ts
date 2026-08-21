@@ -75,6 +75,8 @@ export function LocalMkDir(arg1:string):Promise<void>;
 
 export function LocalRename(arg1:string,arg2:string):Promise<void>;
 
+export function LocalSearch(arg1:string,arg2:string,arg3:boolean):Promise<Array<fs.FileEntry>>;
+
 export function OpenImportDialog():Promise<main.ImportFileInfo>;
 
 export function QueueDownload(arg1:string,arg2:string):Promise<void>;
@@ -96,6 +98,8 @@ export function RemoteListDir(arg1:string):Promise<Array<connection.RemoteFileEn
 export function RemoteMkDir(arg1:string):Promise<void>;
 
 export function RemoteRename(arg1:string,arg2:string):Promise<void>;
+
+export function RemoteSearch(arg1:string,arg2:string,arg3:boolean):Promise<Array<connection.RemoteFileEntry>>;
 
 export function RemoveTransfer(arg1:string):Promise<void>;
 

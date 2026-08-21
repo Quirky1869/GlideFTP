@@ -11,8 +11,8 @@
     remotePath, remoteEntries, remoteSelected,
     initLocalDir, refreshLocal, navigateLocalUp,
     refreshRemote,
-    localMkDir, localDelete, localRename, localCopy,
-    remoteMkDir, remoteDelete, remoteRename,
+    localMkDir, localDelete, localRename, localCopy, localSearch,
+    remoteMkDir, remoteDelete, remoteRename, remoteSearch,
     disconnect,
   } from './stores/connection.js';
   import { transfers, queueVisible, initTransfers, completedTransfer } from './stores/transfers.js';
@@ -212,6 +212,7 @@
             onMkDir={localMkDir}
             onDelete={localDelete}
             onRename={localRename}
+            onSearch={localSearch}
           />
         </div>
         <div
@@ -238,6 +239,7 @@
             onMkDir={remoteMkDir}
             onDelete={remoteDelete}
             onRename={remoteRename}
+            onSearch={remoteSearch}
           />
         </div>
       </div>

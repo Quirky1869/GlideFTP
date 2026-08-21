@@ -2937,3 +2937,102 @@ double-click regardless of the setting.
   doubleClickNavigateUp :
     FR "Double-cliquer sur ".." pour aller au dossier parent"
     EN "Double-click ".." to go to parent folder"
+
+---
+
+#89
+Title: [Feature] Search in the current folder (with recursive subfolder search)
+Labels: enhancement, ui
+Version fixed: v1.7.6
+Description:
+Requested a search feature in the file browser: a magnifying-glass button
+between the tree-view toggle and the refresh button, for both the local and
+remote panels, to search inside the current folder ("."). Should also
+support searching recursively through all subfolders when possible, and
+must work the same in both list view and tree view. Follow-up request:
+recursive subfolder search should be the default (on), both locally and
+remotely, not something the user has to switch on each time.
+
+Solution (closing comment):
+Implemented in v1.7.6 across local.go, app.go, connection.js, App.svelte and
+FileBrowser.svelte.
+
+**Go — internal/fs/local.go:**
+  Search(dir, query string, recursive, showHidden bool) ([]FileEntry, error)
+    Non-recursive: filters dir's direct children by case-insensitive
+    substring match. Recursive: walks every subdirectory (searchWalk),
+    same matching rule. Capped at 500 results (searchResultLimit) so a
+    huge local tree can't hang the UI.
+
+**Go — app.go:**
+  LocalSearch(path, query string, recursive bool) ([]localfs.FileEntry, error)
+    Thin wrapper around localfs.Search using the current ShowHiddenFiles
+    setting.
+  RemoteSearch(path, query string, recursive bool) ([]connection.RemoteFileEntry, error)
+    Recursive walk (remoteSearchWalk) built on the existing a.connMgr.ListDir
+    (already has its own per-call timeout/watchdog). Each subdirectory is a
+    network round-trip; a permission error on one subdirectory doesn't abort
+    the rest of the search (best-effort). Capped at 500 results
+    (remoteSearchResultLimit) for the same reason as the local search.
+  JS bindings regenerated via `wails generate module` (LocalSearch /
+  RemoteSearch added to frontend/wailsjs/go/main/App.{js,d.ts}).
+
+**Frontend — connection.js / App.svelte:**
+  localSearch(path, query, recursive) / remoteSearch(path, query, recursive)
+  wrap LocalSearch/RemoteSearch. Passed into each FileBrowser instance as the
+  onSearch prop, same pattern as onMkDir/onDelete/onRename.
+
+**Frontend — FileBrowser.svelte:**
+New toolbar button (magnifying glass) between the tree-view toggle and the
+refresh button, in the shared browser-header — so it appears identically in
+both panels and is unaffected by list/tree mode.
+
+Search bar (inline row, like the existing new-folder row): text input +
+recursive toggle button + spinner (while a recursive backend search is in
+flight) + close button. Esc or the close button exits search mode.
+
+State: searchMode, searchQuery, searchRecursive (default `true` - see
+follow-up below), searching, searchResults, debounced 350ms on input.
+
+Non-recursive search filters the already-loaded `entries` prop reactively -
+instant, no backend call. Recursive search calls onSearch(path, query, true)
+with a request-id guard (searchReqId) so a stale response from an earlier
+keystroke can't overwrite a newer one.
+
+Unified rendering for both view modes: while search results are non-empty
+(showSearchResults), they replace whichever view is currently shown
+({#if showSearchResults} ... {:else if treeMode} ... {:else} list view
+{/if}) - list view and tree view both get the same flat results list, so no
+separate implementation was needed for tree view. Each result row shows the
+name and, in recursive mode, the relative path of its containing subfolder.
+Double-click on a folder result navigates into it and closes search;
+double-click on a file result transfers it (transferEntry). Right-click
+keeps the normal Rename/Transfer/Delete context menu, drag-and-drop out of
+the results list works too (draggable + handleDragStart).
+
+Rubber-band selection and Shift-click range-select were updated to read
+from the search results list (sortedSearchResults) instead of the normal
+sortedEntries while showSearchResults is true, so multi-select still works
+correctly in search results.
+
+Delete/rename from within search results refresh via
+refreshAfterSearchMutation() (onRefresh() + re-run the recursive search if
+one is active) instead of the tree-specific or list-specific refresh paths.
+
+Search automatically closes when the current folder changes
+(`$: if (path) closeSearch();`), since a search always applies to whichever
+folder was current when it was opened.
+
+**Follow-up - recursive search on by default:**
+searchRecursive now initializes to `true` instead of `false`, so opening
+the search bar starts in recursive mode (both local and remote panels,
+since it's the same component/prop for both) - matches the current folder's
+subfolders being searched immediately without an extra click. Users can
+still toggle it off for a search scoped to just the current folder.
+
+**i18n:**
+  search            : FR "Rechercher" / EN "Search"
+  searchPlaceholder : FR "Rechercher dans ce dossier..." / EN "Search in this folder..."
+  searchRecursive   : FR "Rechercher aussi dans les sous-dossiers" / EN "Search in subfolders too"
+  searchResults     : FR "Résultats de recherche" / EN "Search results"
+  noSearchResults   : FR "Aucun résultat" / EN "No results"

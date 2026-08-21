@@ -33,6 +33,11 @@ export default {
   connectFirst: 'Connect to a server to browse files.',
   emptyFolder: 'Empty folder',
   parentFolder: '.. (parent)',
+  search: 'Search',
+  searchPlaceholder: 'Search in this folder...',
+  searchRecursive: 'Search in subfolders too',
+  searchResults: 'Search results',
+  noSearchResults: 'No results',
 
   // Transfer queue
   transferQueue: 'Transfer queue',

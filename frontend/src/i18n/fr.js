@@ -33,6 +33,11 @@ export default {
   connectFirst: 'Connectez-vous à un serveur pour parcourir les fichiers.',
   emptyFolder: 'Dossier vide',
   parentFolder: '.. (parent)',
+  search: 'Rechercher',
+  searchPlaceholder: 'Rechercher dans ce dossier...',
+  searchRecursive: 'Rechercher aussi dans les sous-dossiers',
+  searchResults: 'Résultats de recherche',
+  noSearchResults: 'Aucun résultat',
 
   // Transfer queue
   transferQueue: 'File de transfert',

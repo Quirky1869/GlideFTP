@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	gfeCrypto "GlideFTP/internal/crypto"
 	"GlideFTP/internal/connection"
+	gfeCrypto "GlideFTP/internal/crypto"
 	localfs "GlideFTP/internal/fs"
 	"GlideFTP/internal/keyring"
 	"GlideFTP/internal/settings"
@@ -552,10 +553,52 @@ func (a *App) GetRemoteCwd() string {
 	return a.connMgr.GetCwd()
 }
 
+// remoteSearchResultLimit caps how many matches RemoteSearch returns, to
+// keep a recursive search over a huge remote tree from hanging the UI
+// (each subdirectory requires a network round-trip).
+const remoteSearchResultLimit = 500
+
+func (a *App) RemoteSearch(path, query string, recursive bool) ([]connection.RemoteFileEntry, error) {
+	var result []connection.RemoteFileEntry
+	err := a.remoteSearchWalk(path, strings.ToLower(query), recursive, &result)
+	if err != nil && len(result) == 0 {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (a *App) remoteSearchWalk(path, q string, recursive bool, result *[]connection.RemoteFileEntry) error {
+	if len(*result) >= remoteSearchResultLimit {
+		return nil
+	}
+	entries, err := a.connMgr.ListDir(path)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if len(*result) >= remoteSearchResultLimit {
+			return nil
+		}
+		if strings.Contains(strings.ToLower(e.Name), q) {
+			*result = append(*result, e)
+		}
+		if recursive && e.IsDir {
+			// Best-effort: a permission error on one subdirectory
+			// shouldn't abort the rest of the search.
+			_ = a.remoteSearchWalk(e.Path, q, recursive, result)
+		}
+	}
+	return nil
+}
+
 // ─── Local Filesystem ─────────────────────────────────────────────────────────
 
 func (a *App) LocalListDir(path string) ([]localfs.FileEntry, error) {
 	return localfs.ListDir(path, a.appSettings.ShowHiddenFiles)
+}
+
+func (a *App) LocalSearch(path, query string, recursive bool) ([]localfs.FileEntry, error) {
+	return localfs.Search(path, query, recursive, a.appSettings.ShowHiddenFiles)
 }
 
 func (a *App) LocalMkDir(path string) error {
