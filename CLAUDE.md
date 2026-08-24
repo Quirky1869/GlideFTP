@@ -89,6 +89,21 @@ magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/wi
 ```
 `make.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` - `sudo pacman -S imagemagick`).
 
+## Git push troubleshooting (this machine)
+
+`git push origin main` over the SSH remote (`git@github.com:Quirky1869/GlideFTP.git`) can fail on this
+machine/network with `kex_exchange_identification: Connection closed by remote host` (or the French
+`Connection closed by ... port 22` / `Impossible de lire le dépôt distant`). Diagnosed once: TCP
+connects fine on both port 22 and port 443 (`ssh.github.com`), but the SSH handshake itself gets cut
+immediately after the client sends its version string - on both ports, to different GitHub edge IPs.
+Meanwhile plain HTTPS to github.com works instantly (`curl https://github.com` → 200 OK). This points to
+something on the local network/firewall/AV actively killing outbound SSH protocol handshakes to GitHub
+specifically, not a GitHub-side or repo-side problem. The commit itself is never lost - only the push
+fails; `git status` still shows the local commit ahead of `origin/main`.
+Fix options (ask the user which one before acting, since it changes their remote config): switch the
+`origin` remote to HTTPS (`https://github.com/Quirky1869/GlideFTP.git`) + a GitHub Personal Access Token,
+or just retry the SSH push later (can be transient/VPN-related).
+
 ## Architecture
 
 ```
