@@ -89,6 +89,10 @@ magick build/appicon.png -define icon:auto-resize="256,128,64,48,32,16" build/wi
 ```
 `make.sh` does this automatically before each Windows build when `appicon.png` is newer than `icon.ico` (requires `imagemagick` - `sudo pacman -S imagemagick`).
 
+## Git workflow rule
+
+**Claude must never run `git commit` or `git push` (including `--force`, tags, or any variant) in this repository.** The user is the only one who commits and pushes. When a change needs to be committed or pushed, Claude must output the exact shell commands in its response and stop there - never invoke them directly, even mid-task.
+
 ## Git push troubleshooting (this machine)
 
 `git push origin main` over the SSH remote (`git@github.com:Quirky1869/GlideFTP.git`) can fail on this
