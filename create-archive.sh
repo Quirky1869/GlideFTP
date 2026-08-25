@@ -504,10 +504,15 @@ make_linux_tar() {
 }
 
 make_appimage_arch_gz() {
+  local src="build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage"
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar.gz"
+  if [ ! -f "$src" ]; then
+    echo "⚠  $src not found — skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
+    return
+  fi
   local staging
   staging="$(mktemp -d)"
-  cp "build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage" "$staging/"
+  cp "$src" "$staging/"
   _write_arch_appimage_readme "$staging"
   echo "→ $out"
   tar -czvf "$out" -C "$staging" "GlideFTP-Arch-x86_64-v${VERSION}.AppImage" README.md
@@ -515,10 +520,15 @@ make_appimage_arch_gz() {
 }
 
 make_appimage_arch_tar() {
+  local src="build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage"
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar"
+  if [ ! -f "$src" ]; then
+    echo "⚠  $src not found — skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
+    return
+  fi
   local staging
   staging="$(mktemp -d)"
-  cp "build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage" "$staging/"
+  cp "$src" "$staging/"
   _write_arch_appimage_readme "$staging"
   echo "→ $out"
   tar -cvf "$out" -C "$staging" "GlideFTP-Arch-x86_64-v${VERSION}.AppImage" README.md
