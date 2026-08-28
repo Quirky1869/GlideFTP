@@ -2,7 +2,7 @@
 pkgname=glideftp-bin
 pkgver=1.7.6
 pkgrel=1
-pkgdesc="Desktop FTP/SFTP client with dual-panel interface"
+pkgdesc="Desktop FTP/SFTP client"
 arch=('x86_64')
 url="https://github.com/Quirky1869/GlideFTP"
 license=('MIT')
@@ -14,7 +14,7 @@ conflicts=('glideftp')
 source_x86_64=(
     "${pkgname}-${pkgver}.tar.gz::https://github.com/Quirky1869/GlideFTP/releases/download/v${pkgver}/GlideFTP-Linux-v${pkgver}.tar.gz"
 )
-sha256sums_x86_64=('2833894bc59d5f8cadb78290082c691af84bc657eecdcc6ad47e8e825c21d03f')
+sha256sums_x86_64=('9004eec785e167a304fdd72104a509c257112a9b422a4eec042edb8751ffa0b0')
 
 package() {
     install -Dm755 "${srcdir}/GlideFTP"           "${pkgdir}/usr/bin/glideftp"
