@@ -4,9 +4,27 @@
 
 ---
 
+<table style="text-align:center;">  
+  <tr>  
+    <th colspan="3" style="text-align:center;">🇬🇧 Prerequisites / 🇫🇷 Prérequis</th>  
+  </tr>  
+  <tr>  
+    <th style="text-align:center;">Ubuntu / Debian (22.04+)</th>  
+    <th style="text-align:center;">Fedora</th>  
+    <th style="text-align:center;">Arch Linux</th>  
+  </tr>  
+  <tr>  
+    <td style="text-align:center;"><code>sudo apt install libwebkit2gtk-4.1-0</code></td>  
+    <td style="text-align:center;"><code>sudo dnf install webkit2gtk4.1</code></td>  
+    <td style="text-align:center;"><code>sudo pacman -S webkit2gtk-4.1</code></td>  
+  </tr>  
+</table>  
+
+---
+
 ## 🇬🇧 English
 
-**GlideFTP** is a free, open-source desktop FTP/SFTP client built with [Go](https://go.dev/) and [Wails v2](https://wails.io/), featuring a modern [Svelte](https://svelte.dev/) interface. It is designed to be fast, lightweight, and compatible with both **Windows** and **Linux**.
+**GlideFTP** is a free, open-source desktop FTP/SFTP client built with [Go](https://go.dev/) and [Wails v2](https://wails.io/), featuring a modern [Svelte](https://svelte.dev/) interface. It is designed to be fast, lightweight, and compatible with both **Windows** and **Linux**.  
 
 ### Features
 
@@ -80,7 +98,7 @@ chmod +x GlideFTP
 
 #### Linux - password storage (keyring)
 
-GlideFTP stores passwords in the **system keyring** (gnome-keyring or kwallet). These are usually pre-installed on major desktop environments. If the keyring daemon is not running, a warning banner appears in the Site Manager and passwords will not be saved (use "Ask password" auth instead).
+GlideFTP stores passwords in the **system keyring** (gnome-keyring or kwallet). These are usually pre-installed on major desktop environments. If the keyring daemon is not running, a warning banner appears in the Site Manager and passwords will not be saved (use "Ask password" auth instead).  
 
 To check whether a keyring daemon is available:
 
@@ -115,7 +133,7 @@ Two AppImage variants are provided - both are fully self-contained (no system li
 | **Debian/Ubuntu** ✓ recommended | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.*` | Ubuntu 22.04+, Debian 12+, Arch, and any distro with GLIBC 2.35+ |
 | **Arch** | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.*` | Arch, modern Fedora (GLIBC 2.43+) |
 
-If you are unsure which one to pick, use the **Debian/Ubuntu** variant - it runs on the widest range of distributions.
+If you are unsure which one to pick, use the **Debian/Ubuntu** variant - it runs on the widest range of distributions.  
 
 > **Check your GLIBC version:** `ldd --version` (first line shows the version number)
 
@@ -162,7 +180,7 @@ git clone https://github.com/Quirky1869/GlideFTP.git
 cd GlideFTP
 ```
 
-**Using the build script (recommended):**
+**Using the build script (recommended):**  
 
 ```bash
 ./make.sh                    # all: Linux binary + Windows exe + AppImages + .deb + .rpm
@@ -178,7 +196,7 @@ cd GlideFTP
 > `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
 > `appimage-debian`, `deb`, and `rpm` require **Docker** or **Podman**.
 
-**Manual commands:**
+**Manual commands:**  
 
 ```bash
 # Linux (requires webkit2gtk-4.1)
@@ -440,4 +458,4 @@ Les [releases](https://github.com/Quirky1869/GlideFTP/releases) sont disponibles
 
 ---
 
-Developed by [Quirky](https://github.com/Quirky1869)
+Developed by [Quirky](https://github.com/Quirky1869)  
