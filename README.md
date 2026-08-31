@@ -25,7 +25,7 @@
 - **Ask-password auth** - password is never saved; prompted at connect time
 - **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive (or SSH Key) and vice versa
 - **Path autocomplete** - dropdown suggestions while typing in the path bar
-- **Full settings panel** - passive mode, timeout, concurrent transfers, speed limit, hidden files, and more
+- **Full settings panel** - passive mode, timeout, concurrent transfers, speed limit, hidden files
 - **Encryption support** - None, TLS (implicit), FTPES (explicit)
 - **System trash on delete** - deleting a local file sends it to the OS trash (Linux: XDG Trash spec; Windows: Recycle Bin) rather than permanently deleting it
 - **Connection keepalive** - a NOOP/ping is sent every 60 seconds to prevent the server from dropping idle connections; unexpected disconnects trigger a notification and automatic UI update
@@ -38,7 +38,7 @@
 
 |SFTP|Sites|
 |----|-----------|
-| ![](./_images/sftp-fr-w.png) | ![](./_images/sites-fr-d.png) |
+| ![](./_images/sftp-en-d.png) | ![](./_images/sites-fr-d.png) |
 
 |Connected|Settings|
 |---------|--------|
@@ -243,7 +243,7 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
 - **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive (ou Clé SSH) et inversement
 - **Autocomplétion de chemin** - suggestions dans la barre de chemin lors de la saisie
-- **Panneau de paramètres complet** - mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés, et plus encore
+- **Panneau de paramètres complet** - mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés
 - **Support du chiffrement** - Aucun, TLS (implicite), FTPES (explicite)
 - **Corbeille système à la suppression** - la suppression d'un fichier local l'envoie dans la corbeille de l'OS (Linux : spec XDG Trash ; Windows : Corbeille) plutôt que de le supprimer définitivement
 - **Keepalive de connexion** - un NOOP/ping est envoyé toutes les 60 secondes pour éviter qu'un serveur coupe une connexion inactive ; une déconnexion inattendue affiche une notification et met à jour l'interface automatiquement
@@ -260,7 +260,7 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 
 |Connecté|Paramètres|
 |:---------:|:--------:|
-| ![](./_images/connected-fr-w.png) | ![](./_images/settings-en-d.png) |
+| ![](./_images/connected-fr-w.png) | ![](./_images/parametres-fr-d.png) |
 
 ### Télécharger les binaires pré-compilés
 
