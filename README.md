@@ -39,7 +39,7 @@
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
 - **Sound notifications** - optional sound alert (4 built-in tones, previewable) when a batch of transfers finishes; configurable in settings
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
-- **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
+- **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1-5) in settings
 - **Quick connect** - reconnect or open an additional connection straight from the toolbar without going through the Site Manager
 - **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; reorder sites by drag-and-drop; duplicate a site in one click; selective export (choose which sites to include); export/import as JSON or encrypted `.gfe`
 - **Native Linux packages** - available as `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), and on the AUR (`glideftp-bin`) for Arch Linux; automatic releases via GitHub Actions on each version tag

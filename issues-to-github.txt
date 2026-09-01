@@ -1,4 +1,4 @@
-GlideFTP – Issues to create on GitHub (1 → 55)
+GlideFTP - Issues to create on GitHub (1 → 55)
 ================================================
 Format: Title / Labels / Description / Solution (closing comment)
 ================================================
@@ -148,7 +148,7 @@ There is no way to resize the left/right panel split or the transfer queue heigh
 Solution (closing comment):
 Implemented in v1.1.
 - App.svelte: a `.browser-splitter` div sits between the two FileBrowser panels.
-  mousedown → mousemove computes a percentage (clamped 20–80 %) stored in
+  mousedown → mousemove computes a percentage (clamped 20-80 %) stored in
   `leftWidth`; both panels use `style="width: {leftWidth}%"` /
   `style="width: {100-leftWidth}%"`.
 - TransferQueue.svelte: a resize handle at the top triggers a similar
@@ -973,7 +973,7 @@ Site Manager (SiteManager.svelte):
   enabling the "Keep" button.
 
 Settings:
-- internal/settings/settings.go: MaxConnections int field (default 3, range 1–5).
+- internal/settings/settings.go: MaxConnections int field (default 3, range 1-5).
 - SettingsPanel.svelte: MaxConnections exposed with custom −/+ stepper buttons.
 
 ---
@@ -2393,9 +2393,9 @@ After other initialization, applies the stored window configuration:
 **SettingsPanel.svelte - Interface section:**
 Three new rows added after "Confirm before deleting":
 - "Open maximized" toggle switch (`startMaximized`).
-- "Window width (px)" stepper (range 800–3840, step 50),
+- "Window width (px)" stepper (range 800-3840, step 50),
   disabled and grayed out (`class:row-disabled`) when `startMaximized` is true.
-- "Window height (px)" stepper (range 600–2160, step 50),
+- "Window height (px)" stepper (range 600-2160, step 50),
   same disabled behavior.
 New CSS: `.row-disabled { opacity: 0.4; pointer-events: none; }`.
 
