@@ -35,6 +35,8 @@ export function Disconnect():Promise<void>;
 
 export function DoImportSites(arg1:string,arg2:string):Promise<number>;
 
+export function ExpandLocalPath(arg1:string):Promise<string>;
+
 export function ExportSettings():Promise<void>;
 
 export function ExportSitesEncrypted(arg1:string):Promise<void>;

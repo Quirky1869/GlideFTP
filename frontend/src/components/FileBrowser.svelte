@@ -2,7 +2,7 @@
   import { t } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
-  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir } from '../../wailsjs/go/main/App.js';
+  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { clipboard, localCopy, remoteCopy, remoteCopyDir } from '../stores/connection.js';
@@ -241,7 +241,10 @@
     editingPath = false;
     pathSuggestions = [];
     if (editPathValue && editPathValue !== path) {
-      try { await onNavigate(editPathValue); } catch {}
+      // Only the local side has real environment variables/~ to resolve -
+      // a remote path like "$logs" or "%DATA%" is a literal server directory name.
+      const target = side === 'local' ? await ExpandLocalPath(editPathValue) : editPathValue;
+      try { await onNavigate(target); } catch {}
     }
   }
 

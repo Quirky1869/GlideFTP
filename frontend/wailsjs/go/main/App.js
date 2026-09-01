@@ -58,6 +58,10 @@ export function DoImportSites(arg1, arg2) {
   return window['go']['main']['App']['DoImportSites'](arg1, arg2);
 }
 
+export function ExpandLocalPath(arg1) {
+  return window['go']['main']['App']['ExpandLocalPath'](arg1);
+}
+
 export function ExportSettings() {
   return window['go']['main']['App']['ExportSettings']();
 }

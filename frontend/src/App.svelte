@@ -27,6 +27,7 @@
   let showSiteManager = false;
   let showDisconnectConfirm = false;
   let lostNotif = null; // { host } when a connection is dropped by the server
+  let lastDefaultLocalDir = ''; // tracks the setting so a change can be applied live
 
   // Resizable split pane
   let leftWidth = 50; // percent
@@ -38,7 +39,8 @@
 
   onMount(async () => {
     const s = await loadSettings();
-    await initLocalDir(s?.defaultLocalDir || '');
+    lastDefaultLocalDir = s?.defaultLocalDir || '';
+    await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
     EventsOn('connection:lost', ({ id, host }) => {
       closeTab(id);
@@ -73,12 +75,18 @@
   }
 
   // Settings saved — refresh file lists so showHiddenFiles takes effect
-  function handleSettingsSaved() {
-    if (isConnected) {
-      refreshLocal(get(localPath));
-      refreshRemote(get(remotePath));
+  async function handleSettingsSaved(newSettings) {
+    // Default local directory changed - navigate there immediately instead of
+    // waiting for the next app launch to pick it up.
+    const newDefaultDir = newSettings?.defaultLocalDir || '';
+    if (newDefaultDir !== lastDefaultLocalDir) {
+      lastDefaultLocalDir = newDefaultDir;
+      await initLocalDir(newDefaultDir);
     } else {
       refreshLocal(get(localPath));
+    }
+    if (isConnected) {
+      refreshRemote(get(remotePath));
     }
   }
 

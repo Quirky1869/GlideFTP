@@ -692,6 +692,13 @@ func (a *App) GetLocalRoots() []localfs.FileEntry {
 	return localfs.Roots()
 }
 
+// ExpandLocalPath resolves a leading ~ and environment variable references
+// (Windows %VAR% and Unix $VAR / ${VAR}) in a user-typed local path - e.g. the
+// "Default local directory" setting or the editable local path bar.
+func (a *App) ExpandLocalPath(path string) string {
+	return localfs.ExpandPath(path)
+}
+
 func (a *App) BrowseLocalDir() (string, error) {
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select folder",

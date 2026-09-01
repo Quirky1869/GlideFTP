@@ -5,7 +5,7 @@ import {
   GetConnections, SwitchConnection, CloseConnection,
   RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename, RemoteCopy, RemoteCopyDir, RemoteSearch,
   LocalListDir, LocalMkDir, LocalDelete, LocalRename, LocalCopy, LocalSearch,
-  GetLocalHome, GetLocalParent,
+  GetLocalHome, GetLocalParent, ExpandLocalPath,
 } from '../../wailsjs/go/main/App.js';
 
 // 'disconnected' | 'connecting' | 'connected'
@@ -28,7 +28,7 @@ export const remoteEntries = writable([]);
 export const remoteSelected = writable([]);
 
 export async function initLocalDir(startDir) {
-  const dir = startDir || await GetLocalHome();
+  const dir = startDir ? await ExpandLocalPath(startDir) : await GetLocalHome();
   localPath.set(dir);
   await refreshLocal(dir);
 }

@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -12,6 +13,42 @@ import (
 // searchResultLimit caps how many matches Search returns, to keep a
 // recursive search over a huge tree from hanging the UI.
 const searchResultLimit = 500
+
+// winEnvPattern matches Windows-style %VAR% environment variable references.
+var winEnvPattern = regexp.MustCompile(`%([^%]+)%`)
+
+// ExpandPath resolves a leading ~ and environment variable references
+// (Windows %VAR% and Unix $VAR / ${VAR}) in a user-typed path, such as the
+// "Default local directory" setting or the editable local path bar. It does
+// not touch the filesystem, so it is safe to call on any string. A reference
+// to an unset variable is left untouched rather than collapsed to "".
+func ExpandPath(path string) string {
+	if path == "" {
+		return path
+	}
+	if path == "~" {
+		return HomeDir()
+	}
+	if strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
+		if home := HomeDir(); home != "" {
+			path = filepath.Join(home, path[2:])
+		}
+	}
+	path = winEnvPattern.ReplaceAllStringFunc(path, func(match string) string {
+		name := match[1 : len(match)-1]
+		if v, ok := os.LookupEnv(name); ok {
+			return v
+		}
+		return match
+	})
+	path = os.Expand(path, func(name string) string {
+		if v, ok := os.LookupEnv(name); ok {
+			return v
+		}
+		return "$" + name
+	})
+	return path
+}
 
 type FileEntry struct {
 	Name    string    `json:"name"`
