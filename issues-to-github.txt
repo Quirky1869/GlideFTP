@@ -3248,3 +3248,41 @@ App.svelte) each time the modal is closed and reopened.
                      EN "Reorder sites (drag and drop)"
   reorderSitesDone : FR "Terminer la réorganisation"
                      EN "Done reordering"
+
+---
+
+#93
+Title: [Bug] Ugly/illogical layout for the delete-site confirmation in Site Manager
+Labels: bug, ui
+Version fixed: v1.7.7
+Description:
+Clicking "Supprimer le site" showed the confirmation text and Oui/Non
+buttons crammed into the same row as Connecter/Modifier le site — the
+text ended up off to the side and Oui/Non wrapped underneath only
+"Modifier le site" instead of the whole row, not centered. Requested
+layout: Connecter + Modifier le site on their row, then centered below
+"Êtes-vous sûr de vouloir supprimer ce site ?", then centered below that
+the Oui/Non buttons. Applies to both languages (FR/EN).
+Ref: _images/issues/v1.7.7/issue-36.png
+
+Solution (closing comment):
+Fixed in v1.7.7 in SiteManager.svelte — template/CSS only, no state or
+handler changes (confirmDeleteId, deleteSite() unchanged).
+
+**Root cause:**
+The confirmation text and Oui/Non buttons were rendered as extra items
+inside the *same* `.view-actions` flex row as Connecter/Modifier le
+site, instead of on their own row(s) — `flex-wrap` then broke the row
+unevenly depending on button widths.
+
+**Fix:**
+`.site-view` is already `display: flex; flex-direction: column;
+align-items: center` (each direct child is centered and evenly
+gapped automatically). The markup is now three separate stacked blocks:
+  1. `.view-actions` — Connecter + Modifier le site only; "Supprimer le
+     site" is hidden while confirming (`{#if confirmDeleteId !==
+     selectedSite.id}`)
+  2. `<p class="confirm-text">` — the "Êtes-vous sûr..." message alone,
+     `margin: 0; text-align: center`
+  3. a second `.view-actions` div — Oui / Non only
+Rendered only while `confirmDeleteId === selectedSite.id`.

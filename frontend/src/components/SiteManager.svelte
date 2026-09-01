@@ -756,17 +756,20 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 {$t('editSite')}
               </button>
-              {#if confirmDeleteId === selectedSite.id}
-                <span class="confirm-text">{$t('confirmDelete')}</span>
-                <button class="btn-danger" on:click={() => deleteSite(selectedSite.id)}>{$t('yes')}</button>
-                <button class="btn-secondary" on:click={() => confirmDeleteId = null}>{$t('no')}</button>
-              {:else}
+              {#if confirmDeleteId !== selectedSite.id}
                 <button class="btn-danger-outline" on:click={() => confirmDeleteId = selectedSite.id}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                   {$t('deleteSite')}
                 </button>
               {/if}
             </div>
+            {#if confirmDeleteId === selectedSite.id}
+              <p class="confirm-text">{$t('confirmDelete')}</p>
+              <div class="view-actions">
+                <button class="btn-danger" on:click={() => deleteSite(selectedSite.id)}>{$t('yes')}</button>
+                <button class="btn-secondary" on:click={() => confirmDeleteId = null}>{$t('no')}</button>
+              </div>
+            {/if}
           </div>
 
         {:else}
@@ -1334,7 +1337,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .copy-note-btn svg { width: 14px; height: 14px; }
 
 .view-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
-.confirm-text { font-size: 12px; color: var(--danger); }
+.confirm-text { margin: 0; font-size: 12px; color: var(--danger); text-align: center; }
 
 .no-selection {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
