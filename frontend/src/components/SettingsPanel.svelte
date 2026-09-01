@@ -1,7 +1,7 @@
 <script>
   import { t } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
-  import { BrowseLocalDir } from '../../wailsjs/go/main/App.js';
+  import { BrowseLocalDir, ExportSettings, ImportSettings } from '../../wailsjs/go/main/App.js';
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
@@ -71,6 +71,26 @@
 
   function resetSetting(key) {
     if (key in DEFAULTS) form = { ...form, [key]: DEFAULTS[key] };
+  }
+
+  async function exportSettings() {
+    try {
+      await ExportSettings();
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
+  }
+
+  async function importSettings() {
+    try {
+      const imported = await ImportSettings();
+      if (!imported) return;
+      await saveSettings(imported);
+      form = { ...imported };
+      alert($t('settingsImported'));
+    } catch (e) {
+      if (e) alert(e.toString());
+    }
   }
 </script>
 
@@ -337,6 +357,13 @@
 
   <div class="panel-footer">
     <span class="version-badge">v1.7.7</span>
+    <button class="io-icon-btn" on:click={exportSettings} title={$t('exportSettings')} aria-label={$t('exportSettings')}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </button>
+    <button class="io-icon-btn" on:click={importSettings} title={$t('importSettings')} aria-label={$t('importSettings')}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    <div class="footer-spacer"></div>
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}
@@ -651,7 +678,26 @@ input:focus { border-color: var(--accent); }
   flex-shrink: 0;
 }
 
-.version-badge { font-size: 12px; color: var(--accent); margin-right: auto; }
+.version-badge { font-size: 12px; color: var(--accent); }
+
+.footer-spacer { flex: 1; }
+
+.io-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.io-icon-btn:hover { background: var(--bg-button-hover); color: var(--accent); border-color: var(--accent); }
+.io-icon-btn svg { width: 15px; height: 15px; }
 
 .saved-msg { font-size: 13px; color: var(--success); }
 

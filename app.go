@@ -106,6 +106,56 @@ func (a *App) SaveSettings(s settings.Settings) error {
 	return s.Save()
 }
 
+// ExportSettings exports all current app settings (the whole Settings page) as plain JSON.
+func (a *App) ExportSettings() error {
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "Export settings",
+		DefaultFilename: "glideftp-settings.json",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+		},
+	})
+	if err != nil || path == "" {
+		return err
+	}
+	data, err := json.MarshalIndent(a.appSettings, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0600)
+}
+
+// ImportSettings opens a file picker, loads settings from a previously exported JSON file,
+// applies them immediately (transfer workers/speed limit included) and persists them to disk.
+// Fields missing from the file (e.g. an older export) fall back to defaults rather than being zeroed.
+func (a *App) ImportSettings() (*settings.Settings, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Import settings",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "JSON Files", Pattern: "*.json"},
+			{DisplayName: "All Files", Pattern: "*"},
+		},
+	})
+	if err != nil || path == "" {
+		return nil, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	s := settings.Default()
+	if err := json.Unmarshal(data, s); err != nil {
+		return nil, fmt.Errorf("fichier de paramètres invalide : %w", err)
+	}
+	if err := s.Save(); err != nil {
+		return nil, err
+	}
+	a.appSettings = s
+	a.queue.SetWorkers(s.MaxConcurrentTransfers)
+	a.queue.SetSpeedLimit(s.MaxTransferSpeedKBps)
+	return s, nil
+}
+
 // ─── Keyring ─────────────────────────────────────────────────────────────────
 
 // GetKeyringStatus returns "" when the system keyring is available, or an error key otherwise.

@@ -135,6 +135,9 @@ export default {
   resetToDefault: 'Remettre par défaut',
   saveSettings: 'Enregistrer',
   settingsSaved: 'Paramètres enregistrés',
+  exportSettings: 'Exporter les paramètres',
+  importSettings: 'Importer les paramètres',
+  settingsImported: 'Paramètres importés',
 
   // Site note
   siteNote: 'Note',

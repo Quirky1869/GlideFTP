@@ -35,6 +35,8 @@ export function Disconnect():Promise<void>;
 
 export function DoImportSites(arg1:string,arg2:string):Promise<number>;
 
+export function ExportSettings():Promise<void>;
+
 export function ExportSitesEncrypted(arg1:string):Promise<void>;
 
 export function ExportSitesEncryptedSelected(arg1:string,arg2:Array<string>):Promise<void>;
@@ -64,6 +66,8 @@ export function GetSettings():Promise<settings.Settings>;
 export function GetSites():Promise<Array<sites.Site>>;
 
 export function GetTransfers():Promise<Array<transfer.Job>>;
+
+export function ImportSettings():Promise<settings.Settings>;
 
 export function LocalCopy(arg1:string,arg2:string):Promise<void>;
 

@@ -58,6 +58,10 @@ export function DoImportSites(arg1, arg2) {
   return window['go']['main']['App']['DoImportSites'](arg1, arg2);
 }
 
+export function ExportSettings() {
+  return window['go']['main']['App']['ExportSettings']();
+}
+
 export function ExportSitesEncrypted(arg1) {
   return window['go']['main']['App']['ExportSitesEncrypted'](arg1);
 }
@@ -116,6 +120,10 @@ export function GetSites() {
 
 export function GetTransfers() {
   return window['go']['main']['App']['GetTransfers']();
+}
+
+export function ImportSettings() {
+  return window['go']['main']['App']['ImportSettings']();
 }
 
 export function LocalCopy(arg1, arg2) {
