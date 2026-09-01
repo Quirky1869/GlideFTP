@@ -27,6 +27,8 @@ type Settings struct {
 	StartMaximized                 bool   `json:"startMaximized"`
 	CloseSiteManagerOnClickOutside bool   `json:"closeSiteManagerOnClickOutside"`
 	DoubleClickNavigateUp          bool   `json:"doubleClickNavigateUp"`
+	NotificationSoundEnabled       bool   `json:"notificationSoundEnabled"`
+	NotificationSound              string `json:"notificationSound"`
 }
 
 func Default() *Settings {
@@ -52,6 +54,8 @@ func Default() *Settings {
 		StartMaximized:                 false,
 		CloseSiteManagerOnClickOutside: true,
 		DoubleClickNavigateUp:          false,
+		NotificationSoundEnabled:       false,
+		NotificationSound:              "chime",
 	}
 }
 

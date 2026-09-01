@@ -1,10 +1,31 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { EventsOn } from '../../wailsjs/runtime/runtime.js';
 import { GetTransfers, CancelTransfer, RetryTransfer, ClearTransfers, RemoveTransfer } from '../../wailsjs/go/main/App.js';
+import { settings } from './settings.js';
+import { playNotificationSound } from '../utils/sound.js';
 
 export const transfers = writable([]);
 export const queueVisible = writable(false);
 export const completedTransfer = writable(null);
+
+function isActive(job) {
+  return job.status === 'pending' || job.status === 'running';
+}
+
+// Plays the notification sound once the whole queue has drained (no more
+// pending/running jobs) - not after every individual file - so a batch of
+// N transfers only makes one sound, right when the last one wraps up.
+let hadActiveJobs = false;
+transfers.subscribe(list => {
+  const active = list.some(isActive);
+  if (hadActiveJobs && !active) {
+    const s = get(settings);
+    if (s?.notificationSoundEnabled) {
+      playNotificationSound(s.notificationSound);
+    }
+  }
+  hadActiveJobs = active;
+});
 
 export async function initTransfers() {
   try {

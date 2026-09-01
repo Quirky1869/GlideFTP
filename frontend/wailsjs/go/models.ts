@@ -184,6 +184,8 @@ export namespace settings {
 	    startMaximized: boolean;
 	    closeSiteManagerOnClickOutside: boolean;
 	    doubleClickNavigateUp: boolean;
+	    notificationSoundEnabled: boolean;
+	    notificationSound: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -211,6 +213,8 @@ export namespace settings {
 	        this.startMaximized = source["startMaximized"];
 	        this.closeSiteManagerOnClickOutside = source["closeSiteManagerOnClickOutside"];
 	        this.doubleClickNavigateUp = source["doubleClickNavigateUp"];
+	        this.notificationSoundEnabled = source["notificationSoundEnabled"];
+	        this.notificationSound = source["notificationSound"];
 	    }
 	}
 

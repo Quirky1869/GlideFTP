@@ -3036,3 +3036,140 @@ still toggle it off for a search scoped to just the current folder.
   searchRecursive   : FR "Rechercher aussi dans les sous-dossiers" / EN "Search in subfolders too"
   searchResults     : FR "Résultats de recherche" / EN "Search results"
   noSearchResults   : FR "Aucun résultat" / EN "No results"
+
+---
+
+#90
+Title: [Feature] Sound notification when the transfer queue finishes
+Labels: enhancement, settings, transfers
+Version fixed: v1.7.7
+Description:
+Requested a sound notification played when transfers finish, with an
+on/off setting and a choice of sound (a dropdown of available sounds plus
+a speaker button to preview one). Sound only, no OS/desktop notifications.
+No sounds were provided by the user — asked to create them. Follow-up:
+must work for both uploads and downloads, and the sound must play only
+once the whole transfer queue is empty, not once per individual file.
+
+Solution (closing comment):
+Implemented in v1.7.7 across settings.go, a new generated-sounds pipeline,
+sound.js, transfers.js and SettingsPanel.svelte.
+
+**Go — internal/settings/settings.go:**
+Two new fields:
+  NotificationSoundEnabled bool   `json:"notificationSoundEnabled"`
+  NotificationSound        string `json:"notificationSound"`
+Defaults: false / "chime". Plain JSON pass-through — no Go-side audio
+code at all, playback is 100% frontend.
+
+**Sound generation — scripts/generate_notification_sounds.py:**
+Pure-stdlib Python (wave/struct/math/base64, no external deps) synthesizes
+four short, soft tones — soft attack + exponential decay so none of them
+are jarring:
+  chime — two soft ascending bell notes (C6 → E6), slightly overlapping
+  bell  — a single warm, long-decaying tone (A5) with inharmonic overtones
+  pop   — a very short wood-block/marimba-like blip (C5)
+  glass — an airy, bright descending two-note (E6 → C6)
+Writes frontend/src/assets/sounds/*.wav (reference copies, for listening)
+AND frontend/src/utils/sounds.generated.js (the same four sounds as
+`data:audio/wav;base64,...` strings) — see the WebKitGTK issue below for
+why the .wav files themselves are not imported by the app.
+
+**WebKitGTK Linux gotcha (the actual bulk of this issue's debugging):**
+A plain imported .wav asset URL failed completely silently in the real
+app on Linux — no sound, no JS error, no crash — while the exact same
+code played fine when the built page was opened manually in a real
+browser (Chrome) at the wails-dev debug URL. Root cause: on Linux, Wails'
+native window always loads the frontend through its own custom `wails://`
+URI scheme (true in both `wails dev` and the packaged binary — the
+`http://localhost:34115` printed by `wails dev` is only for manually
+opening the page in an external browser to debug, not what the app
+window itself navigates to). WebKitGTK's HTML5 `<audio>`/`<video>` loader
+only recognizes a fixed allowlist of URI schemes (http/https/file/data/
+blob/...) before ever touching GStreamer — `wails://` isn't in that list,
+so the media element fails instantly with
+`MediaPlayerPrivateGStreamer.cpp:1554:loadingFailed: ... FormatError`,
+confirmed by `GST_DEBUG=3,webkitwebsrc:6,souphttpsrc:6,typefind:5`
+producing zero output from any of those categories (the failure happens
+before a GStreamer pipeline is even built). Ruled out along the way,
+none of which fixed it: an unreferenced `new Audio()` being garbage
+collected before playback (fixed separately by caching instances, real
+bug but not the blocker), `WEBKIT_DISABLE_SANDBOX=1`, and
+`WEBKIT_DISABLE_COMPOSITING_MODE=1` (GPU/compositing was a red herring —
+confirmed via an isolated WebKitGTK MiniBrowser test). Fix: embed each
+sound as a `data:` URI instead of a plain asset URL — a scheme WebKit's
+media loader does accept. Vite 3 (pinned by this project) has no
+dev-server-side asset inlining (`?inline` and `assetsInlineLimit` only
+apply to `vite build`, not `vite dev`), hence generating the base64 JS
+module ahead of time in Python rather than relying on Vite's own
+inlining. Any future audio/video element must follow this same
+`sounds.generated.js`-style `data:` URI pattern on Linux.
+
+**Frontend — utils/sound.js:**
+  NOTIFICATION_SOUNDS = [{id, label, url}, ...] read from
+  sounds.generated.js's SOUND_DATA_URLS.
+  playNotificationSound(id) — one cached Audio instance per sound (kept
+  alive for the app's lifetime, see garbage-collection note above),
+  audio.currentTime = 0 then audio.play(), errors logged via
+  console.error instead of being swallowed.
+
+**Frontend — stores/transfers.js (queue-drain, not per-file):**
+  hadActiveJobs module-level flag + a subscription on the `transfers`
+  store computing `active = list.some(j => j.status is pending/running)`.
+  The sound plays only on the transition from hadActiveJobs=true to
+  active=false — i.e. once, right when the last queued job (upload or
+  download, mixed batches included) finishes, never once per file.
+  Gated on settings.notificationSoundEnabled.
+
+**Frontend — SettingsPanel.svelte:**
+New "Notifications" section (between Transfers and Connection):
+  - on/off switch (`.sw` pattern) — notificationSoundEnabled
+  - when on: a `<select>` dropdown of the 4 sound names (i18n-labeled)
+    bound to notificationSound, plus a speaker-icon button that calls
+    playNotificationSound(form.notificationSound) to preview
+  Both added to the DEFAULTS map for the ↺ reset buttons. `<select>` was
+  used deliberately — a pattern already proven safe on WebKit-GTK
+  elsewhere in this app (ConnectionBar/SiteManager), unlike hidden
+  checkboxes or native number spinners.
+
+**i18n:**
+  notifications            : FR "Notifications" / EN "Notifications"
+  notificationSoundEnabled : FR "Jouer un son quand un transfert est terminé"
+                              EN "Play a sound when a transfer finishes"
+  notificationSound        : FR "Son de notification" / EN "Notification sound"
+  testSound                : FR "Tester le son" / EN "Test sound"
+  soundChime / soundBell / soundPop / soundGlass :
+    FR "Carillon" / "Cloche" / "Pop" / "Verre"
+    EN "Chime" / "Bell" / "Pop" / "Glass"
+
+---
+
+#91
+Title: [Bug] Delete key does nothing after a rubber-band (click-drag) selection
+Labels: bug, ui
+Version fixed: v1.7.7
+Description:
+Drag a selection box over several files/folders (rubber-band selection),
+then press Delete: nothing happens. Ctrl+click to select the same items
+and press Delete works fine — only the click-drag selection is affected.
+
+Solution (closing comment):
+Fixed in v1.7.7 in FileBrowser.svelte.
+
+**Root cause:**
+The panel div (`tabindex="-1"`) carries the `on:keydown={handlePanelKeydown}`
+listener that Delete/F2/arrow-key navigation depend on — it only fires
+while that div actually has DOM focus. A normal row click (`handleClick`,
+Ctrl+click and Shift+click included) explicitly calls
+`panelEl?.focus({ preventScroll: true })` after updating `selected`, which
+is what makes Delete work afterwards. The rubber-band drag-select
+(`handleListMouseDown` / its `onMove`/`onUp` handlers) correctly builds up
+`selected` as the box is dragged, but never called `panelEl.focus()` —
+so keyboard focus stayed wherever it was before the drag started, and the
+keydown listener never received the Delete press.
+
+**Fix:**
+`onUp()` (fired on mouseup, ending the drag) now also calls
+`panelEl?.focus({ preventScroll: true })`, matching what `handleClick`
+already does — after both a click-drag and a plain click/Ctrl+click/
+Shift+click selection, the panel has focus and Delete/F2/arrow keys work.

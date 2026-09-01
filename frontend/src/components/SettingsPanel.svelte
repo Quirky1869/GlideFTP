@@ -4,6 +4,7 @@
   import { BrowseLocalDir } from '../../wailsjs/go/main/App.js';
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
+  import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
 
   export let onClose = () => {};
   export let onSaved = (_settings) => {};
@@ -64,6 +65,8 @@
     startMaximized: false,
     closeSiteManagerOnClickOutside: true,
     doubleClickNavigateUp: false,
+    notificationSoundEnabled: false,
+    notificationSound: 'chime',
   };
 
   function resetSetting(key) {
@@ -149,6 +152,47 @@
           <button class="browse-btn" on:click={browseDir}>…</button>
         </div>
       </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Notifications -->
+    <section>
+      <h3>{$t('notifications')}</h3>
+      <div class="setting-row">
+        <label>{$t('notificationSoundEnabled')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('notificationSoundEnabled')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.notificationSoundEnabled}
+          on:click={() => toggle('notificationSoundEnabled')}
+          aria-pressed={form.notificationSoundEnabled}
+        ><span class="sw-knob"></span></button>
+      </div>
+      {#if form.notificationSoundEnabled}
+        <div class="setting-row">
+          <label>{$t('notificationSound')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="sound-row">
+            <select bind:value={form.notificationSound}>
+              {#each NOTIFICATION_SOUNDS as sound (sound.id)}
+                <option value={sound.id}>{$t(sound.label)}</option>
+              {/each}
+            </select>
+            <button
+              type="button"
+              class="sound-test-btn"
+              title={$t('testSound')}
+              on:click={() => playNotificationSound(form.notificationSound)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      {/if}
     </section>
 
     <div class="divider"></div>
@@ -292,7 +336,7 @@
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.6</span>
+    <span class="version-badge">v1.7.7</span>
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}
@@ -546,6 +590,38 @@ input:focus { border-color: var(--accent); }
   padding: 5px 10px;
   cursor: pointer;
 }
+
+/* ── Notification sound row ── */
+.sound-row { display: flex; align-items: center; gap: 8px; }
+
+.sound-row select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 5px 8px;
+  font-size: 13px;
+  outline: none;
+  min-width: 130px;
+}
+.sound-row select:focus { border-color: var(--accent); }
+
+.sound-test-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.sound-test-btn:hover { background: var(--bg-button-hover); color: var(--accent); }
+.sound-test-btn svg { width: 15px; height: 15px; }
 
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 

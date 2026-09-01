@@ -383,6 +383,10 @@
       rubberBand = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      // Rubber-band selection never focuses the panel the way a row click
+      // does (handleClick) - without this, Delete/F2/arrow keys silently
+      // do nothing right after a drag-select.
+      panelEl?.focus({ preventScroll: true });
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
