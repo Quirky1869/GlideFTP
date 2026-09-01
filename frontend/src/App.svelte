@@ -22,6 +22,8 @@
   import TransferQueue from './components/TransferQueue.svelte';
   import SettingsPanel from './components/SettingsPanel.svelte';
   import SiteManager from './components/SiteManager.svelte';
+  import NotifyModal from './components/NotifyModal.svelte';
+  import { notification, closeNotify } from './stores/notify.js';
 
   let showSettings = false;
   let showSiteManager = false;
@@ -59,6 +61,7 @@
 
   function handleKeydown(e) {
     if (e.key === 'Escape') {
+      if ($notification) { closeNotify(); return; }
       showSettings = false;
       showSiteManager = false;
       return;
@@ -268,6 +271,8 @@
   {#if showSiteManager}
     <SiteManager onClose={() => showSiteManager = false} />
   {/if}
+
+  <NotifyModal />
 
   <!-- ── Disconnect-all confirmation ───────────────────────────── -->
   {#if showDisconnectConfirm}

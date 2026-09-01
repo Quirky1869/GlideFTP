@@ -4,6 +4,7 @@
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
+  import { notify } from '../stores/notify.js';
 
   export let onClose = () => {};
 
@@ -280,7 +281,7 @@
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
-      alert(e?.toString() || 'Connection failed');
+      notify(e?.toString() || $t('connectError'), 'error');
     } finally {
       connecting = false;
     }
@@ -316,7 +317,7 @@
         await refreshRemote(site?.remoteDir || '/');
         onClose();
       } catch (e) {
-        alert(e?.toString() || 'Connection failed');
+        notify(e?.toString() || $t('connectError'), 'error');
       } finally {
         connecting = false;
       }
@@ -329,7 +330,7 @@
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
-      alert(e?.toString() || 'Connection failed');
+      notify(e?.toString() || $t('connectError'), 'error');
     } finally {
       connecting = false;
     }
@@ -353,7 +354,7 @@
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
-      alert(e?.toString() || 'Connection failed');
+      notify(e?.toString() || $t('connectError'), 'error');
     } finally {
       connecting = false;
     }
@@ -441,7 +442,7 @@
     try {
       await ExportSitesPlainSelected([...exportSelectedIds]);
     } catch (e) {
-      if (e) alert(e.toString());
+      if (e) notify(e.toString(), 'error');
     }
   }
 
@@ -466,7 +467,7 @@
     try {
       await ExportSitesEncryptedSelected(exportPassphrase, [...exportSelectedIds]);
     } catch (e) {
-      if (e) alert(e.toString());
+      if (e) notify(e.toString(), 'error');
     }
   }
 
@@ -484,11 +485,11 @@
         const count = await DoImportSites(info.path, '');
         if (count > 0) {
           await loadSites();
-          alert(`${count} ${$t('importedCount')}`);
+          notify(`${count} ${$t('importedCount')}`);
         }
       }
     } catch (e) {
-      if (e) alert(e.toString());
+      if (e) notify(e.toString(), 'error');
     }
   }
 
@@ -499,7 +500,7 @@
       showImportPassphrase = false;
       if (count > 0) {
         await loadSites();
-        alert(`${count} ${$t('importedCount')}`);
+        notify(`${count} ${$t('importedCount')}`);
       }
     } catch (e) {
       importPassphraseError = e?.toString() || $t('importPassphraseError');

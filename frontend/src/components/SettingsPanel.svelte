@@ -5,6 +5,7 @@
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
+  import { notify } from '../stores/notify.js';
 
   export let onClose = () => {};
   export let onSaved = (_settings) => {};
@@ -77,7 +78,7 @@
     try {
       await ExportSettings();
     } catch (e) {
-      if (e) alert(e.toString());
+      if (e) notify(e.toString(), 'error');
     }
   }
 
@@ -87,9 +88,9 @@
       if (!imported) return;
       await saveSettings(imported);
       form = { ...imported };
-      alert($t('settingsImported'));
+      notify($t('settingsImported'));
     } catch (e) {
-      if (e) alert(e.toString());
+      if (e) notify(e.toString(), 'error');
     }
   }
 </script>

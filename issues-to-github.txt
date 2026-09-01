@@ -3286,3 +3286,161 @@ gapped automatically). The markup is now three separate stacked blocks:
      `margin: 0; text-align: center`
   3. a second `.view-actions` div — Oui / Non only
 Rendered only while `confirmDeleteId === selectedSite.id`.
+
+---
+
+#94
+Title: [Feature] Export / import all Settings as a JSON file
+Labels: enhancement
+Version fixed: v1.7.7
+Description:
+Requested the ability to export the entire Settings page (all app
+settings) to a JSON file and import it back, so the exact same
+configuration can be carried over to a different PC.
+
+Solution (closing comment):
+Implemented in v1.7.7 across app.go and SettingsPanel.svelte.
+
+**Go — app.go:**
+  ExportSettings() error — SaveFileDialog ("glideftp-settings.json"),
+  writes the current in-memory a.appSettings as indented JSON. No
+  passwords or per-site data involved — this is the Settings page only,
+  unrelated to the existing sites export/import (.gfe) feature.
+  ImportSettings() (*settings.Settings, error) — OpenFileDialog, reads
+  the file, unmarshals onto settings.Default() (so a partial/older
+  export doesn't zero out fields missing from the file), immediately
+  applies it (queue.SetWorkers/SetSpeedLimit) and persists it to disk
+  via Settings.Save(), then returns the resolved struct so the frontend
+  can sync its store without a restart.
+
+**Frontend — SettingsPanel.svelte / stores/settings.js:**
+  exportSettings()/importSettings() call the two bindings above.
+  importSettings() calls the existing saveSettings(imported) helper
+  (applies theme/locale/accent immediately) and updates the local
+  `form` so the panel reflects the imported values right away.
+
+**UI placement (iterated per follow-up review):**
+First pass put two labeled buttons under a new "Import / Export"
+section in the panel body. Moved per follow-up to two icon-only round
+buttons (`.io-icon-btn`, 30px, border-radius 50%) in the panel footer,
+directly after the "vX.Y.Z" version badge (a `.footer-spacer` div
+pushes "Enregistrer" to the right as before); `title` keeps the
+"Exporter/Importer les paramètres" tooltip on hover.
+Second follow-up: the down-arrow icon must mean Import and the
+up-arrow Export (opposite of the initial download/upload-icon choice)
+— fixed by swapping only the two <svg> icons, button positions
+unchanged (Export stays left of Import). The same swap was applied to
+the analogous Export/Import buttons in SiteManager.svelte's "Gérer les
+sites" header, for visual consistency between the two features.
+
+**i18n:** exportSettings, importSettings, settingsImported (FR/EN).
+
+**wailsjs bindings:** ExportSettings/ImportSettings/ExpandLocalPath (see
+#95) added manually to frontend/wailsjs/go/main/App.{js,d.ts} at their
+alphabetical position, matching the generator's own convention — this
+session did not run a full `wails build`; the user's own local
+`./make.sh` build afterwards confirmed no drift.
+
+---
+
+#95
+Title: [Bug] Environment variables (%USERNAME%, $USER, ~) not expanded in local paths
+Labels: bug
+Version fixed: v1.7.7
+Description:
+Typing a path containing an environment variable — e.g.
+C:\Users\%USERNAME%\Desktop, or $USER/$HOME, or ~ — into the "Default
+local directory" setting did nothing: on next launch the local panel
+kept showing/using the previous directory instead of resolving the
+variable. Also reported: after saving a new "Default local directory"
+(typed by hand, or picked via the "..." browse button), the change
+only took effect after fully closing and reopening the app.
+
+Solution (closing comment):
+Two independent fixes in v1.7.7.
+
+**1) Environment variable / ~ expansion — internal/fs/local.go, app.go:**
+  ExpandPath(path string) string — new helper. Expands a leading ~ or
+  ~/ to the home directory, then Windows-style %VAR% (regexp
+  `%([^%]+)%`, looked up via os.LookupEnv) and Unix-style $VAR/${VAR}
+  (via os.Expand). A reference to an unset variable is left untouched
+  rather than collapsed to "", so a typo stays visible/debuggable
+  instead of silently breaking navigation.
+  Exposed to the frontend as app.ExpandLocalPath(path) — a pure string
+  transform, never touches the filesystem.
+
+  Deliberately NOT applied inside ListDir or the shared onNavigate path
+  used for every directory click — only at the two places where the
+  text is actually hand-typed:
+    - stores/connection.js initLocalDir() — resolves the "Default
+      local directory" setting at startup (and on live-apply, below)
+    - FileBrowser.svelte confirmEditPath() — the editable local path
+      bar, gated on `side === 'local'` (a remote FTP/SFTP path like
+      "$logs" is a literal server directory name and must never be
+      touched)
+  This avoids a real risk: expanding on every ListDir call would mangle
+  navigation into a real folder whose name happens to contain a $ or %
+  character (e.g. Windows' own "$Recycle.Bin").
+
+**2) Default local directory now applies live — App.svelte:**
+  handleSettingsSaved(newSettings) now compares newSettings.
+  defaultLocalDir against a tracked lastDefaultLocalDir; if it changed,
+  it calls initLocalDir(newValue) (which also does the expansion above)
+  to navigate the local panel immediately instead of only refreshing
+  the current path. Falls back to a plain refreshLocal() when the
+  default-dir setting itself didn't change (e.g. only showHiddenFiles
+  changed), so unrelated settings saves don't yank the user's browsing
+  location.
+
+Verified with a temporary Go test exercising $HOME, ~, %USERNAME%
+(env var set manually) and an unset-variable reference — all resolved
+correctly, the unset case left untouched as designed.
+
+---
+
+#96
+Title: [UI] Replace native Wails/WebKit alert() popups with a themed modal
+Labels: enhancement, ui
+Version fixed: v1.7.7
+Description:
+The success/error messages after exporting or importing Settings and
+Sites used the browser's/Wails' native alert() — an unstyled
+"JavaScript - wails://wails/" box with a plain "Fermer" button, not
+matching the app's theme. Requested a themed pop-up instead, translated
+FR/EN per the current language, with the pop-up's border in the accent
+color. Follow-up: remove the checkmark icon and make the message read
+like a large title instead of small body text.
+
+Solution (closing comment):
+New global notification system, implemented in v1.7.7.
+
+**frontend/src/stores/notify.js:**
+  notification writable store — { message, type: 'success'|'error' } |
+  null.
+  notify(message, type = 'success') / closeNotify() — thin setters.
+
+**frontend/src/components/NotifyModal.svelte:**
+Centered overlay + box, mounted once at the root in App.svelte (so it
+always renders above any other panel/modal — z-index 5000, higher than
+SiteManager's 700 and SettingsPanel's 400). 2px border in var(--accent)
+plus a matching accent-tinted outer glow (box-shadow). use:trapFocus,
+per the existing WebKit-GTK popup pattern. Closes on backdrop click, on
+the "Fermer"/"Close" button (i18n key `close`, already existed), or on
+Escape — wired into App.svelte's existing global handleKeydown, checked
+before the Settings/SiteManager Escape handling so the topmost popup
+always closes first.
+Message text: 19px/700 weight, centered, no icon (removed per
+follow-up) — reads as a title rather than an alert body. Colored
+var(--danger) when type is 'error'; default text color otherwise (no
+green tint on success, kept neutral per the reference screenshot).
+
+**Callers switched from alert() to notify():**
+  SettingsPanel.svelte — exportSettings/importSettings catch blocks
+    (type 'error') and the "Paramètres importés" success message.
+  SiteManager.svelte — all site-connect failures (now via the existing
+    `connectError` i18n key instead of a hardcoded "Connection failed"
+    fallback string), the export/import error catches, and the "N
+    sites importés" success message.
+No alert()/confirm() call remains anywhere in frontend/src (verified by
+grep after the change) — every one of these now goes through the same
+notify()/NotifyModal path.
