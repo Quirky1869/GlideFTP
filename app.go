@@ -162,6 +162,11 @@ func (a *App) DeleteSite(id string) error {
 	return a.siteMgr.Delete(id)
 }
 
+// ReorderSites persists a new site ordering (drag-and-drop reorder in Site Manager).
+func (a *App) ReorderSites(orderedIDs []string) error {
+	return a.siteMgr.Reorder(orderedIDs)
+}
+
 // ─── Export / Import ─────────────────────────────────────────────────────────
 
 // ExportSitesPlain exports all sites as plain JSON without passwords.

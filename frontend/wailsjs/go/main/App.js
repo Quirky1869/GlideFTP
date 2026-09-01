@@ -194,6 +194,10 @@ export function RemoveTransfer(arg1) {
   return window['go']['main']['App']['RemoveTransfer'](arg1);
 }
 
+export function ReorderSites(arg1) {
+  return window['go']['main']['App']['ReorderSites'](arg1);
+}
+
 export function RetryTransfer(arg1) {
   return window['go']['main']['App']['RetryTransfer'](arg1);
 }

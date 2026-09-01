@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, ReorderSites, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
@@ -11,6 +11,11 @@
   let selectedSite = null;
   let editMode = false;
   let confirmDeleteId = null;
+
+  // Drag-and-drop reordering
+  let reorderMode = false;
+  let dragSiteId = null;
+  let dragOverSiteId = null;
 
   // Keyring availability warning
   let keyringStatus = '';
@@ -165,6 +170,49 @@
     selectedSite = s;
     form = { ...s };
     editMode = false;
+  }
+
+  function toggleReorderMode() {
+    reorderMode = !reorderMode;
+    dragSiteId = null;
+    dragOverSiteId = null;
+  }
+
+  function handleSiteDragStart(e, site) {
+    dragSiteId = site.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', site.id);
+  }
+
+  function handleSiteDragOver(e, site) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    dragOverSiteId = site.id !== dragSiteId ? site.id : null;
+  }
+
+  function handleSiteDragLeave(site) {
+    if (dragOverSiteId === site.id) dragOverSiteId = null;
+  }
+
+  async function handleSiteDrop(e, targetSite) {
+    e.preventDefault();
+    dragOverSiteId = null;
+    const fromId = dragSiteId;
+    dragSiteId = null;
+    if (!fromId || fromId === targetSite.id) return;
+    const fromIdx = sites.findIndex(s => s.id === fromId);
+    const toIdx = sites.findIndex(s => s.id === targetSite.id);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const reordered = [...sites];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    sites = reordered;
+    await ReorderSites(sites.map(s => s.id));
+  }
+
+  function handleSiteDragEnd() {
+    dragSiteId = null;
+    dragOverSiteId = null;
   }
 
   function newSite() {
@@ -350,6 +398,7 @@
     // First enter selection mode (all sites pre-selected)
     editMode = false;
     selectedSite = null;
+    reorderMode = false;
     exportSelectedIds = new Set(sites.map(s => s.id));
     exportSelectMode = true;
   }
@@ -508,10 +557,26 @@
             {$t('exportSelectAll')}
           </button>
         {:else}
-          <button class="new-site-btn" on:click={newSite}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            {$t('newSite')}
-          </button>
+          <div class="site-list-toolbar">
+            <button class="new-site-btn" on:click={newSite}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              {$t('newSite')}
+            </button>
+            <button
+              type="button"
+              class="reorder-toggle-btn"
+              class:active={reorderMode}
+              on:click={toggleReorderMode}
+              title={reorderMode ? $t('reorderSitesDone') : $t('reorderSites')}
+              aria-pressed={reorderMode}
+            >
+              {#if reorderMode}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 9 17 20 6"/></svg>
+              {:else}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 10 12 5 17 10"/><polyline points="7 14 12 19 17 14"/></svg>
+              {/if}
+            </button>
+          </div>
         {/if}
 
         {#each sites as site (site.id)}
@@ -519,8 +584,21 @@
             class="site-item"
             class:active={!exportSelectMode && selectedSite?.id === site.id}
             class:export-selectable={exportSelectMode}
-            on:click={() => exportSelectMode ? toggleExportSite(site.id) : selectSite(site)}
+            class:reorder-mode={reorderMode}
+            class:drag-over={dragOverSiteId === site.id}
+            draggable={reorderMode}
+            on:dragstart={(e) => handleSiteDragStart(e, site)}
+            on:dragover={reorderMode ? (e) => handleSiteDragOver(e, site) : null}
+            on:dragleave={() => handleSiteDragLeave(site)}
+            on:drop={reorderMode ? (e) => handleSiteDrop(e, site) : null}
+            on:dragend={handleSiteDragEnd}
+            on:click={() => { if (reorderMode) return; exportSelectMode ? toggleExportSite(site.id) : selectSite(site); }}
           >
+            {#if reorderMode}
+              <span class="drag-handle" title={$t('reorderSites')}>
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg>
+              </span>
+            {/if}
             {#if exportSelectMode}
               <span class="export-checkbox" class:checked={exportSelectedIds.has(site.id)}>
                 {#if exportSelectedIds.has(site.id)}<svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><polyline points="2,6 5,9 10,3"/></svg>{/if}
@@ -1046,6 +1124,29 @@
 .new-site-btn:hover { background: var(--accent-subtle); }
 .new-site-btn svg { width: 14px; height: 14px; }
 
+.site-list-toolbar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.site-list-toolbar .new-site-btn { flex: 1; border-bottom: none; }
+
+.reorder-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.reorder-toggle-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.reorder-toggle-btn.active { background: var(--accent-subtle); color: var(--accent); }
+.reorder-toggle-btn svg { width: 16px; height: 16px; }
+
 .site-item {
   display: flex;
   align-items: center;
@@ -1057,6 +1158,18 @@
 }
 .site-item:hover { background: var(--bg-hover); }
 .site-item.active { background: var(--accent-subtle); }
+.site-item.reorder-mode { cursor: grab; }
+.site-item.reorder-mode:active { cursor: grabbing; }
+.site-item.drag-over { background: var(--accent-subtle); outline: 2px dashed var(--accent); outline-offset: -2px; }
+
+.drag-handle {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  cursor: grab;
+}
+.drag-handle svg { width: 14px; height: 14px; }
 
 .site-protocol {
   font-size: 10px;

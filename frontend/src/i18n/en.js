@@ -58,6 +58,8 @@ export default {
   newSite: 'New site',
   editSite: 'Edit site',
   duplicateSite: 'Duplicate',
+  reorderSites: 'Reorder sites (drag and drop)',
+  reorderSitesDone: 'Done reordering',
   siteName: 'Site name',
   host_label: 'Host',
   encryption: 'Encryption',

@@ -103,6 +103,8 @@ export function RemoteSearch(arg1:string,arg2:string,arg3:boolean):Promise<Array
 
 export function RemoveTransfer(arg1:string):Promise<void>;
 
+export function ReorderSites(arg1:Array<string>):Promise<void>;
+
 export function RetryTransfer(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;

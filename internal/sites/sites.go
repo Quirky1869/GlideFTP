@@ -131,6 +131,32 @@ func (m *Manager) Delete(id string) error {
 	return nil
 }
 
+// Reorder rewrites the site list to match orderedIDs (drag-and-drop reorder
+// in Site Manager) and persists it. Any existing site whose ID isn't in
+// orderedIDs is kept and appended at the end, so a stale or partial list
+// from the frontend can never silently drop a site.
+func (m *Manager) Reorder(orderedIDs []string) error {
+	byID := make(map[string]Site, len(m.sites))
+	for _, s := range m.sites {
+		byID[s.ID] = s
+	}
+	reordered := make([]Site, 0, len(m.sites))
+	seen := make(map[string]bool, len(orderedIDs))
+	for _, id := range orderedIDs {
+		if s, ok := byID[id]; ok && !seen[id] {
+			reordered = append(reordered, s)
+			seen[id] = true
+		}
+	}
+	for _, s := range m.sites {
+		if !seen[s.ID] {
+			reordered = append(reordered, s)
+		}
+	}
+	m.sites = reordered
+	return m.save()
+}
+
 func (m *Manager) GetByID(id string) (Site, bool) {
 	for _, s := range m.sites {
 		if s.ID == id {

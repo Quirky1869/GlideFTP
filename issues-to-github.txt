@@ -3173,3 +3173,78 @@ keydown listener never received the Delete press.
 `panelEl?.focus({ preventScroll: true })`, matching what `handleClick`
 already does — after both a click-drag and a plain click/Ctrl+click/
 Shift+click selection, the panel has focus and Delete/F2/arrow keys work.
+
+---
+
+#92
+Title: [Feature] Reorder saved sites via drag-and-drop in Site Manager
+Labels: enhancement, ui
+Version fixed: v1.7.7
+Description:
+Requested the ability to reorder saved sites in Site Manager via
+drag-and-drop, toggled by a small square button to the right of
+"+ Nouveau site". Icon choice left to Claude.
+
+Solution (closing comment):
+Implemented in v1.7.7 across sites.go, app.go and SiteManager.svelte.
+
+**Go — internal/sites/sites.go:**
+No new field on Site — order is simply the array position in the
+existing []Site slice/sites.json, same as it already was.
+  Reorder(orderedIDs []string) error
+    Rebuilds m.sites to match orderedIDs. Any existing site whose ID is
+    missing from orderedIDs (stale/partial payload from the frontend) is
+    kept and appended at the end instead of being silently dropped. Saves
+    via the existing save() (passwords stripped, as always).
+
+**Go — app.go:**
+  ReorderSites(orderedIDs []string) error — thin wrapper around
+  siteMgr.Reorder. JS bindings regenerated via `wails generate module`.
+
+**Frontend — SiteManager.svelte:**
+New state: reorderMode (bool), dragSiteId, dragOverSiteId.
+
+New square toggle button next to "+ Nouveau site" — both now wrapped
+together in `.site-list-toolbar` so they sit side by side, sharing the
+toolbar's bottom border. Clicking it flips reorderMode. Icon swaps with
+the state so the button's meaning is unambiguous: up/down chevrons when
+off ("start reordering"), a checkmark when on ("done reordering, tap to
+confirm/exit") — the title tooltip switches between the two matching
+i18n keys as well.
+
+Follow-up request: swap to a "validate" icon while reorder mode is
+active, so the button reads as "click to confirm" rather than repeating
+the same icon regardless of state.
+
+While reorderMode is true, each site row (.site-item):
+  - gets draggable={true} and a 6-dot grip icon (.drag-handle) on the
+    left, for visual affordance
+  - a dashed outline (.drag-over) highlights the row currently being
+    dragged over
+  - normal click-to-select is disabled (`if (reorderMode) return;` in
+    the row's click handler) so a drag can't accidentally open a site's
+    detail view instead of reordering it
+
+Drag handlers (same intra-app HTML5 drag-and-drop pattern already used
+by FileBrowser's own row dragging — proven safe on WebKit-GTK):
+  handleSiteDragStart — stores the dragged site's id
+  handleSiteDragOver  — preventDefault + dropEffect='move', sets
+                         dragOverSiteId for the highlight
+  handleSiteDrop      — splices the dragged site into its new index in
+                         the local `sites` array (instant visual
+                         feedback), then calls
+                         ReorderSites(sites.map(s => s.id)) to persist
+  handleSiteDragEnd   — clears drag state (fires even if dropped outside
+                         a valid target)
+
+openExportDialog() now also sets reorderMode = false, since export-select
+and reorder mode both repurpose the same toolbar/row area and can't be
+active at the same time. No explicit reset needed on modal close —
+SiteManager is fully destroyed/recreated ({#if showSiteManager} in
+App.svelte) each time the modal is closed and reopened.
+
+**i18n:**
+  reorderSites     : FR "Réorganiser les sites (glisser-déposer)"
+                     EN "Reorder sites (drag and drop)"
+  reorderSitesDone : FR "Terminer la réorganisation"
+                     EN "Done reordering"
