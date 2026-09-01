@@ -43,7 +43,7 @@
   let contextIsEmpty = false;
   let dragOver = false;
   let rowDragOverPath = null; // path of the folder row currently hovered during drag
-  let pasteMsg = null; // { text, ok } — green if ok, orange if !ok
+  let pasteMsg = null; // { text, ok } - green if ok, orange if !ok
   let panelEl;
   let fileListEl;
 

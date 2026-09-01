@@ -34,16 +34,21 @@
 - **Custom accent color** - full RGB/HEX color picker to personalize the interface
 - **English & French interface** - English by default, switchable in settings
 - **Dual-panel file browser** - local files on the left, remote files on the right; toggle per panel between flat list view and hierarchical tree view (lazy-loaded, files visible with size indicator; double-click or arrow button to transfer)
+- **Recursive folder transfers** - drag-and-drop or queue an entire folder for upload/download; the whole tree is walked and transferred file by file
+- **Intra-panel copy/cut/paste** - Ctrl+C/X/V or right-click to copy, move, or duplicate files within the same panel (local-to-local or remote-to-remote)
 - **Transfer queue** - with 3 tabs: pending, failed, and successful transfers; cancel in-progress transfers
+- **Sound notifications** - optional sound alert (4 built-in tones, previewable) when a batch of transfers finishes; configurable in settings
 - **Multi-file operations** - select multiple files with Ctrl+click, Shift+click, or rubber-band drag; transfer or delete the whole selection at once
 - **Multi-connection tabs** - open several servers simultaneously; browser-style tabs appear between the toolbar and file panels; configurable limit (1–5) in settings
-- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; selective export (choose which sites to include); export/import as JSON or encrypted `.gfe`
+- **Quick connect** - reconnect or open an additional connection straight from the toolbar without going through the Site Manager
+- **Site manager** - save, edit and quickly reconnect to your favorite servers; add notes to each site; reorder sites by drag-and-drop; duplicate a site in one click; selective export (choose which sites to include); export/import as JSON or encrypted `.gfe`
 - **Native Linux packages** - available as `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), and on the AUR (`glideftp-bin`) for Arch Linux; automatic releases via GitHub Actions on each version tag
 - **Secure password storage** - passwords are stored in the OS keyring (gnome-keyring/kwallet on Linux, Windows Credential Manager on Windows), never in plain text on disk
 - **Ask-password auth** - password is never saved; prompted at connect time
 - **SFTP auto-coupling** - selecting SFTP automatically sets authentication to Interactive (or SSH Key) and vice versa
 - **Path autocomplete** - dropdown suggestions while typing in the path bar
-- **Full settings panel** - passive mode, timeout, concurrent transfers, speed limit, hidden files
+- **Smart local paths** - the local path bar expands `~`, `$VAR`/`${VAR}` (Linux) and `%VAR%` (Windows) environment variables
+- **Full settings panel** - passive mode, timeout, concurrent transfers, speed limit, hidden files; export/import all settings as a JSON file to back up or transfer your configuration
 - **Encryption support** - None, TLS (implicit), FTPES (explicit)
 - **System trash on delete** - deleting a local file sends it to the OS trash (Linux: XDG Trash spec; Windows: Recycle Bin) rather than permanently deleting it
 - **Connection keepalive** - a NOOP/ping is sent every 60 seconds to prevent the server from dropping idle connections; unexpected disconnects trigger a notification and automatic UI update
@@ -252,16 +257,21 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **Couleur d'accentuation personnalisable** - sélecteur de couleur RGB/HEX pour personnaliser l'interface
 - **Interface en anglais & français** - anglais par défaut, modifiable dans les paramètres
 - **Explorateur double panneau** - fichiers locaux à gauche, fichiers distants à droite ; basculez par panneau entre la vue liste et une vue arborescente hiérarchique (chargement paresseux, fichiers visibles avec indicateur de taille ; double-clic ou bouton flèche pour transférer)
+- **Transferts de dossiers récursifs** - glissez-déposez ou mettez en file un dossier entier pour l'upload/download ; toute l'arborescence est parcourue et transférée fichier par fichier
+- **Copier/couper/coller intra-panneau** - Ctrl+C/X/V ou clic droit pour copier, déplacer ou dupliquer des fichiers au sein d'un même panneau (local vers local ou distant vers distant)
 - **File de transfert** - avec 3 onglets : en attente, échoués et réussis ; annulation des transferts en cours
+- **Notifications sonores** - alerte sonore optionnelle (4 sons intégrés, avec écoute préalable) une fois qu'un lot de transferts est terminé ; configurable dans les paramètres
 - **Opérations multi-fichiers** - sélection multiple avec Ctrl+clic, Shift+clic ou sélection à la souris ; transfert ou suppression de toute la sélection en une fois
 - **Onglets multi-connexion** - ouvrez plusieurs serveurs simultanément ; des onglets style navigateur apparaissent entre la barre d'outils et les panneaux de fichiers ; limite configurable (1 à 5) dans les paramètres
-- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; export sélectif (choisissez quels sites inclure) ; exportez/importez en JSON ou en `.gfe` chiffré
+- **Connexion rapide** - reconnectez-vous ou ouvrez une connexion supplémentaire directement depuis la barre d'outils, sans passer par le Gestionnaire de sites
+- **Gestionnaire de sites** - enregistrez, modifiez et reconnectez-vous rapidement à vos serveurs favoris ; ajoutez des notes à chaque site ; réorganisez les sites par glisser-déposer ; dupliquez un site en un clic ; export sélectif (choisissez quels sites inclure) ; exportez/importez en JSON ou en `.gfe` chiffré
 - **Paquets Linux natifs** - disponible en `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), et sur l'AUR (`glideftp-bin`) pour Arch Linux ; releases automatisées via GitHub Actions à chaque tag de version
 - **Stockage sécurisé des mots de passe** - les mots de passe sont stockés dans le keyring système (gnome-keyring/kwallet sur Linux, Gestionnaire de mots de passe Windows), jamais en clair sur le disque
 - **Auth demande de mot de passe** - le mot de passe n'est jamais enregistré ; saisi au moment de la connexion
 - **Couplage automatique SFTP** - sélectionner SFTP active automatiquement l'authentification Interactive (ou Clé SSH) et inversement
 - **Autocomplétion de chemin** - suggestions dans la barre de chemin lors de la saisie
-- **Panneau de paramètres complet** - mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés
+- **Chemins locaux intelligents** - la barre de chemin local développe `~`, `$VAR`/`${VAR}` (Linux) et `%VAR%` (Windows)
+- **Panneau de paramètres complet** - mode passif, délai de connexion, transferts simultanés, limite de vitesse, fichiers cachés ; export/import de tous les paramètres en fichier JSON pour sauvegarder ou transférer votre configuration
 - **Support du chiffrement** - Aucun, TLS (implicite), FTPES (explicite)
 - **Corbeille système à la suppression** - la suppression d'un fichier local l'envoie dans la corbeille de l'OS (Linux : spec XDG Trash ; Windows : Corbeille) plutôt que de le supprimer définitivement
 - **Keepalive de connexion** - un NOOP/ping est envoyé toutes les 60 secondes pour éviter qu'un serveur coupe une connexion inactive ; une déconnexion inattendue affiche une notification et met à jour l'interface automatiquement

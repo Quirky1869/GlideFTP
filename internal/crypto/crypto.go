@@ -21,7 +21,7 @@ const (
 	nonceLen     = 12
 	keyLen       = 32
 
-	// Argon2id params — OWASP recommended
+	// Argon2id params - OWASP recommended
 	argonTime    = 3
 	argonMemory  = 64 * 1024 // 64 MB
 	argonThreads = 4

@@ -80,7 +80,7 @@ build_windows() {
         -define icon:auto-resize="256,128,64,48,32,16" \
         build/windows/icon.ico
     else
-      echo "WARNING: magick (ImageMagick) not found — icon.ico not updated."
+      echo "WARNING: magick (ImageMagick) not found - icon.ico not updated."
       echo "         Install with: sudo pacman -S imagemagick"
     fi
   fi
@@ -147,9 +147,9 @@ DESKTOP
   export PATH="$(pwd)/tools:$PATH"
   # Destination path for the generated AppImage
   export OUTPUT="$(pwd)/build/bin/linux/GlideFTP-Arch-x86_64-v${version}.AppImage"
-  # Run AppImages without FUSE (extract-and-run) — avoids FUSE requirement
+  # Run AppImages without FUSE (extract-and-run) - avoids FUSE requirement
   export APPIMAGE_EXTRACT_AND_RUN=1
-  # Disable stripping — linuxdeploy's bundled strip is too old for .relr.dyn sections
+  # Disable stripping - linuxdeploy's bundled strip is too old for .relr.dyn sections
   # used by modern Arch Linux libraries (binutils >= 2.38)
   export NO_STRIP=1
 
@@ -164,7 +164,7 @@ DESKTOP
 
 build_appimage_debian() {
   local version="$1"
-  echo "→ Building Debian/Ubuntu AppImage (via Docker — Ubuntu 22.04)…"
+  echo "→ Building Debian/Ubuntu AppImage (via Docker - Ubuntu 22.04)…"
 
   local DOCKER_CMD
   if command -v docker &>/dev/null; then
@@ -201,7 +201,7 @@ build_appimage_debian() {
 
 build_deb() {
   local version="$1"
-  echo "→ Building .deb package (via Docker — Ubuntu 22.04)…"
+  echo "→ Building .deb package (via Docker - Ubuntu 22.04)…"
 
   if [ ! -f "build/bin/linux/GlideFTP-v${version}" ]; then
     echo "ERROR: build/bin/linux/GlideFTP-v${version} not found. Run ./make.sh linux ${version} first."
@@ -233,7 +233,7 @@ build_deb() {
 
 build_rpm() {
   local version="$1"
-  echo "→ Building .rpm package (via Docker — Fedora 40)…"
+  echo "→ Building .rpm package (via Docker - Fedora 40)…"
 
   if [ ! -f "build/bin/linux/GlideFTP-v${version}" ]; then
     echo "ERROR: build/bin/linux/GlideFTP-v${version} not found. Run ./make.sh linux ${version} first."
@@ -266,7 +266,7 @@ show_help() {
   cat <<EOF
 Usage: $0 <target> [version]
 
-All targets require a version (e.g. 1.7.6) — every final artefact filename
+All targets require a version (e.g. 1.7.6) - every final artefact filename
 embeds it, e.g. GlideFTP-v1.7.6, GlideFTP-v1.7.6.exe, GlideFTP-Arch-x86_64-v1.7.6.AppImage,
 GlideFTP-Linux-v1.7.6.deb:
 

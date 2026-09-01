@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (X.Y.Z — without the v prefix)'
+        description: 'Version number (X.Y.Z - without the v prefix)'
         required: true
         type: string
 
@@ -147,7 +147,7 @@ jobs:
           fi
 
       # ── GitHub Release ────────────────────────────────────────────────────────
-      # Creates a DRAFT release — review it on GitHub before clicking "Publish".
+      # Creates a DRAFT release - review it on GitHub before clicking "Publish".
       # The Arch AppImage is NOT built here (it requires Arch Linux libs).
       # Build it locally with ./make.sh appimage-arch then upload it to the draft manually.
       - name: Create GitHub Release (draft)

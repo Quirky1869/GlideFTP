@@ -248,7 +248,7 @@ export async function closeTab(id) {
     activeConnectionId.set(null);
     clearRemoteState();
   } else if (currentId === id) {
-    // Was active — switch to the last remaining tab
+    // Was active - switch to the last remaining tab
     const next = remaining[remaining.length - 1];
     activeConnectionId.set(next.id);
     activeConnectionConfig.set(configFromInfo(next));

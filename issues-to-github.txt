@@ -68,7 +68,7 @@ of its size.
 ---
 
 #4
-Title: [UI] Top bar misaligned after connection — some buttons hidden behind the banner
+Title: [UI] Top bar misaligned after connection - some buttons hidden behind the banner
 Labels: bug, ui
 Version fixed: v1.1
 Description:
@@ -261,7 +261,7 @@ Fixed in v1.1.
   gated on the connection state. The gate was removed so the panel can always
   be opened.
 - SettingsPanel.svelte: all on/off toggles were rewritten as
-  `<button class="sw" class:on={val} on:click={() => toggle(key)}>` — WebKit-GTK
+  `<button class="sw" class:on={val} on:click={() => toggle(key)}>` - WebKit-GTK
   does not fire click events on hidden checkboxes (see project patterns). Custom
   `−`/`+` buttons were added for number inputs for the same reason.
 - handleSettingsSaved() in App.svelte calls refreshLocal() + refreshRemote() so
@@ -287,7 +287,7 @@ reverts to display mode without navigating. The input auto-focuses via
 ---
 
 #16
-Title: [UI] Top bar slightly clipped after connection — disconnect button partially hidden
+Title: [UI] Top bar slightly clipped after connection - disconnect button partially hidden
 Labels: bug, ui
 Version fixed: v1.1
 Description:
@@ -333,7 +333,7 @@ Only language and dark/light theme work. Port arrows do nothing, default local
 directory is ignored on reconnect, all on/off toggle buttons have no effect.
 
 Solution (closing comment):
-Fixed in v1.1 — complete rework of SettingsPanel.svelte and related stores.
+Fixed in v1.1 - complete rework of SettingsPanel.svelte and related stores.
 - Toggle buttons: replaced hidden-checkbox pattern with WebKit-GTK compatible
   `<button class="sw" class:on={val}>` (native checkbox click events are broken
   under WebKit-GTK when the input is hidden).
@@ -517,13 +517,13 @@ manager.ListDir() now wraps the blocking client.List() call in a goroutine and
 uses a select with time.After(30 s) as a timeout. If the listing doesn't return
 in time, the manager calls Disconnect() on the active client and returns a
 descriptive error. The UI in App.svelte / FileBrowser.svelte catches this error,
-sets connectionStatus to 'disconnected', and clears the remote panel — instead
+sets connectionStatus to 'disconnected', and clears the remote panel - instead
 of hanging indefinitely.
 
 ---
 
 #28
-Title: [Bug] Multi-file transfer broken — drag-and-drop sends only 1 file; transfer button fails all
+Title: [Bug] Multi-file transfer broken - drag-and-drop sends only 1 file; transfer button fails all
 Labels: bug, critical
 Version fixed: v1.2
 Description:
@@ -557,7 +557,7 @@ reveal the typed password.
 Solution (closing comment):
 Implemented in v1.2 in SiteManager.svelte.
 A `showPwd` boolean drives two separate `<input>` blocks inside an `{#if}/{:else}`
-— one type="text", one type="password", both bound to the same `promptPassword`
+- one type="text", one type="password", both bound to the same `promptPassword`
 variable. (Svelte 3 does not allow a dynamic `type` attribute on a two-way-bound
 input under WebKit-GTK.) An eye SVG button toggles showPwd. The icon switches
 between "open eye" and "crossed eye" variants.
@@ -647,7 +647,7 @@ Title: [UI] Host input on connection screen too narrow for a full IPv4 address
 Labels: bug, ui
 Version fixed: v1.4
 Description:
-The host input field is too short — a full four-octet IPv4 like 192.168.124.155
+The host input field is too short - a full four-octet IPv4 like 192.168.124.155
 is visually truncated.
 
 Solution (closing comment):
@@ -898,7 +898,7 @@ internal/connection/ppk.go created (243 lines):
   PuTTYgen.
 internal/connection/sftp.go: loadPrivateKey(path, passphrase) now calls
 isPPKFile() first; if true it routes to parsePPKFile() instead of
-ssh.ParsePrivateKey(). Detection is fully automatic — no UI change needed.
+ssh.ParsePrivateKey(). Detection is fully automatic - no UI change needed.
 
 ---
 
@@ -917,7 +917,7 @@ Partially fixed in v1.7.
 wails.json: MaxWidth and MaxHeight were set to 0 (unlimited), removing the
 hardcoded size cap. The window can now be freely resized and maximized on X11.
 Known limitation: under Hyprland (Wayland compositor) the window still does not
-maximise correctly — this appears to be a Wails v2 / WebKit-GTK Wayland
+maximise correctly - this appears to be a Wails v2 / WebKit-GTK Wayland
 compositor interaction issue outside the scope of GlideFTP itself. Leaving open
 pending an upstream Wails fix.
 
@@ -934,7 +934,7 @@ connection open and open the new one alongside it in a separate tab.
 Ref: _images/issues/issue-17.jpg
 
 Solution (closing comment):
-Implemented in v1.7 — significant work across backend and frontend.
+Implemented in v1.7 - significant work across backend and frontend.
 
 Backend (internal/connection/manager.go):
 - Connection map (id → Client) replaces the single-client model; protected by
@@ -985,12 +985,12 @@ Version fixed: v1.7 (corr)
 Description:
 When already connected to a site and choosing "Keep current session and open new"
 from the keep-or-replace dialog, selecting the exact same site a second time
-opens a second identical tab — same host, port, protocol, and user. No visual
+opens a second identical tab - same host, port, protocol, and user. No visual
 distinction exists between the two tabs and there is no way to tell them apart.
 Ref: _images/issues/issue-18.jpg
 
 Solution (closing comment):
-Fixed in v1.7 (corr) in SiteManager.svelte — doKeepAndAdd().
+Fixed in v1.7 (corr) in SiteManager.svelte - doKeepAndAdd().
 Before calling addConnection(), the function now checks whether any entry in
 $connections already has the same host / port / protocol / user as the site
 being connected to:
@@ -1004,12 +1004,12 @@ being connected to:
 
 Two cases:
 - Duplicate detected, normal auth: connectBySite() is called instead of
-  addConnection() — the active tab is refreshed/reconnected without a new tab
+  addConnection() - the active tab is refreshed/reconnected without a new tab
   being created.
 - Duplicate detected, ask_password auth: promptIsAdd is set to false so the
   password prompt routes to connectBySiteWithPassword() (reconnect) instead of
   addConnection() (new tab).
-- No duplicate: original behaviour unchanged — addConnection() opens a new tab.
+- No duplicate: original behaviour unchanged - addConnection() opens a new tab.
 
 The site name field is intentionally NOT compared since two sites can have
 different names but point to the same server endpoint.
@@ -1019,7 +1019,7 @@ different names but point to the same server endpoint.
 1.7.1
 
 #50
-Title: [Build] Linux binary requires libwebkit2gtk-4.1 on the target system — add AppImage distribution
+Title: [Build] Linux binary requires libwebkit2gtk-4.1 on the target system - add AppImage distribution
 Labels: bug, build, linux
 Version fixed: v1.7 (corr)
 Description:
@@ -1032,7 +1032,7 @@ The Windows binary is unaffected because it uses WebView2 (built into Windows
 by default (e.g. Ubuntu 20.04, or systems where only webkit2gtk-4.0 is present).
 
 Root cause: Wails v2 on Linux uses WebKit2GTK as a dynamically linked system
-library — it cannot be statically compiled into the binary. Building with
+library - it cannot be statically compiled into the binary. Building with
 -tags webkit2_41 links against libwebkit2gtk-4.1 specifically. WebKit2GTK is
 always a runtime dependency; the binary alone is not self-contained on Linux.
 
@@ -1047,7 +1047,7 @@ The function downloads linuxdeploy and linuxdeploy-plugin-appimage (cached in
 tools/, gitignored) on first run, then packages the binary with all its shared
 library dependencies (including libwebkit2gtk-4.1 and the full GTK3 stack) into
 a self-contained build/bin/linux/GlideFTP-x86_64.AppImage. Users on any Linux
-distro can run it directly with no prior installation — chmod +x and execute.
+distro can run it directly with no prior installation - chmod +x and execute.
 
 APPIMAGE_EXTRACT_AND_RUN=1 is set so linuxdeploy itself does not require FUSE.
 tools/ added to .gitignore (downloaded AppImage tools, not source).
@@ -1064,12 +1064,12 @@ the app overwrites it silently. There is no way to know a conflict occurred or
 choose what to do.
 
 The expected behaviour is a popup dialog with four choices:
-  - Replace — overwrite the existing file
-  - Rename on host — save the transferred file with an auto-generated name
+  - Replace - overwrite the existing file
+  - Rename on host - save the transferred file with an auto-generated name
     locally (e.g. "file (1).txt")
-  - Rename on server — save the transferred file with an auto-generated name
+  - Rename on server - save the transferred file with an auto-generated name
     on the server (e.g. "file (1).txt")
-  - Cancel — skip the conflicting file
+  - Cancel - skip the conflicting file
 
 For multi-file transfers, all conflicting files are grouped in one popup.
 Non-conflicting files in the same selection are queued immediately.
@@ -1095,7 +1095,7 @@ four buttons:
   - Cancel (Esc / click outside) → `conflictPending = null`
 
 Drag-and-drop transfers bypass conflict detection intentionally (inline with
-typical FTP client behaviour — overwrite silently on DnD).
+typical FTP client behaviour - overwrite silently on DnD).
 
 App.svelte: `otherEntries={$remoteEntries}` added to local FileBrowser;
 `otherEntries={$localEntries}` added to remote FileBrowser.
@@ -1105,7 +1105,7 @@ App.svelte: `otherEntries={$remoteEntries}` added to local FileBrowser;
 #52
 Title: [Feature] OS drag-and-drop from system file manager into the app
 Labels: feature, wont-fix
-Version fixed: —
+Version fixed: -
 Description:
 Dragging files from the system file explorer (Nautilus, Thunar, Windows
 Explorer, etc.) and dropping them into the GlideFTP remote panel does not
@@ -1116,7 +1116,7 @@ Wails v2 on Linux embeds the UI in a WebKit-GTK WebView. The WebKit-GTK context
 does not expose native OS-level drag-and-drop events (dragged file paths) to the
 JavaScript layer. The `dataTransfer` object in `dragover`/`drop` events carries
 no files or `text/uri-list` data when the drag originates from outside the
-WebView — it arrives empty.
+WebView - it arrives empty.
 
 On Windows (WebView2) the situation may differ, but Wails v2 does not provide
 any cross-platform API to bridge OS DnD into the frontend.
@@ -1125,7 +1125,7 @@ Workaround: use the transfer queue (select files in the local panel and click
 the transfer arrow), or drag items between the two panels inside the app.
 
 Solution (closing comment):
-Not implemented — technically not feasible with Wails v2 + WebKit-GTK on Linux.
+Not implemented - technically not feasible with Wails v2 + WebKit-GTK on Linux.
 The WebView does not receive file paths from OS-level drag sources.
 Marked as wont-fix. A future Wails v3 or native GTK integration may unlock this.
 
@@ -1153,7 +1153,7 @@ SSH Key.
 ---
 
 #54
-Title: [Bug] Port increment from 21 blocked — clicking "up" arrow does nothing when FTP port is 21
+Title: [Bug] Port increment from 21 blocked - clicking "up" arrow does nothing when FTP port is 21
 Labels: bug, ui
 Version fixed: v1.7.1
 Description:
@@ -1172,7 +1172,7 @@ WebKit-GTK pattern used in SettingsPanel.
 A `stepPort(delta)` function handles increment/decrement:
   - Computes `next = port + delta`
   - If `protocol === 'ftp'` and `next === 22`, skips to `next + delta` (23 going
-    up, 21 going down — but 21 going down from 22 would be unusual so the bound
+    up, 21 going down - but 21 going down from 22 would be unusual so the bound
     clamp handles it)
   - Clamps to [1, 65535]
 
@@ -1217,7 +1217,7 @@ Multiple rapid clicks are ignored while a refresh is already in progress.
 #56
 Title: [Feature] Option to disable automatic transfer queue expansion on each transfer
 Labels: feature, wont-fix
-Version fixed: —
+Version fixed: -
 Description:
 A request to add an on/off toggle in Settings > Transfers that would let the
 user choose whether the transfer queue panel opens automatically each time a
@@ -1225,7 +1225,7 @@ transfer is initiated (current behaviour) or stays hidden until opened manually.
 
 Investigation:
 The queue panel is opened via direct `queueVisible.set(true)` calls in
-FileBrowser.svelte at six separate call sites — one per transfer entry point
+FileBrowser.svelte at six separate call sites - one per transfer entry point
 (transferSelected, transferEntry, resolveConflict replace, advanceRename
 completion, drag-and-drop drop handler, and the keyboard shortcut path). These
 calls happen at the moment the transfer is queued in the frontend, before the
@@ -1238,7 +1238,7 @@ abandoned because the store subscription and the Wails event timing made the
 behaviour unreliable and the fix was more complex than the feature warranted.
 
 Solution (closing comment):
-Not implemented — marked wont-fix for now. The transfer queue always opens
+Not implemented - marked wont-fix for now. The transfer queue always opens
 automatically on each transfer. A future refactor that centralises the "queue a
 transfer" action into a single function would make this toggle straightforward
 to add.
@@ -1274,13 +1274,13 @@ node and intercepts Tab / Shift+Tab:
   - Cleans up via the Svelte action `destroy()` callback.
 
 `use:trapFocus` was applied to six containers:
-  - `SiteManager.svelte` — `.modal` (main site manager)
-  - `SiteManager.svelte` — `.pwd-box` in the keep-or-replace overlay
-  - `SiteManager.svelte` — `.pwd-box` in the password prompt overlay
-  - `SettingsPanel.svelte` — `.settings-panel`
-  - `App.svelte` — `.dc-box` (disconnect-all confirmation)
-  - `FileBrowser.svelte` — `.confirm-box` (delete confirmation dialog)
-  - `FileBrowser.svelte` — `.confirm-box` (conflict resolution dialog)
+  - `SiteManager.svelte` - `.modal` (main site manager)
+  - `SiteManager.svelte` - `.pwd-box` in the keep-or-replace overlay
+  - `SiteManager.svelte` - `.pwd-box` in the password prompt overlay
+  - `SettingsPanel.svelte` - `.settings-panel`
+  - `App.svelte` - `.dc-box` (disconnect-all confirmation)
+  - `FileBrowser.svelte` - `.confirm-box` (delete confirmation dialog)
+  - `FileBrowser.svelte` - `.confirm-box` (conflict resolution dialog)
 
 ---
 
@@ -1302,12 +1302,12 @@ Fixed in v1.7.2.
   `RemoteHost string \`json:"remoteHost"\``
 - `queue.Add()` signature updated to accept `remoteHost string` as a fourth
   argument.
-- `manager.GetActiveHost()` added to `internal/connection/manager.go` — returns
+- `manager.GetActiveHost()` added to `internal/connection/manager.go` - returns
   `cfg.Host` of the currently active connection.
 - `app.QueueUpload` and `app.QueueDownload` in `app.go` now pass
   `a.connMgr.GetActiveHost()` when calling `queue.Add()`.
 
-**Frontend — TransferQueue.svelte:**
+**Frontend - TransferQueue.svelte:**
 - `dirLabel(job)` helper: returns `"local → <host> "` for uploads and
   `"<host> → local "` for downloads (trailing space separates it from the
   optional speed badge).
@@ -1351,19 +1351,19 @@ Fixed in v1.7.3.
 
 **Go side:**
 - New method `app.ConnectAdditional(cfg connection.Config) (connection.ConnInfo, error)`
-  in `app.go` — calls `manager.ConnectNew(cfg, name)` to add a connection
+  in `app.go` - calls `manager.ConnectNew(cfg, name)` to add a connection
   alongside existing ones, then calls `queue.SetExecutor`. Used instead of the
   existing `Connect` (which would disconnect the current connection first).
 - Binding added manually to `frontend/wailsjs/go/main/App.js`.
 
-**Frontend — connection.js:**
+**Frontend - connection.js:**
 - New store import: `ConnectAdditional` added to wailsjs imports.
 - New function `addConnectionAdHoc(cfg)`: calls `ConnectAdditional`, updates
   `connections` store + `activeConnectionId`, calls `refreshRemote('/')`. On
   error, restores `connectionStatus` to `'connected'` if other connections are
   still open (does not wipe existing tabs on failure).
 
-**Frontend — ConnectionBar.svelte:**
+**Frontend - ConnectionBar.svelte:**
 - New state: `quickConnectMode` (bool), `pendingQuickCfg` (stores typed values
   across a multi-disconnect flow), `quickConnectDialog` (null or `{ cfg }`),
   `hostError` (triggers blink animation), `connBarRef` (ref to bar root),
@@ -1376,11 +1376,11 @@ Fixed in v1.7.3.
   true` for 1.3 s on empty); if 2+ connections open, stores `pendingQuickCfg`
   and calls `onMultiDisconnect()`; otherwise shows `quickConnectDialog = { cfg }`.
 - `doQuickReplace(cfg)`: calls `addConnectionAdHoc(cfg)` (new connection
-  connects first), then `closeTab(oldId)` (safe replace — old tab preserved
+  connects first), then `closeTab(oldId)` (safe replace - old tab preserved
   until new connection succeeds).
 - `doQuickOpenTab(cfg)`: calls `addConnectionAdHoc(cfg)` only (adds alongside).
 - `handleDocMousedown(e)`: `document.addEventListener('mousedown', ...)` with
-  `connBarRef.contains(e.target)` guard — click outside exits quick connect mode
+  `connBarRef.contains(e.target)` guard - click outside exits quick connect mode
   or dismisses the dialog.
 - Reactive guard: `$: if (!isConnected && pendingQuickCfg)` restores typed
   values after a multi-disconnect-all completes.
@@ -1390,7 +1390,7 @@ Fixed in v1.7.3.
   so they remain locked when connected but unlock during quick connect.
 - `use:trapFocus` applied to the quick connect dialog.
 
-**CSS — host error blink animation:**
+**CSS - host error blink animation:**
 The `.host-error` class is added for 1.3 s then removed. The animation
 intentionally also covers `.host-error:focus` so the blink appears even if
 the input is focused (animation has higher cascade priority than `:focus`):
@@ -1410,7 +1410,7 @@ the input is focused (animation has higher cascade priority than `:focus`):
 
 **Dialog positioning note:**
 The quick connect dialog uses `position: fixed; top: 48px; right: 12px;
-z-index: 300` because `.topbar-center` in App.svelte has `overflow: hidden` —
+z-index: 300` because `.topbar-center` in App.svelte has `overflow: hidden` -
 any `position: absolute` element inside it would be clipped. `position: fixed`
 escapes all parent `overflow: hidden` constraints.
 
@@ -1448,7 +1448,7 @@ so the copy appears in the left panel.
 A "Dupliquer" / "Duplicate" button was added to the `.form-actions` row in
 `editMode`, after the existing "Fermer" / "Close" button, pushed to the far
 right with `margin-left: auto`. The button is only rendered when editing an
-existing site (`{#if selectedSite}`) — it is hidden when creating a brand-new
+existing site (`{#if selectedSite}`) - it is hidden when creating a brand-new
 site since there is nothing to clone.
 
 i18n: `duplicateSite` key added to both `en.js` (`'Duplicate'`) and
@@ -1462,7 +1462,7 @@ Labels: enhancement, ui
 Version fixed: v1.7.3
 Description:
 WebKit-GTK suppresses the native browser context menu inside the WebView.
-In the Site Manager form, right-clicking any input field does nothing — there is
+In the Site Manager form, right-clicking any input field does nothing - there is
 no way to cut, copy, or paste text using the mouse.
 
 Expected behaviour:
@@ -1522,7 +1522,7 @@ Description:
 In the Site Manager form, when editing a saved site, the "Password" input has no
 eye icon to reveal/hide the typed password. Users cannot verify what they have
 typed before saving.
-(The ask-password prompt overlay already has this toggle — issue #29.)
+(The ask-password prompt overlay already has this toggle - issue #29.)
 
 Solution (closing comment):
 Implemented in v1.7.3 in SiteManager.svelte.
@@ -1531,14 +1531,14 @@ A `showFormPwd` boolean state variable was added (separate from `showPwd` which
 controls the ask-password prompt overlay).
 
 The single `<input type="password">` was replaced with a `.pwd-input-wrap` div
-containing two inputs in an `{#if}/{:else}` block — one `type="text"` and one
-`type="password"`, both bound to `form.password` — and an `.eye-btn` that
+containing two inputs in an `{#if}/{:else}` block - one `type="text"` and one
+`type="password"`, both bound to `form.password` - and an `.eye-btn` that
 toggles `showFormPwd`. The `{#if}/{:else}` pattern is required because Svelte 3
 does not allow a dynamic `type` attribute on a two-way-bound input (WebKit-GTK
 pattern, see CLAUDE.md).
 
 The existing `.pwd-input-wrap`, `.pwd-input`, and `.eye-btn` CSS classes are
-reused directly — no new styles needed. The `on:contextmenu` paste-only handler
+reused directly - no new styles needed. The `on:contextmenu` paste-only handler
 from issue #61 is preserved on both input variants.
 
 ---
@@ -1548,8 +1548,8 @@ Title: [UI] Site Manager action buttons (Connect, Edit, Delete) left-aligned ins
 Labels: bug, ui
 Version fixed: v1.7.3
 Description:
-In the Site Manager detail panel, the three action buttons — "Connecter",
-"Modifier le site", and "Supprimer le site" — are left-aligned. They should be
+In the Site Manager detail panel, the three action buttons - "Connecter",
+"Modifier le site", and "Supprimer le site" - are left-aligned. They should be
 centered horizontally in the detail area.
 Ref: _images/issues/v1.7.3/issue-26.png
 
@@ -1682,7 +1682,7 @@ Implemented in v1.7.4.
 - New field `ConnectCardShadow bool \`json:"connectCardShadow"\`` added to the
   Settings struct. Default value: `false` (off).
 
-**frontend/src/stores/settings.js — applyAccentColor():**
+**frontend/src/stores/settings.js - applyAccentColor():**
 - New CSS custom property `--accent-glow` added alongside `--accent-subtle`:
   `rgba(r, g, b, 0.45)`. This gives a semi-transparent variant of the accent
   color usable for glow effects without hardcoding opacity in component CSS.
@@ -1745,7 +1745,7 @@ Implemented in v1.7.4 in FileBrowser.svelte.
 - `treeNodes` array: flat display list of `{path, name, depth, isDir, size,
   modTime, expanded, loading, leaf}`. Files have `leaf: true`; folder nodes
   start as non-leaf until expanded.
-- `treeLoaded` Set and `treeChildrenMap` object: lazy-load cache — each dir path
+- `treeLoaded` Set and `treeChildrenMap` object: lazy-load cache - each dir path
   is fetched at most once per tree session.
 - `treeSelected` string: path of the currently single-clicked file (for highlight).
 
@@ -1832,7 +1832,7 @@ Both calls are fast in-memory operations with no network involvement.
 ---
 
 #69
-Title: [Bug] Concurrent transfer option has no effect — transfers happen one by one
+Title: [Bug] Concurrent transfer option has no effect - transfers happen one by one
 Labels: bug
 Version fixed: v1.7.4
 Description:
@@ -1847,23 +1847,23 @@ Two independent root causes:
    channel sized to MaxConcurrentTransfers. When the user saves new settings,
    SaveSettings() in app.go updated the speed limit via queue.SetSpeedLimit() but
    never updated the semaphore capacity. Any change made to MaxConcurrentTransfers
-   after startup was therefore silently ignored — the queue kept using the
+   after startup was therefore silently ignored - the queue kept using the
    semaphore from startup for the lifetime of the app.
 
 2. FTP serializes all transfers through a single global mutex.
    FTPClient.Upload() and FTPClient.Download() both acquired c.mu (a sync.Mutex)
    at the very start of the function and held it until the transfer completed.
    Because jlaffaye/ftp is not thread-safe on a single connection, the mutex was
-   there to prevent data corruption — but holding it for the full duration of
+   there to prevent data corruption - but holding it for the full duration of
    every transfer meant only one goroutine could transfer at a time, making the
    semaphore in the queue irrelevant for FTP sessions. SFTP was not affected
    (github.com/pkg/sftp natively supports concurrent requests over a single SSH
    connection via packet IDs).
 
 Solution (closing comment):
-Fixed in v1.7.4 — two separate fixes.
+Fixed in v1.7.4 - two separate fixes.
 
-**Fix 1 — queue.go: SetWorkers() + run() semaphore snapshot**
+**Fix 1 - queue.go: SetWorkers() + run() semaphore snapshot**
 
 A new method SetWorkers(n int) was added to Queue:
 
@@ -1890,7 +1890,7 @@ even if SetWorkers() replaces q.sem mid-flight:
 Without this snapshot a goroutine that acquired from the old semaphore would
 have released from the new one (pointing at an empty channel) → deadlock.
 
-**Fix 2 — app.go: propagate the setting change to the queue**
+**Fix 2 - app.go: propagate the setting change to the queue**
 
 SaveSettings() now calls SetWorkers in addition to SetSpeedLimit:
 
@@ -1901,7 +1901,7 @@ SaveSettings() now calls SetWorkers in addition to SetSpeedLimit:
       return s.Save()
   }
 
-**Fix 3 — ftp.go: dedicated connection per FTP transfer**
+**Fix 3 - ftp.go: dedicated connection per FTP transfer**
 
 The global mutex on Upload() and Download() was removed. Each call to Upload()
 or Download() now opens its own dedicated FTP connection via a new internal
@@ -1942,7 +1942,7 @@ QueueUpload() and QueueDownload() passed the path directly to executor.Upload()
 client.Create() / client.Open() (SFTP) on the given path. Both FTP and SFTP
 protocols only allow RETR/STOR on regular files; issuing them on a directory
 path causes the server to return 550. There was no check for whether the
-queued path was a file or a directory — folders were silently treated as files
+queued path was a file or a directory - folders were silently treated as files
 and the transfer always failed.
 
 Solution (closing comment):
@@ -1970,7 +1970,7 @@ independently visible, cancellable, and retryable in the queue panel.
 Both methods were exported to the frontend via new entries in
 frontend/wailsjs/go/main/App.js.
 
-**FileBrowser.svelte — doQueueTransfer():**
+**FileBrowser.svelte - doQueueTransfer():**
 The function now checks entry.isDir before deciding which binding to call:
 
   if (entry.isDir) {
@@ -1981,7 +1981,7 @@ The function now checks entry.isDir before deciding which binding to call:
     else QueueDownload(entry.path, dest);
   }
 
-**FileBrowser.svelte — drag-and-drop:**
+**FileBrowser.svelte - drag-and-drop:**
 handleDragStart() now includes isDir in the serialized drag payload:
   entries: dragEntries.map(en => ({ path, name, isDir: en.isDir }))
 handleDrop() reads isDir from each entry and routes to QueueUploadDir /
@@ -1998,17 +1998,17 @@ Several related problems reported together:
 
 1. The connection drops silently after 5-10 minutes of inactivity regardless
    of the timeout value set in Settings. When it happens the UI gives no
-   feedback — files and folders can no longer be clicked or transferred, but
+   feedback - files and folders can no longer be clicked or transferred, but
    no error message appears and no automatic disconnect occurs.
 
-2. Setting 50 minutes (3000 seconds) in the timeout field does not help — the
+2. Setting 50 minutes (3000 seconds) in the timeout field does not help - the
    connection still drops after only 5-10 minutes.
 
 3. The user asked whether moving the mouse resets the idle countdown.
 
 Root cause:
 The "Connection timeout (seconds)" setting controls the TCP dial timeout and
-the ListDir operation timeout — it is NOT an idle inactivity timer. It has no
+the ListDir operation timeout - it is NOT an idle inactivity timer. It has no
 effect on how long an idle connection stays open.
 
 The actual cause of the drops is the FTP/SFTP server's own idle timeout
@@ -2016,7 +2016,7 @@ The actual cause of the drops is the FTP/SFTP server's own idle timeout
 inactivity on the control connection. GlideFTP was sending nothing to keep the
 connection alive, so the server would silently drop it.
 
-Moving the mouse does NOT reset the server's idle timer — only network activity
+Moving the mouse does NOT reset the server's idle timer - only network activity
 on the control connection does. Without keepalives, the connection will always
 drop regardless of what the user does on the client side.
 
@@ -2024,7 +2024,7 @@ The default connection timeout was also set too low (30 seconds) for an
 operation timeout, making slow servers appear to time out during normal use.
 
 Solution (closing comment):
-Fixed in v1.7.4 — three separate changes.
+Fixed in v1.7.4 - three separate changes.
 
 **1. Default timeout raised to 15 minutes (internal/settings/settings.go)**
 ConnectionTimeoutSec default changed from 30 to 900. This applies to:
@@ -2032,7 +2032,7 @@ ConnectionTimeoutSec default changed from 30 to 900. This applies to:
 - The ListDir operation watchdog (the guard that disconnects if a directory
   listing hangs for longer than the configured value).
 
-**2. Keepalive goroutine — prevents server-side idle drops (internal/connection/)**
+**2. Keepalive goroutine - prevents server-side idle drops (internal/connection/)**
 
 A Keepalive() method was added to the Client interface and implemented by both
 clients:
@@ -2040,7 +2040,7 @@ clients:
 FTPClient.Keepalive() (ftp.go):
   Sends a NOOP command on the primary control connection.
   Uses sync.Mutex.TryLock() so it never blocks if another control operation
-  (ListDir, MkDir, etc.) already holds the lock — in that case the server is
+  (ListDir, MkDir, etc.) already holds the lock - in that case the server is
   clearly active and the keepalive tick is safely skipped.
 
 SFTPClient.Keepalive() (sftp.go):
@@ -2073,7 +2073,7 @@ App.svelte onMount():
   - Calls closeTab(id) to remove the dead tab and update all connection
     stores (identical to a normal user-initiated tab close).
   - Sets lostNotif = { host }, showing a dismissible red banner:
-    "⚠ Connection lost — The connection to <host> was dropped by the server.
+    "⚠ Connection lost - The connection to <host> was dropped by the server.
     Please reconnect."
   - The banner auto-dismisses after 10 seconds; the ✕ button dismisses it
     immediately.
@@ -2098,7 +2098,7 @@ behaviours:
 - Local → Local: real recursive copy (no network involved).
 - Remote → Remote: transparent copy via temp-file download + re-upload (no
   native FTP/SFTP server-side copy command exists).
-- Cross-panel operations are transfers, not copies — not in scope here.
+- Cross-panel operations are transfers, not copies - not in scope here.
 - Auto-refresh while the operation is running (first at +1 s, then every 4 s),
   plus a final refresh when done.
 - Green confirmation banner on success, orange on failure, auto-dismissed
@@ -2109,27 +2109,27 @@ Implemented in v1.7.4.
 
 **Go backend:**
 
-internal/fs/local.go — Copy(src, dst string) error:
+internal/fs/local.go - Copy(src, dst string) error:
   Recursive local copy. Detects file vs directory via os.Stat. For files:
   os.Open → os.Create → io.Copy. For directories: os.MkdirAll + recurse into
   each entry. Used by the new app.LocalCopy binding.
 
-internal/connection/manager.go — CopyRemote / CopyRemoteDir:
+internal/connection/manager.go - CopyRemote / CopyRemoteDir:
   CopyRemote(srcPath, destPath): downloads the remote file to a OS temp file
   (os.CreateTemp), re-uploads it to the destination, then deletes the temp
   file. Works for both FTP and SFTP without requiring any server-side COPY
   command. Runs synchronously so the JS caller can await completion.
-  CopyRemoteDir(srcPath, destPath): synchronous recursive variant — MkDir at
+  CopyRemoteDir(srcPath, destPath): synchronous recursive variant - MkDir at
   destination, ListDir at source, recurse into subdirectories, CopyRemote each
   file. Synchronous so that onRefresh() in the frontend fires only after the
   full tree is copied.
 
-app.go: LocalCopy, RemoteCopy, RemoteCopyDir — thin wrappers over the above.
+app.go: LocalCopy, RemoteCopy, RemoteCopyDir - thin wrappers over the above.
 
 frontend/wailsjs/go/main/App.js: LocalCopy, RemoteCopy, RemoteCopyDir
   bindings added.
 
-**Frontend — clipboard store (connection.js):**
+**Frontend - clipboard store (connection.js):**
   export const clipboard = writable(null);
   Shape: { entries: [{path, name, isDir}], operation: 'copy'|'cut',
            side: 'local'|'remote' }
@@ -2140,11 +2140,11 @@ frontend/wailsjs/go/main/App.js: LocalCopy, RemoteCopy, RemoteCopyDir
   New helpers: localCopy(src, dest), remoteCopy(src, dest),
   remoteCopyDir(src, dest).
 
-**Frontend — FileBrowser.svelte:**
+**Frontend - FileBrowser.svelte:**
 
 Keyboard (handlePanelKeydown):
-  Ctrl+C → copyEntries(selected) — sets clipboard with operation 'copy'.
-  Ctrl+X → cutEntries(selected) — sets clipboard with operation 'cut'.
+  Ctrl+C → copyEntries(selected) - sets clipboard with operation 'copy'.
+  Ctrl+X → cutEntries(selected) - sets clipboard with operation 'cut'.
   Ctrl+V → pasteToFolder(path) if clipboard.side === side.
 
 Right-click context menu:
@@ -2208,7 +2208,7 @@ Fixed in v1.7.4.
 Three platform-specific files were added to internal/fs/ using Go build tags.
 app.go LocalDelete() now calls localfs.Trash() instead of localfs.Delete().
 
-**Linux — internal/fs/trash_linux.go (//go:build linux)**
+**Linux - internal/fs/trash_linux.go (//go:build linux)**
 
 Implements the FreeDesktop.org XDG Trash specification:
 
@@ -2229,7 +2229,7 @@ Implements the FreeDesktop.org XDG Trash specification:
 The trashinfo format is compatible with Nautilus, Thunar, Dolphin, Nemo,
 and any other FreeDesktop-compliant file manager.
 
-**Windows — internal/fs/trash_windows.go (//go:build windows)**
+**Windows - internal/fs/trash_windows.go (//go:build windows)**
 
 Calls SHFileOperationW from shell32.dll via syscall.NewLazyDLL (no CGo
 required, compatible with mingw-w64 cross-compilation from Linux).
@@ -2239,15 +2239,15 @@ to match MSVC's 64-bit layout (56 bytes total):
   hwnd, wFunc, _pad1, pFrom, pTo, fFlags, _pad2, fAborted, hMapping, title.
 
 Flags used:
-  FOF_ALLOWUNDO      (0x0040) — sends to Recycle Bin, recoverable
-  FOF_NOCONFIRMATION (0x0010) — no Windows dialog
-  FOF_SILENT         (0x0004) — no progress window
-  FOF_NOERRORUI     (0x0400) — suppress error dialogs (errors returned as int)
+  FOF_ALLOWUNDO      (0x0040) - sends to Recycle Bin, recoverable
+  FOF_NOCONFIRMATION (0x0010) - no Windows dialog
+  FOF_SILENT         (0x0004) - no progress window
+  FOF_NOERRORUI     (0x0400) - suppress error dialogs (errors returned as int)
 
 The pFrom path is encoded as a double-null-terminated UTF-16 multi-string
 (required by SHFileOperationW): unicode/utf16.Encode([]rune(path + "\x00\x00")).
 
-**Fallback — internal/fs/trash_other.go (//go:build !linux && !windows)**
+**Fallback - internal/fs/trash_other.go (//go:build !linux && !windows)**
 
 Falls back to permanent deletion (os.RemoveAll) on unsupported platforms so
 the package still compiles everywhere.
@@ -2257,7 +2257,7 @@ the package still compiles everywhere.
 1.7.5
 
 #74
-Title: [Bug] Right-click "Transfer" in context menu ignores multi-selection — only transfers the right-clicked file
+Title: [Bug] Right-click "Transfer" in context menu ignores multi-selection - only transfers the right-clicked file
 Labels: bug
 Version fixed: v1.7.5
 Description:
@@ -2318,7 +2318,7 @@ Fix: `handleRefresh()` now detects `treeMode` and branches:
   }
 
 `enterTreeMode()` clears `treeLoaded`, `treeChildrenMap`, and `treeNodes`, then
-re-fetches from `/` and re-expands the current path — a full in-place rebuild
+re-fetches from `/` and re-expands the current path - a full in-place rebuild
 that preserves the spinner animation timing.
 
 ---
@@ -2382,7 +2382,7 @@ the window opens at the right size from the first frame:
   if h <= 0 { h = 900 }
   wails.Run(&options.App{ Width: w, Height: h, ... })
 
-**app.go — startup():**
+**app.go - startup():**
 After other initialization, applies the stored window configuration:
   if s.StartMaximized {
     runtime.WindowMaximise(ctx)
@@ -2390,7 +2390,7 @@ After other initialization, applies the stored window configuration:
     runtime.WindowSetSize(ctx, s.WindowWidth, s.WindowHeight)
   }
 
-**SettingsPanel.svelte — Interface section:**
+**SettingsPanel.svelte - Interface section:**
 Three new rows added after "Confirm before deleting":
 - "Open maximized" toggle switch (`startMaximized`).
 - "Window width (px)" stepper (range 800–3840, step 50),
@@ -2476,8 +2476,8 @@ Labels: bug
 Version fixed: v1.7.5
 Description:
 In tree view, right-clicking any file or folder shows only the "New folder"
-option (the empty-area context menu). The file-specific options — Rename,
-Transfer, Cut, Copy, Paste, Delete — are never shown.
+option (the empty-area context menu). The file-specific options - Rename,
+Transfer, Cut, Copy, Paste, Delete - are never shown.
 In list view the full context menu works correctly.
 Ref: _images/issues/v1.7.5/issue-32.jpg
 
@@ -2495,8 +2495,8 @@ Two changes:
 2. Each `.tree-row` div: `on:contextmenu|stopPropagation` added. The handler
    builds an entry object from the node (`{ path, name, isDir, size, modTime }`)
    sets `treeSelected = node.path` and `selected = [ent]` (so the existing
-   context menu logic — including the selection-aware transfer/cut/copy/delete
-   checks — works without modification), then calls `handleFileContextMenu(e, ent)`.
+   context menu logic - including the selection-aware transfer/cut/copy/delete
+   checks - works without modification), then calls `handleFileContextMenu(e, ent)`.
 The `stopPropagation` prevents the event from reaching the browser-context
 handler, so only the file-specific menu is shown for non-empty rows.
 
@@ -2507,9 +2507,9 @@ Title: [Bug] Tree view does not update after delete, paste, drag-drop, or new fo
 Labels: bug
 Version fixed: v1.7.5
 Description:
-In tree view, performing any file mutation — deleting a file, pasting a file
+In tree view, performing any file mutation - deleting a file, pasting a file
 into a folder, moving a file by drag-and-drop within the same panel, or
-creating a new folder — does not update the visible tree. The item remains
+creating a new folder - does not update the visible tree. The item remains
 visible after deletion, the pasted file does not appear, etc. The user must
 manually click Refresh, then switch back to list view and re-expand all folders
 to see the current state.
@@ -2527,7 +2527,7 @@ Three new helpers were added:
 `treeParentDir(entryPath)`: returns the parent directory of a given path.
 
 `treeRefreshDir(dirPath)`: refreshes a single directory node in the tree
-in-place — clears the cache entry for that directory, then collapses and
+in-place - clears the cache entry for that directory, then collapses and
 re-expands the corresponding `treeNodes` entry so only that subtree is
 reloaded. For the root `/`, falls back to a full `enterTreeMode()`. Returns
 immediately if the directory is not currently expanded (no visual change
@@ -2541,7 +2541,7 @@ content needs to be shown.
 Each mutating operation was updated to branch on `treeMode`:
 
 - **Delete** (`doDeleteAll`): calls `treeRemoveEntries(entries)` then clears
-  `treeSelected` and `selected`. No network refetch required — the nodes are
+  `treeSelected` and `selected`. No network refetch required - the nodes are
   removed immediately.
 - **Paste copy** (`pasteToFolder`): after `onRefresh()`, also calls
   `treeRefreshDir(destFolder)` to reload the destination directory.
@@ -2594,7 +2594,7 @@ conditional input pattern used in the list view:
   </span>
 
 `doRename()` was also updated to handle tree mode: instead of calling
-`onRefresh()`, it mutates `treeNodes` directly — updating the node's `name`
+`onRefresh()`, it mutates `treeNodes` directly - updating the node's `name`
 and `path` (and all descendant paths if it was a directory), updating
 `treeSelected` if the renamed node was selected, and clearing the cache for
 the parent directory. This keeps the tree in sync without a full rebuild.
@@ -2629,7 +2629,7 @@ Implemented in v1.7.6.
 
 **Docker containers:**
 - `docker/Dockerfile.rpm` - Fedora 40 minimal image with rpm-build +
-  rpmdevtools. No Go/Node — binary is pre-built and mounted from host.
+  rpmdevtools. No Go/Node - binary is pre-built and mounted from host.
 - `docker/build-deb.sh` - runs inside glideftp-debian-builder (Ubuntu 22.04,
   already used for the Debian AppImage). Builds the .deb with dpkg-deb.
   Output: build/bin/linux/GlideFTP-Linux-v{version}.deb
@@ -2715,7 +2715,7 @@ Clicking "Export sites" now enters a selection step first:
    (with or without passwords).
 5. Annuler: exits select mode with no action.
 
-**Frontend — SiteManager.svelte:**
+**Frontend - SiteManager.svelte:**
 New state:
   exportSelectMode bool
   exportSelectedIds Set<string>
@@ -2723,11 +2723,11 @@ New state:
   exportNoneChecked reactive (size === 0)
 
 New functions:
-  openExportDialog()     — now enters exportSelectMode instead of showExportDialog
-  cancelExportSelect()   — resets exportSelectMode + exportSelectedIds
-  confirmExportSelect()  — exits select mode, opens showExportDialog
-  toggleExportSite(id)   — toggles one site in exportSelectedIds
-  toggleExportAll()      — selects all or deselects all
+  openExportDialog()     - now enters exportSelectMode instead of showExportDialog
+  cancelExportSelect()   - resets exportSelectMode + exportSelectedIds
+  confirmExportSelect()  - exits select mode, opens showExportDialog
+  toggleExportSite(id)   - toggles one site in exportSelectedIds
+  toggleExportAll()      - selects all or deselects all
 
 doExportPlain() and doExportEncrypted() now call the new Selected variants
 passing [...exportSelectedIds] as the IDs list.
@@ -2736,7 +2736,7 @@ CSS: .export-checkbox (16px square, accent fill when checked, partial border
 when intermediate), .export-selectable (cursor pointer on site rows in select
 mode).
 
-**Go — app.go:**
+**Go - app.go:**
 Two new methods alongside the existing ones (kept for compatibility):
   ExportSitesPlainSelected(ids []string) error
     Same as ExportSitesPlain but filters to the given site IDs.
@@ -2779,12 +2779,12 @@ Fixed in v1.7.6 in SiteManager.svelte.
 The right panel template is a single if/else-if/else chain:
   {#if editMode} edit form
   {:else if selectedSite} site detail view (Connect/Edit/Delete)
-  {:else} no-selection panel — shows the export-select UI when
+  {:else} no-selection panel - shows the export-select UI when
           exportSelectMode is true
   {/if}
 
 openExportDialog() (called by the "Export sites" button) only set
-exportSelectMode = true and pre-filled exportSelectedIds — it never reset
+exportSelectMode = true and pre-filled exportSelectedIds - it never reset
 selectedSite (or editMode). So if a site was already selected (or being
 edited) when the button was clicked, the {:else if selectedSite} branch kept
 rendering its detail/edit view instead of falling through to the
@@ -2813,9 +2813,9 @@ languages since only the icon changes, not the label.
 Solution (closing comment):
 Implemented in v1.7.6 in SettingsPanel.svelte.
 
-**Frontend — SettingsPanel.svelte:**
+**Frontend - SettingsPanel.svelte:**
 Replaced the 🌙 / ☀️ emoji in the theme `.toggle-group` buttons with inline
-SVGs (viewBox 24x24, fill none, stroke currentColor, stroke-width 2 — same
+SVGs (viewBox 24x24, fill none, stroke currentColor, stroke-width 2 - same
 convention as the existing accent-color-picker icon):
   Dark  : crescent moon path
           `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`
@@ -2827,7 +2827,7 @@ convention as the existing accent-color-picker icon):
   and label align on one line (previously text-only, no flex needed).
   New `.theme-icon` class: 14x14px, `flex-shrink: 0`.
 
-No i18n changes — themeDark / themeLight labels (Sombre/Dark, Clair/Light)
+No i18n changes - themeDark / themeLight labels (Sombre/Dark, Clair/Light)
 are unchanged, only the icon markup changed.
 
 ---
@@ -2847,21 +2847,21 @@ Solution (closing comment):
 Implemented in v1.7.6 in settings.go, SettingsPanel.svelte and
 SiteManager.svelte.
 
-**Go — internal/settings/settings.go:**
+**Go - internal/settings/settings.go:**
 New field:
   CloseSiteManagerOnClickOutside bool `json:"closeSiteManagerOnClickOutside"`
 Default: true (preserves current behavior for existing users - an old
 settings.json without the key unmarshals over Default(), so it still lands
 on true).
 
-**Frontend — SettingsPanel.svelte:**
+**Frontend - SettingsPanel.svelte:**
 New toggle in the "Interface" section, right under "Connection card accent
 shadow":
-  closeSiteManagerOnClickOutside — standard `.sw` switch button (WebKit-GTK
+  closeSiteManagerOnClickOutside - standard `.sw` switch button (WebKit-GTK
   pattern: button-based toggle, not a hidden checkbox), with its own reset
   (↺) button. Added to DEFAULTS map (true) so reset restores the default.
 
-**Frontend — SiteManager.svelte:**
+**Frontend - SiteManager.svelte:**
 The modal backdrop click handler now checks the setting before closing:
   on:click|self={() => { if ($settings?.closeSiteManagerOnClickOutside !== false) onClose(); }}
 `!== false` so the modal still closes on outside click while settings are
@@ -2891,32 +2891,32 @@ Solution (closing comment):
 Implemented in v1.7.6 in settings.go, SettingsPanel.svelte and
 FileBrowser.svelte.
 
-**Go — internal/settings/settings.go:**
+**Go - internal/settings/settings.go:**
 New field:
   DoubleClickNavigateUp bool `json:"doubleClickNavigateUp"`
 Default: false (preserves current single-click behavior).
 
-**Frontend — SettingsPanel.svelte:**
+**Frontend - SettingsPanel.svelte:**
 New toggle in the "Interface" section, right after "Close Manage sites by
 clicking outside":
-  doubleClickNavigateUp — standard `.sw` switch with its own reset (↺)
+  doubleClickNavigateUp - standard `.sw` switch with its own reset (↺)
   button. Added to DEFAULTS map (false).
 
-**Frontend — FileBrowser.svelte:**
+**Frontend - FileBrowser.svelte:**
 FileBrowser is instantiated once per panel (local/remote), so the setting
-applies to both automatically — no per-side wiring needed.
+applies to both automatically - no per-side wiring needed.
 
 New reactive flag:
   $: dblClickUp = $settings?.doubleClickNavigateUp === true;
 
 Two places gated by dblClickUp (both are the only "go to parent folder"
-affordances, covering list view and tree view respectively — tree view has
+affordances, covering list view and tree view respectively - tree view has
 no ".." row of its own):
 
 1. List view ".." row (`.parent-row`):
    New handleParentClick() replaces the inline single-click handler:
      - dblClickUp = false (default): click navigates up immediately
-       (parentFocused = false; onNavigateUp()) — unchanged behavior.
+       (parentFocused = false; onNavigateUp()) - unchanged behavior.
      - dblClickUp = true: click only sets parentFocused = true (highlights
        the row, same visual state as ArrowUp keyboard navigation) without
        navigating. on:dblclick={onNavigateUp} still navigates on double-click
@@ -2930,7 +2930,7 @@ no ".." row of its own):
    click always navigates.
 
 Keyboard navigation (ArrowUp to focus "..", Enter to navigate) is
-unchanged — Enter is an explicit activation, treated the same as a
+unchanged - Enter is an explicit activation, treated the same as a
 double-click regardless of the setting.
 
 **i18n:**
@@ -2957,14 +2957,14 @@ Solution (closing comment):
 Implemented in v1.7.6 across local.go, app.go, connection.js, App.svelte and
 FileBrowser.svelte.
 
-**Go — internal/fs/local.go:**
+**Go - internal/fs/local.go:**
   Search(dir, query string, recursive, showHidden bool) ([]FileEntry, error)
     Non-recursive: filters dir's direct children by case-insensitive
     substring match. Recursive: walks every subdirectory (searchWalk),
     same matching rule. Capped at 500 results (searchResultLimit) so a
     huge local tree can't hang the UI.
 
-**Go — app.go:**
+**Go - app.go:**
   LocalSearch(path, query string, recursive bool) ([]localfs.FileEntry, error)
     Thin wrapper around localfs.Search using the current ShowHiddenFiles
     setting.
@@ -2977,14 +2977,14 @@ FileBrowser.svelte.
   JS bindings regenerated via `wails generate module` (LocalSearch /
   RemoteSearch added to frontend/wailsjs/go/main/App.{js,d.ts}).
 
-**Frontend — connection.js / App.svelte:**
+**Frontend - connection.js / App.svelte:**
   localSearch(path, query, recursive) / remoteSearch(path, query, recursive)
   wrap LocalSearch/RemoteSearch. Passed into each FileBrowser instance as the
   onSearch prop, same pattern as onMkDir/onDelete/onRename.
 
-**Frontend — FileBrowser.svelte:**
+**Frontend - FileBrowser.svelte:**
 New toolbar button (magnifying glass) between the tree-view toggle and the
-refresh button, in the shared browser-header — so it appears identically in
+refresh button, in the shared browser-header - so it appears identically in
 both panels and is unaffected by list/tree mode.
 
 Search bar (inline row, like the existing new-folder row): text input +
@@ -3047,7 +3047,7 @@ Description:
 Requested a sound notification played when transfers finish, with an
 on/off setting and a choice of sound (a dropdown of available sounds plus
 a speaker button to preview one). Sound only, no OS/desktop notifications.
-No sounds were provided by the user — asked to create them. Follow-up:
+No sounds were provided by the user - asked to create them. Follow-up:
 must work for both uploads and downloads, and the sound must play only
 once the whole transfer queue is empty, not once per individual file.
 
@@ -3055,38 +3055,38 @@ Solution (closing comment):
 Implemented in v1.7.7 across settings.go, a new generated-sounds pipeline,
 sound.js, transfers.js and SettingsPanel.svelte.
 
-**Go — internal/settings/settings.go:**
+**Go - internal/settings/settings.go:**
 Two new fields:
   NotificationSoundEnabled bool   `json:"notificationSoundEnabled"`
   NotificationSound        string `json:"notificationSound"`
-Defaults: false / "chime". Plain JSON pass-through — no Go-side audio
+Defaults: false / "chime". Plain JSON pass-through - no Go-side audio
 code at all, playback is 100% frontend.
 
-**Sound generation — scripts/generate_notification_sounds.py:**
+**Sound generation - scripts/generate_notification_sounds.py:**
 Pure-stdlib Python (wave/struct/math/base64, no external deps) synthesizes
-four short, soft tones — soft attack + exponential decay so none of them
+four short, soft tones - soft attack + exponential decay so none of them
 are jarring:
-  chime — two soft ascending bell notes (C6 → E6), slightly overlapping
-  bell  — a single warm, long-decaying tone (A5) with inharmonic overtones
-  pop   — a very short wood-block/marimba-like blip (C5)
-  glass — an airy, bright descending two-note (E6 → C6)
+  chime - two soft ascending bell notes (C6 → E6), slightly overlapping
+  bell  - a single warm, long-decaying tone (A5) with inharmonic overtones
+  pop   - a very short wood-block/marimba-like blip (C5)
+  glass - an airy, bright descending two-note (E6 → C6)
 Writes frontend/src/assets/sounds/*.wav (reference copies, for listening)
 AND frontend/src/utils/sounds.generated.js (the same four sounds as
-`data:audio/wav;base64,...` strings) — see the WebKitGTK issue below for
+`data:audio/wav;base64,...` strings) - see the WebKitGTK issue below for
 why the .wav files themselves are not imported by the app.
 
 **WebKitGTK Linux gotcha (the actual bulk of this issue's debugging):**
 A plain imported .wav asset URL failed completely silently in the real
-app on Linux — no sound, no JS error, no crash — while the exact same
+app on Linux - no sound, no JS error, no crash - while the exact same
 code played fine when the built page was opened manually in a real
 browser (Chrome) at the wails-dev debug URL. Root cause: on Linux, Wails'
 native window always loads the frontend through its own custom `wails://`
-URI scheme (true in both `wails dev` and the packaged binary — the
+URI scheme (true in both `wails dev` and the packaged binary - the
 `http://localhost:34115` printed by `wails dev` is only for manually
 opening the page in an external browser to debug, not what the app
 window itself navigates to). WebKitGTK's HTML5 `<audio>`/`<video>` loader
 only recognizes a fixed allowlist of URI schemes (http/https/file/data/
-blob/...) before ever touching GStreamer — `wails://` isn't in that list,
+blob/...) before ever touching GStreamer - `wails://` isn't in that list,
 so the media element fails instantly with
 `MediaPlayerPrivateGStreamer.cpp:1554:loadingFailed: ... FormatError`,
 confirmed by `GST_DEBUG=3,webkitwebsrc:6,souphttpsrc:6,typefind:5`
@@ -3095,9 +3095,9 @@ before a GStreamer pipeline is even built). Ruled out along the way,
 none of which fixed it: an unreferenced `new Audio()` being garbage
 collected before playback (fixed separately by caching instances, real
 bug but not the blocker), `WEBKIT_DISABLE_SANDBOX=1`, and
-`WEBKIT_DISABLE_COMPOSITING_MODE=1` (GPU/compositing was a red herring —
+`WEBKIT_DISABLE_COMPOSITING_MODE=1` (GPU/compositing was a red herring -
 confirmed via an isolated WebKitGTK MiniBrowser test). Fix: embed each
-sound as a `data:` URI instead of a plain asset URL — a scheme WebKit's
+sound as a `data:` URI instead of a plain asset URL - a scheme WebKit's
 media loader does accept. Vite 3 (pinned by this project) has no
 dev-server-side asset inlining (`?inline` and `assetsInlineLimit` only
 apply to `vite build`, not `vite dev`), hence generating the base64 JS
@@ -3105,30 +3105,30 @@ module ahead of time in Python rather than relying on Vite's own
 inlining. Any future audio/video element must follow this same
 `sounds.generated.js`-style `data:` URI pattern on Linux.
 
-**Frontend — utils/sound.js:**
+**Frontend - utils/sound.js:**
   NOTIFICATION_SOUNDS = [{id, label, url}, ...] read from
   sounds.generated.js's SOUND_DATA_URLS.
-  playNotificationSound(id) — one cached Audio instance per sound (kept
+  playNotificationSound(id) - one cached Audio instance per sound (kept
   alive for the app's lifetime, see garbage-collection note above),
   audio.currentTime = 0 then audio.play(), errors logged via
   console.error instead of being swallowed.
 
-**Frontend — stores/transfers.js (queue-drain, not per-file):**
+**Frontend - stores/transfers.js (queue-drain, not per-file):**
   hadActiveJobs module-level flag + a subscription on the `transfers`
   store computing `active = list.some(j => j.status is pending/running)`.
   The sound plays only on the transition from hadActiveJobs=true to
-  active=false — i.e. once, right when the last queued job (upload or
+  active=false - i.e. once, right when the last queued job (upload or
   download, mixed batches included) finishes, never once per file.
   Gated on settings.notificationSoundEnabled.
 
-**Frontend — SettingsPanel.svelte:**
+**Frontend - SettingsPanel.svelte:**
 New "Notifications" section (between Transfers and Connection):
-  - on/off switch (`.sw` pattern) — notificationSoundEnabled
+  - on/off switch (`.sw` pattern) - notificationSoundEnabled
   - when on: a `<select>` dropdown of the 4 sound names (i18n-labeled)
     bound to notificationSound, plus a speaker-icon button that calls
     playNotificationSound(form.notificationSound) to preview
   Both added to the DEFAULTS map for the ↺ reset buttons. `<select>` was
-  used deliberately — a pattern already proven safe on WebKit-GTK
+  used deliberately - a pattern already proven safe on WebKit-GTK
   elsewhere in this app (ConnectionBar/SiteManager), unlike hidden
   checkboxes or native number spinners.
 
@@ -3151,27 +3151,27 @@ Version fixed: v1.7.7
 Description:
 Drag a selection box over several files/folders (rubber-band selection),
 then press Delete: nothing happens. Ctrl+click to select the same items
-and press Delete works fine — only the click-drag selection is affected.
+and press Delete works fine - only the click-drag selection is affected.
 
 Solution (closing comment):
 Fixed in v1.7.7 in FileBrowser.svelte.
 
 **Root cause:**
 The panel div (`tabindex="-1"`) carries the `on:keydown={handlePanelKeydown}`
-listener that Delete/F2/arrow-key navigation depend on — it only fires
+listener that Delete/F2/arrow-key navigation depend on - it only fires
 while that div actually has DOM focus. A normal row click (`handleClick`,
 Ctrl+click and Shift+click included) explicitly calls
 `panelEl?.focus({ preventScroll: true })` after updating `selected`, which
 is what makes Delete work afterwards. The rubber-band drag-select
 (`handleListMouseDown` / its `onMove`/`onUp` handlers) correctly builds up
-`selected` as the box is dragged, but never called `panelEl.focus()` —
+`selected` as the box is dragged, but never called `panelEl.focus()` -
 so keyboard focus stayed wherever it was before the drag started, and the
 keydown listener never received the Delete press.
 
 **Fix:**
 `onUp()` (fired on mouseup, ending the drag) now also calls
 `panelEl?.focus({ preventScroll: true })`, matching what `handleClick`
-already does — after both a click-drag and a plain click/Ctrl+click/
+already does - after both a click-drag and a plain click/Ctrl+click/
 Shift+click selection, the panel has focus and Delete/F2/arrow keys work.
 
 ---
@@ -3188,8 +3188,8 @@ drag-and-drop, toggled by a small square button to the right of
 Solution (closing comment):
 Implemented in v1.7.7 across sites.go, app.go and SiteManager.svelte.
 
-**Go — internal/sites/sites.go:**
-No new field on Site — order is simply the array position in the
+**Go - internal/sites/sites.go:**
+No new field on Site - order is simply the array position in the
 existing []Site slice/sites.json, same as it already was.
   Reorder(orderedIDs []string) error
     Rebuilds m.sites to match orderedIDs. Any existing site whose ID is
@@ -3197,19 +3197,19 @@ existing []Site slice/sites.json, same as it already was.
     kept and appended at the end instead of being silently dropped. Saves
     via the existing save() (passwords stripped, as always).
 
-**Go — app.go:**
-  ReorderSites(orderedIDs []string) error — thin wrapper around
+**Go - app.go:**
+  ReorderSites(orderedIDs []string) error - thin wrapper around
   siteMgr.Reorder. JS bindings regenerated via `wails generate module`.
 
-**Frontend — SiteManager.svelte:**
+**Frontend - SiteManager.svelte:**
 New state: reorderMode (bool), dragSiteId, dragOverSiteId.
 
-New square toggle button next to "+ Nouveau site" — both now wrapped
+New square toggle button next to "+ Nouveau site" - both now wrapped
 together in `.site-list-toolbar` so they sit side by side, sharing the
 toolbar's bottom border. Clicking it flips reorderMode. Icon swaps with
 the state so the button's meaning is unambiguous: up/down chevrons when
 off ("start reordering"), a checkmark when on ("done reordering, tap to
-confirm/exit") — the title tooltip switches between the two matching
+confirm/exit") - the title tooltip switches between the two matching
 i18n keys as well.
 
 Follow-up request: swap to a "validate" icon while reorder mode is
@@ -3226,20 +3226,20 @@ While reorderMode is true, each site row (.site-item):
     detail view instead of reordering it
 
 Drag handlers (same intra-app HTML5 drag-and-drop pattern already used
-by FileBrowser's own row dragging — proven safe on WebKit-GTK):
-  handleSiteDragStart — stores the dragged site's id
-  handleSiteDragOver  — preventDefault + dropEffect='move', sets
+by FileBrowser's own row dragging - proven safe on WebKit-GTK):
+  handleSiteDragStart - stores the dragged site's id
+  handleSiteDragOver  - preventDefault + dropEffect='move', sets
                          dragOverSiteId for the highlight
-  handleSiteDrop      — splices the dragged site into its new index in
+  handleSiteDrop      - splices the dragged site into its new index in
                          the local `sites` array (instant visual
                          feedback), then calls
                          ReorderSites(sites.map(s => s.id)) to persist
-  handleSiteDragEnd   — clears drag state (fires even if dropped outside
+  handleSiteDragEnd   - clears drag state (fires even if dropped outside
                          a valid target)
 
 openExportDialog() now also sets reorderMode = false, since export-select
 and reorder mode both repurpose the same toolbar/row area and can't be
-active at the same time. No explicit reset needed on modal close —
+active at the same time. No explicit reset needed on modal close -
 SiteManager is fully destroyed/recreated ({#if showSiteManager} in
 App.svelte) each time the modal is closed and reopened.
 
@@ -3257,7 +3257,7 @@ Labels: bug, ui
 Version fixed: v1.7.7
 Description:
 Clicking "Supprimer le site" showed the confirmation text and Oui/Non
-buttons crammed into the same row as Connecter/Modifier le site — the
+buttons crammed into the same row as Connecter/Modifier le site - the
 text ended up off to the side and Oui/Non wrapped underneath only
 "Modifier le site" instead of the whole row, not centered. Requested
 layout: Connecter + Modifier le site on their row, then centered below
@@ -3266,25 +3266,25 @@ the Oui/Non buttons. Applies to both languages (FR/EN).
 Ref: _images/issues/v1.7.7/issue-36.png
 
 Solution (closing comment):
-Fixed in v1.7.7 in SiteManager.svelte — template/CSS only, no state or
+Fixed in v1.7.7 in SiteManager.svelte - template/CSS only, no state or
 handler changes (confirmDeleteId, deleteSite() unchanged).
 
 **Root cause:**
 The confirmation text and Oui/Non buttons were rendered as extra items
 inside the *same* `.view-actions` flex row as Connecter/Modifier le
-site, instead of on their own row(s) — `flex-wrap` then broke the row
+site, instead of on their own row(s) - `flex-wrap` then broke the row
 unevenly depending on button widths.
 
 **Fix:**
 `.site-view` is already `display: flex; flex-direction: column;
 align-items: center` (each direct child is centered and evenly
 gapped automatically). The markup is now three separate stacked blocks:
-  1. `.view-actions` — Connecter + Modifier le site only; "Supprimer le
+  1. `.view-actions` - Connecter + Modifier le site only; "Supprimer le
      site" is hidden while confirming (`{#if confirmDeleteId !==
      selectedSite.id}`)
-  2. `<p class="confirm-text">` — the "Êtes-vous sûr..." message alone,
+  2. `<p class="confirm-text">` - the "Êtes-vous sûr..." message alone,
      `margin: 0; text-align: center`
-  3. a second `.view-actions` div — Oui / Non only
+  3. a second `.view-actions` div - Oui / Non only
 Rendered only while `confirmDeleteId === selectedSite.id`.
 
 ---
@@ -3301,19 +3301,19 @@ configuration can be carried over to a different PC.
 Solution (closing comment):
 Implemented in v1.7.7 across app.go and SettingsPanel.svelte.
 
-**Go — app.go:**
-  ExportSettings() error — SaveFileDialog ("glideftp-settings.json"),
+**Go - app.go:**
+  ExportSettings() error - SaveFileDialog ("glideftp-settings.json"),
   writes the current in-memory a.appSettings as indented JSON. No
-  passwords or per-site data involved — this is the Settings page only,
+  passwords or per-site data involved - this is the Settings page only,
   unrelated to the existing sites export/import (.gfe) feature.
-  ImportSettings() (*settings.Settings, error) — OpenFileDialog, reads
+  ImportSettings() (*settings.Settings, error) - OpenFileDialog, reads
   the file, unmarshals onto settings.Default() (so a partial/older
   export doesn't zero out fields missing from the file), immediately
   applies it (queue.SetWorkers/SetSpeedLimit) and persists it to disk
   via Settings.Save(), then returns the resolved struct so the frontend
   can sync its store without a restart.
 
-**Frontend — SettingsPanel.svelte / stores/settings.js:**
+**Frontend - SettingsPanel.svelte / stores/settings.js:**
   exportSettings()/importSettings() call the two bindings above.
   importSettings() calls the existing saveSettings(imported) helper
   (applies theme/locale/accent immediately) and updates the local
@@ -3328,7 +3328,7 @@ pushes "Enregistrer" to the right as before); `title` keeps the
 "Exporter/Importer les paramètres" tooltip on hover.
 Second follow-up: the down-arrow icon must mean Import and the
 up-arrow Export (opposite of the initial download/upload-icon choice)
-— fixed by swapping only the two <svg> icons, button positions
+- fixed by swapping only the two <svg> icons, button positions
 unchanged (Export stays left of Import). The same swap was applied to
 the analogous Export/Import buttons in SiteManager.svelte's "Gérer les
 sites" header, for visual consistency between the two features.
@@ -3337,7 +3337,7 @@ sites" header, for visual consistency between the two features.
 
 **wailsjs bindings:** ExportSettings/ImportSettings/ExpandLocalPath (see
 #95) added manually to frontend/wailsjs/go/main/App.{js,d.ts} at their
-alphabetical position, matching the generator's own convention — this
+alphabetical position, matching the generator's own convention - this
 session did not run a full `wails build`; the user's own local
 `./make.sh` build afterwards confirmed no drift.
 
@@ -3348,8 +3348,8 @@ Title: [Bug] Environment variables (%USERNAME%, $USER, ~) not expanded in local 
 Labels: bug
 Version fixed: v1.7.7
 Description:
-Typing a path containing an environment variable — e.g.
-C:\Users\%USERNAME%\Desktop, or $USER/$HOME, or ~ — into the "Default
+Typing a path containing an environment variable - e.g.
+C:\Users\%USERNAME%\Desktop, or $USER/$HOME, or ~ - into the "Default
 local directory" setting did nothing: on next launch the local panel
 kept showing/using the previous directory instead of resolving the
 variable. Also reported: after saving a new "Default local directory"
@@ -3359,22 +3359,22 @@ only took effect after fully closing and reopening the app.
 Solution (closing comment):
 Two independent fixes in v1.7.7.
 
-**1) Environment variable / ~ expansion — internal/fs/local.go, app.go:**
-  ExpandPath(path string) string — new helper. Expands a leading ~ or
+**1) Environment variable / ~ expansion - internal/fs/local.go, app.go:**
+  ExpandPath(path string) string - new helper. Expands a leading ~ or
   ~/ to the home directory, then Windows-style %VAR% (regexp
   `%([^%]+)%`, looked up via os.LookupEnv) and Unix-style $VAR/${VAR}
   (via os.Expand). A reference to an unset variable is left untouched
   rather than collapsed to "", so a typo stays visible/debuggable
   instead of silently breaking navigation.
-  Exposed to the frontend as app.ExpandLocalPath(path) — a pure string
+  Exposed to the frontend as app.ExpandLocalPath(path) - a pure string
   transform, never touches the filesystem.
 
   Deliberately NOT applied inside ListDir or the shared onNavigate path
-  used for every directory click — only at the two places where the
+  used for every directory click - only at the two places where the
   text is actually hand-typed:
-    - stores/connection.js initLocalDir() — resolves the "Default
+    - stores/connection.js initLocalDir() - resolves the "Default
       local directory" setting at startup (and on live-apply, below)
-    - FileBrowser.svelte confirmEditPath() — the editable local path
+    - FileBrowser.svelte confirmEditPath() - the editable local path
       bar, gated on `side === 'local'` (a remote FTP/SFTP path like
       "$logs" is a literal server directory name and must never be
       touched)
@@ -3382,7 +3382,7 @@ Two independent fixes in v1.7.7.
   navigation into a real folder whose name happens to contain a $ or %
   character (e.g. Windows' own "$Recycle.Bin").
 
-**2) Default local directory now applies live — App.svelte:**
+**2) Default local directory now applies live - App.svelte:**
   handleSettingsSaved(newSettings) now compares newSettings.
   defaultLocalDir against a tracked lastDefaultLocalDir; if it changed,
   it calls initLocalDir(newValue) (which also does the expansion above)
@@ -3393,7 +3393,7 @@ Two independent fixes in v1.7.7.
   location.
 
 Verified with a temporary Go test exercising $HOME, ~, %USERNAME%
-(env var set manually) and an unset-variable reference — all resolved
+(env var set manually) and an unset-variable reference - all resolved
 correctly, the unset case left untouched as designed.
 
 ---
@@ -3404,7 +3404,7 @@ Labels: enhancement, ui
 Version fixed: v1.7.7
 Description:
 The success/error messages after exporting or importing Settings and
-Sites used the browser's/Wails' native alert() — an unstyled
+Sites used the browser's/Wails' native alert() - an unstyled
 "JavaScript - wails://wails/" box with a plain "Fermer" button, not
 matching the app's theme. Requested a themed pop-up instead, translated
 FR/EN per the current language, with the pop-up's border in the accent
@@ -3415,32 +3415,32 @@ Solution (closing comment):
 New global notification system, implemented in v1.7.7.
 
 **frontend/src/stores/notify.js:**
-  notification writable store — { message, type: 'success'|'error' } |
+  notification writable store - { message, type: 'success'|'error' } |
   null.
-  notify(message, type = 'success') / closeNotify() — thin setters.
+  notify(message, type = 'success') / closeNotify() - thin setters.
 
 **frontend/src/components/NotifyModal.svelte:**
 Centered overlay + box, mounted once at the root in App.svelte (so it
-always renders above any other panel/modal — z-index 5000, higher than
+always renders above any other panel/modal - z-index 5000, higher than
 SiteManager's 700 and SettingsPanel's 400). 2px border in var(--accent)
 plus a matching accent-tinted outer glow (box-shadow). use:trapFocus,
 per the existing WebKit-GTK popup pattern. Closes on backdrop click, on
 the "Fermer"/"Close" button (i18n key `close`, already existed), or on
-Escape — wired into App.svelte's existing global handleKeydown, checked
+Escape - wired into App.svelte's existing global handleKeydown, checked
 before the Settings/SiteManager Escape handling so the topmost popup
 always closes first.
 Message text: 19px/700 weight, centered, no icon (removed per
-follow-up) — reads as a title rather than an alert body. Colored
+follow-up) - reads as a title rather than an alert body. Colored
 var(--danger) when type is 'error'; default text color otherwise (no
 green tint on success, kept neutral per the reference screenshot).
 
 **Callers switched from alert() to notify():**
-  SettingsPanel.svelte — exportSettings/importSettings catch blocks
+  SettingsPanel.svelte - exportSettings/importSettings catch blocks
     (type 'error') and the "Paramètres importés" success message.
-  SiteManager.svelte — all site-connect failures (now via the existing
+  SiteManager.svelte - all site-connect failures (now via the existing
     `connectError` i18n key instead of a hardcoded "Connection failed"
     fallback string), the export/import error catches, and the "N
     sites importés" success message.
 No alert()/confirm() call remains anywhere in frontend/src (verified by
-grep after the change) — every one of these now goes through the same
+grep after the change) - every one of these now goes through the same
 notify()/NotifyModal path.

@@ -1,5 +1,5 @@
 ========================================
-  MEMO — GLIDEFTP : COMMANDES UTILES
+  MEMO - GLIDEFTP : COMMANDES UTILES
 ========================================
 
 --- Installation des outils ---
@@ -46,7 +46,7 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows \
 # Installer le compilateur croisé Windows (Arch)
 sudo pacman -S mingw-w64-gcc
 
-# Script tout-en-un — voir build.sh à la racine
+# Script tout-en-un - voir build.sh à la racine
 ./make.sh                  # compile tout : Linux + Windows + Arch AppImage + Debian AppImage
 ./make.sh linux            # Linux seulement        → build/bin/linux/GlideFTP
 ./make.sh windows          # Windows seulement      → build/bin/windows/GlideFTP.exe
@@ -58,7 +58,7 @@ sudo pacman -S mingw-w64-gcc
 # Debian AppImage  : construit dans un container Ubuntu 22.04 via docker/Dockerfile.appimage
 #                    Requiert docker ou podman ; 1er run ~10 min (télécharge l'image Ubuntu)
 #                    Monte ~/go/pkg/mod et ~/.npm → builds suivants plus rapides
-#                    Compatible Ubuntu 22.04+, Debian 12+, Arch — GLIBC 2.35 plancher
+#                    Compatible Ubuntu 22.04+, Debian 12+, Arch - GLIBC 2.35 plancher
 
 
 --- Archives de distribution ---
@@ -80,11 +80,11 @@ sudo pacman -S mingw-w64-gcc
 # Linux (binaire natif)
 ./build/bin/linux/GlideFTP
 
-# Linux (Arch AppImage — pour Arch/Manjaro/Fedora récente, GLIBC 2.38+)
+# Linux (Arch AppImage - pour Arch/Manjaro/Fedora récente, GLIBC 2.38+)
 chmod +x build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 ./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
 
-# Linux (Debian AppImage — pour Ubuntu 22.04+/Debian 12+/Arch, GLIBC 2.35+)
+# Linux (Debian AppImage - pour Ubuntu 22.04+/Debian 12+/Arch, GLIBC 2.35+)
 chmod +x build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 ./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
 

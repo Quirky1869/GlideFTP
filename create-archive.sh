@@ -507,7 +507,7 @@ make_appimage_arch_gz() {
   local src="build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage"
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar.gz"
   if [ ! -f "$src" ]; then
-    echo "⚠  $src not found — skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
+    echo "⚠  $src not found - skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
     return
   fi
   local staging
@@ -523,7 +523,7 @@ make_appimage_arch_tar() {
   local src="build/bin/linux/GlideFTP-Arch-x86_64-v${VERSION}.AppImage"
   local out="GlideFTP-Linux-Arch-AppImage-v${VERSION}.tar"
   if [ ! -f "$src" ]; then
-    echo "⚠  $src not found — skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
+    echo "⚠  $src not found - skipping Arch AppImage archive (not built in CI; run: ./make.sh appimage-arch ${VERSION})"
     return
   fi
   local staging
@@ -563,12 +563,12 @@ update_pkgbuild() {
   local archive="GlideFTP-Linux-v${VERSION}.tar.gz"
 
   if [ ! -f "packaging/PKGBUILD" ]; then
-    echo "⚠  packaging/PKGBUILD not found — skipping AUR update"
+    echo "⚠  packaging/PKGBUILD not found - skipping AUR update"
     return
   fi
 
   if [ ! -f "$archive" ]; then
-    echo "⚠  $archive not found — skipping AUR update"
+    echo "⚠  $archive not found - skipping AUR update"
     return
   fi
 

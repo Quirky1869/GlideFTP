@@ -729,7 +729,7 @@
           <div class="site-view">
             <div class="site-view-header">
               <span class="view-name">{selectedSite.name}</span>
-              <span class="view-sub">{selectedSite.protocol.toUpperCase()} — {selectedSite.host}:{selectedSite.port}</span>
+              <span class="view-sub">{selectedSite.protocol.toUpperCase()} - {selectedSite.host}:{selectedSite.port}</span>
               {#if selectedSite.note}
                 <div class="view-note-wrap">
                   <p class="view-note">{selectedSite.note}</p>

@@ -41,7 +41,7 @@ func parsePPKSigner(data []byte, passphrase string) (gossh.Signer, error) {
 
 	if pk.encryption != "none" {
 		return nil, fmt.Errorf(
-			"chiffrement PPK (%s) non supporté — convertissez la clé en format OpenSSH avec PuTTYgen : Conversions → Export OpenSSH key",
+			"chiffrement PPK (%s) non supporté - convertissez la clé en format OpenSSH avec PuTTYgen : Conversions → Export OpenSSH key",
 			pk.encryption,
 		)
 	}
@@ -53,7 +53,7 @@ func parsePPKSigner(data []byte, passphrase string) (gossh.Signer, error) {
 		return buildEd25519Signer(pk)
 	default:
 		return nil, fmt.Errorf(
-			"type de clé PPK %q non supporté — convertissez avec PuTTYgen : Conversions → Export OpenSSH key",
+			"type de clé PPK %q non supporté - convertissez avec PuTTYgen : Conversions → Export OpenSSH key",
 			pk.keyType,
 		)
 	}
@@ -211,7 +211,7 @@ func buildRSASigner(pk *ppkKey) (gossh.Signer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("RSA priv q: %w", err)
 	}
-	// iqmp = q^-1 mod p — Precompute() recomputes this automatically.
+	// iqmp = q^-1 mod p - Precompute() recomputes this automatically.
 	if _, err = priv.readMPInt(); err != nil {
 		return nil, fmt.Errorf("RSA priv iqmp: %w", err)
 	}
@@ -229,7 +229,7 @@ func buildRSASigner(pk *ppkKey) (gossh.Signer, error) {
 }
 
 // buildEd25519Signer constructs an Ed25519 signer from a decoded PPK key.
-// Private blob: string(64 bytes = seed + public key) — same layout as Go's ed25519.PrivateKey.
+// Private blob: string(64 bytes = seed + public key) - same layout as Go's ed25519.PrivateKey.
 func buildEd25519Signer(pk *ppkKey) (gossh.Signer, error) {
 	priv := &sshWire{b: pk.privateData}
 	privBytes, err := priv.readBytes()

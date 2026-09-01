@@ -66,7 +66,7 @@
       showSiteManager = false;
       return;
     }
-    // WebKit-GTK doesn't fire native undo in bound inputs — force it
+    // WebKit-GTK doesn't fire native undo in bound inputs - force it
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
       const el = document.activeElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
@@ -77,7 +77,7 @@
     }
   }
 
-  // Settings saved — refresh file lists so showHiddenFiles takes effect
+  // Settings saved - refresh file lists so showHiddenFiles takes effect
   async function handleSettingsSaved(newSettings) {
     // Default local directory changed - navigate there immediately instead of
     // waiting for the next app launch to pick it up.
@@ -119,7 +119,7 @@
   <!-- ── Connection lost banner ────────────────────────────────── -->
   {#if lostNotif}
     <div class="conn-lost-banner">
-      <span>⚠ {$t('connectionLost')} — {$t('connectionLostDetail').replace('{host}', lostNotif.host)}</span>
+      <span>⚠ {$t('connectionLost')} - {$t('connectionLostDetail').replace('{host}', lostNotif.host)}</span>
       <button class="conn-lost-close" on:click={() => lostNotif = null}>✕</button>
     </div>
   {/if}

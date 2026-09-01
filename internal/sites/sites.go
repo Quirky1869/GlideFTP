@@ -80,7 +80,7 @@ func (m *Manager) save() error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-	// Passwords are stored in the system keyring — never write them to disk.
+	// Passwords are stored in the system keyring - never write them to disk.
 	toSave := make([]Site, len(m.sites))
 	for i, s := range m.sites {
 		s.Password = ""

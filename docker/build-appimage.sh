@@ -39,14 +39,14 @@ Categories=Network;FileTransfer;
 Comment=FTP/SFTP desktop client
 DESKTOP
 
-echo "   [debian] Bundling libs (webkit helpers excluded — added manually below)…"
-# Deploy libs only — no --output so we can patch AppRun before packaging
+echo "   [debian] Bundling libs (webkit helpers excluded - added manually below)…"
+# Deploy libs only - no --output so we can patch AppRun before packaging
 linuxdeploy \
     --appdir "$APPDIR" \
     --desktop-file "$APPDIR/glideftp.desktop" \
     --icon-file "$APPDIR/glideftp.png"
 
-# webkit2gtk helper processes are executables, not .so — linuxdeploy misses them.
+# webkit2gtk helper processes are executables, not .so - linuxdeploy misses them.
 # webkit looks for them at the path hardcoded at compile time; we override that
 # via WEBKIT_EXEC_PATH so it finds the bundled copies instead.
 WEBKIT_SRC="/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1"

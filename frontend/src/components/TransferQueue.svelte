@@ -133,7 +133,7 @@
               <div class="progress-fill" style="width: {progressPct(job)}%"></div>
             </div>
             <span class="progress-label">
-              {progressPct(job)}% — {formatBytes(job.bytesDone)} / {formatBytes(job.size)}
+              {progressPct(job)}% - {formatBytes(job.bytesDone)} / {formatBytes(job.size)}
               {#if speeds[job.id] > 0}<span class="speed-label"> • {formatSpeed(speeds[job.id])}</span>{/if}
             </span>
           {/if}
