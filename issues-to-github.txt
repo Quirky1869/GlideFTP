@@ -3444,3 +3444,38 @@ green tint on success, kept neutral per the reference screenshot).
 No alert()/confirm() call remains anywhere in frontend/src (verified by
 grep after the change) - every one of these now goes through the same
 notify()/NotifyModal path.
+
+---
+
+#97
+Title: [Bug] Settings "reset to default" button always visible, even when the value already matches the default
+Labels: bug, ui, settings
+Version fixed: v1.7.7
+Description:
+The per-setting `↺` reset button added in v1.7.5 (issue #78) is shown next
+to every resettable setting's label regardless of its current value - it
+stays visible even when that setting is already at its factory default,
+which is misleading (nothing to reset) and adds visual clutter across the
+whole Settings panel.
+Requested: only show the reset button when the field's current value
+actually differs from its default.
+
+Solution (closing comment):
+Implemented in v1.7.7 in SettingsPanel.svelte.
+
+Every reset button (`class="reset-btn"`, calling `resetSetting(key)`) now
+also has a `hidden={form.<key> === DEFAULTS.<key>}` attribute - a plain
+HTML boolean attribute, which the `.reset-btn` CSS rule has no `display`
+override to fight. The button renders only while the field's value in
+`form` differs from the matching entry in the existing `DEFAULTS` constant
+(from #78), and disappears again the instant the two match again - whether
+because the user clicked reset or manually typed the default value back in.
+
+All 20 reset buttons in the panel (theme, language, maxConcurrentTransfers,
+maxTransferSpeedKBps, notificationSoundEnabled, notificationSound,
+defaultPort, connectionTimeoutSec, passiveMode, autoReconnect,
+maxConnections, connectCardShadow, closeSiteManagerOnClickOutside,
+doubleClickNavigateUp, showHiddenFiles, confirmOnDelete, dateFormat,
+startMaximized, windowWidth, windowHeight) follow this same pattern - no
+new markup or state, just the added `hidden` binding on each existing
+button.

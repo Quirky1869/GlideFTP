@@ -109,7 +109,7 @@
     <section>
       <h3>{$t('appearance')}</h3>
       <div class="setting-row">
-        <label>{$t('theme')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('theme')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('theme')} <button class="reset-btn" hidden={form.theme === DEFAULTS.theme} on:click|stopPropagation={() => resetSetting('theme')} title={$t('resetToDefault')}>↺</button></label>
         <div class="toggle-group">
           <button class="toggle-btn" class:active={form.theme === 'dark'} on:click={() => form = { ...form, theme: 'dark' }}>
             <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -122,7 +122,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('language')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('language')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('language')} <button class="reset-btn" hidden={form.language === DEFAULTS.language} on:click|stopPropagation={() => resetSetting('language')} title={$t('resetToDefault')}>↺</button></label>
         <div class="toggle-group">
           <button class="toggle-btn" class:active={form.language === 'en'} on:click={() => form = { ...form, language: 'en' }}>
             🇬🇧 English
@@ -151,7 +151,7 @@
     <section>
       <h3>{$t('transfers')}</h3>
       <div class="setting-row">
-        <label>{$t('maxConcurrent')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('maxConcurrent')} <button class="reset-btn" hidden={form.maxConcurrentTransfers === DEFAULTS.maxConcurrentTransfers} on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('maxConcurrentTransfers', -1, 1, 10)}>−</button>
           <input type="number" bind:value={form.maxConcurrentTransfers} min="1" max="10" />
@@ -159,7 +159,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('transferSpeedLimit')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('maxTransferSpeedKBps')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('transferSpeedLimit')} <button class="reset-btn" hidden={form.maxTransferSpeedKBps === DEFAULTS.maxTransferSpeedKBps} on:click|stopPropagation={() => resetSetting('maxTransferSpeedKBps')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', -100, 0, 100000)}>−</button>
           <input type="number" bind:value={form.maxTransferSpeedKBps} min="0" max="100000" style="width: 80px" />
@@ -181,7 +181,7 @@
     <section>
       <h3>{$t('notifications')}</h3>
       <div class="setting-row">
-        <label>{$t('notificationSoundEnabled')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('notificationSoundEnabled')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('notificationSoundEnabled')} <button class="reset-btn" hidden={form.notificationSoundEnabled === DEFAULTS.notificationSoundEnabled} on:click|stopPropagation={() => resetSetting('notificationSoundEnabled')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -192,7 +192,7 @@
       </div>
       {#if form.notificationSoundEnabled}
         <div class="setting-row">
-          <label>{$t('notificationSound')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
+          <label>{$t('notificationSound')} <button class="reset-btn" hidden={form.notificationSound === DEFAULTS.notificationSound} on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
           <div class="sound-row">
             <select bind:value={form.notificationSound}>
               {#each NOTIFICATION_SOUNDS as sound (sound.id)}
@@ -222,7 +222,7 @@
     <section>
       <h3>{$t('connection')}</h3>
       <div class="setting-row">
-        <label>{$t('defaultPort')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('defaultPort')} <button class="reset-btn" hidden={form.defaultPort === DEFAULTS.defaultPort} on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('defaultPort', -1, 1, 65535)}>−</button>
           <input type="number" bind:value={form.defaultPort} min="1" max="65535" />
@@ -230,7 +230,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('timeout')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('timeout')} <button class="reset-btn" hidden={form.connectionTimeoutSec === DEFAULTS.connectionTimeoutSec} on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('connectionTimeoutSec', -5, 5, 300)}>−</button>
           <input type="number" bind:value={form.connectionTimeoutSec} min="5" max="300" />
@@ -238,7 +238,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('passiveMode')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('passiveMode')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('passiveMode')} <button class="reset-btn" hidden={form.passiveMode === DEFAULTS.passiveMode} on:click|stopPropagation={() => resetSetting('passiveMode')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -248,7 +248,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('autoReconnect')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('autoReconnect')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('autoReconnect')} <button class="reset-btn" hidden={form.autoReconnect === DEFAULTS.autoReconnect} on:click|stopPropagation={() => resetSetting('autoReconnect')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -258,7 +258,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('maxConnections')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('maxConnections')} <button class="reset-btn" hidden={form.maxConnections === DEFAULTS.maxConnections} on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('maxConnections', -1, 1, 5)}>−</button>
           <input type="number" bind:value={form.maxConnections} min="1" max="5" />
@@ -273,7 +273,7 @@
     <section>
       <h3>{$t('interface')}</h3>
       <div class="setting-row">
-        <label>{$t('connectCardShadow')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('connectCardShadow')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('connectCardShadow')} <button class="reset-btn" hidden={form.connectCardShadow === DEFAULTS.connectCardShadow} on:click|stopPropagation={() => resetSetting('connectCardShadow')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -283,7 +283,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('closeSiteManagerOnClickOutside')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('closeSiteManagerOnClickOutside')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('closeSiteManagerOnClickOutside')} <button class="reset-btn" hidden={form.closeSiteManagerOnClickOutside === DEFAULTS.closeSiteManagerOnClickOutside} on:click|stopPropagation={() => resetSetting('closeSiteManagerOnClickOutside')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -293,7 +293,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('doubleClickNavigateUp')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('doubleClickNavigateUp')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('doubleClickNavigateUp')} <button class="reset-btn" hidden={form.doubleClickNavigateUp === DEFAULTS.doubleClickNavigateUp} on:click|stopPropagation={() => resetSetting('doubleClickNavigateUp')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -303,7 +303,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('showHiddenFiles')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('showHiddenFiles')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('showHiddenFiles')} <button class="reset-btn" hidden={form.showHiddenFiles === DEFAULTS.showHiddenFiles} on:click|stopPropagation={() => resetSetting('showHiddenFiles')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -313,7 +313,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('confirmOnDelete')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('confirmOnDelete')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('confirmOnDelete')} <button class="reset-btn" hidden={form.confirmOnDelete === DEFAULTS.confirmOnDelete} on:click|stopPropagation={() => resetSetting('confirmOnDelete')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -323,11 +323,11 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
-        <label>{$t('dateFormat')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('dateFormat')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('dateFormat')} <button class="reset-btn" hidden={form.dateFormat === DEFAULTS.dateFormat} on:click|stopPropagation={() => resetSetting('dateFormat')} title={$t('resetToDefault')}>↺</button></label>
         <input type="text" bind:value={form.dateFormat} placeholder="2006-01-02 15:04" style="width: 160px" />
       </div>
       <div class="setting-row">
-        <label>{$t('startMaximized')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('startMaximized')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('startMaximized')} <button class="reset-btn" hidden={form.startMaximized === DEFAULTS.startMaximized} on:click|stopPropagation={() => resetSetting('startMaximized')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
           class="sw"
@@ -337,7 +337,7 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row" class:row-disabled={form.startMaximized}>
-        <label>{$t('windowWidth')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('windowWidth')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('windowWidth')} <button class="reset-btn" hidden={form.windowWidth === DEFAULTS.windowWidth} on:click|stopPropagation={() => resetSetting('windowWidth')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowWidth', -50, 800, 3840)}>−</button>
           <input type="number" bind:value={form.windowWidth} min="800" max="3840" disabled={form.startMaximized} />
@@ -345,7 +345,7 @@
         </div>
       </div>
       <div class="setting-row" class:row-disabled={form.startMaximized}>
-        <label>{$t('windowHeight')} <button class="reset-btn" on:click|stopPropagation={() => resetSetting('windowHeight')} title={$t('resetToDefault')}>↺</button></label>
+        <label>{$t('windowHeight')} <button class="reset-btn" hidden={form.windowHeight === DEFAULTS.windowHeight} on:click|stopPropagation={() => resetSetting('windowHeight')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', -50, 600, 2160)}>−</button>
           <input type="number" bind:value={form.windowHeight} min="600" max="2160" disabled={form.startMaximized} />
