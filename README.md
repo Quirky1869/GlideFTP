@@ -468,4 +468,8 @@ Les [releases](https://github.com/Quirky1869/GlideFTP/releases) sont disponibles
 
 ---
 
-Developed by [Quirky](https://github.com/Quirky1869)  
+Project developed by [Quirky](https://github.com/Quirky1869)  
+
+<a href="https://github.com/Quirky1869" target="_blank">  
+<img src="./_images/white-github.png" alt="GitHub" width="30" height="30" style="vertical-align:middle;"> GitHub  
+</a>  
