@@ -3479,3 +3479,117 @@ doubleClickNavigateUp, showHiddenFiles, confirmOnDelete, dateFormat,
 startMaximized, windowWidth, windowHeight) follow this same pattern - no
 new markup or state, just the added `hidden` binding on each existing
 button.
+
+---
+
+#98
+Title: [Feature] "Test connection" button in Site Manager
+Labels: enhancement, ui, connection
+Version fixed: v1.7.7
+Description:
+Requested a way to verify a site's host/port/credentials are valid
+before saving it, without having to actually connect (and without
+disturbing any connection already open). A new button, placed between
+the Note field and the Save/Close/Duplicate row, reading "Tester la
+connexion". Clicking it should morph the label into a 3-dot loading
+animation (dots lighting up one at a time, looping) with a smooth
+transition, then resolve to either a green button reading "Connexion
+ok" or a red one reading "Echec de la connexion", also with a smooth
+transition. Follow-up requests after the first pass: the test was
+taking 20-30s on a failing host - cap it at 10s max, specifically for
+this button (not the global operation-timeout setting); the button's
+idle/default look should match Close/Duplicate (neutral secondary
+style), not Save's accent color; and a CSS specificity bug meant that
+if the mouse stayed hovered over the button, it never actually turned
+green/red after the test finished.
+
+Solution (closing comment):
+Implemented in v1.7.7.
+
+**internal/connection - reused as-is, no changes:**
+  NewFTPClient(cfg)/NewSFTPClient(cfg) + their existing Connect()/
+  Disconnect() methods already do exactly what a standalone test
+  needs - a fully isolated client, unrelated to the connection
+  manager's active session(s).
+
+**app.go - new App.TestConnection(cfg connection.Config) error:**
+  Builds a plain FTPClient or SFTPClient from the given config
+  (ignoring any timeout/passive value sent by the frontend - always
+  overridden server-side) and calls Connect(), then Disconnect()
+  immediately on success. Never touches connMgr, so it cannot affect
+  or drop any tab the user already has open.
+  Bounded to a dedicated `testConnectionTimeoutSec = 10` constant,
+  independent of the user's configurable "Operation timeout" setting
+  (default 60s, can go higher) - a watchdog pattern copied from
+  Manager.ListDir (goroutine running Connect() + a channel, raced
+  against time.After(10s) in a select). This matters because the
+  per-dial timeout alone only bounds the initial TCP handshake - a
+  server that accepts the TCP connection but then hangs during FTP
+  login or the SSH handshake could otherwise still block far past 10s.
+  On timeout, a detached goroutine keeps waiting on the channel so a
+  late-arriving successful connection still gets disconnected instead
+  of leaking a socket.
+
+**frontend/wailsjs/go/main/App.{js,d.ts}:**
+  TestConnection binding added by hand at its alphabetical position
+  (same convention as issue #95) - matches what `wails build` would
+  generate.
+
+**frontend/src/i18n/{en,fr}.js:**
+  New keys testConnection, connectionOk, connectionFailed.
+
+**frontend/src/components/SiteManager.svelte:**
+  New button between the Note `.form-row` and `.form-actions`, driven
+  by `testState` ('idle'|'testing'|'success'|'error'). `testConnection()`
+  calls the new binding with the current form's protocol/host/port/
+  user/password/encryption/authType/sshKeyPath, sets testState from
+  the result, and auto-reverts to 'idle' after 3s via a cleared/reset
+  setTimeout (cleaned up in onDestroy). A reactive block also resets
+  testState back to 'idle' as soon as any connection-relevant form
+  field changes after a test, so a stale green/red result can never be
+  left showing against an edited, untested config.
+  Content swap (label ↔ 3 dots ↔ result) is a plain `{#key testState}`
+  block with a CSS fade/slide-in keyframe (`test-content-in`, 0.25s) -
+  no animation library, consistent with the rest of the app. The 3
+  dots use `test-dot-pulse`, a looping opacity/scale keyframe with a
+  staggered `animation-delay` per dot (0/0.18s/0.36s) for the
+  one-at-a-time lighting effect.
+  Styling: `.btn-test` base matches `.btn-secondary` (var(--bg-button)/
+  var(--border)/var(--text-secondary)) rather than the accent-colored
+  `.btn-primary`, per the follow-up request. `.test-success`/
+  `.test-error` set var(--success)/var(--danger) backgrounds; the
+  hover-bug fix was adding explicit `.btn-test.test-success:hover` /
+  `.btn-test.test-error:hover` rules *after* the generic
+  `.btn-test:hover:not(:disabled)` rule in the stylesheet - both had
+  identical CSS specificity (0,3,0), so the generic hover rule was
+  winning by source order alone and silently keeping the idle color
+  while the mouse stayed on the button during/after a test.
+
+---
+
+#99
+Title: [Bug] Accent color picker required clicking "Save" twice to actually apply
+Labels: bug, ui, settings
+Version fixed: v1.7.7
+Description:
+Picking a color in Settings > Couleur > the ColorPicker overlay and
+clicking its own "Enregistrer" button only closed the picker and
+updated the swatch preview - the color was not actually persisted or
+applied to the running app's CSS vars until the user then clicked the
+outer Settings panel's "Enregistrer" button a second time.
+
+Solution (closing comment):
+Fixed in v1.7.7 in SettingsPanel.svelte.
+
+`onColorApply(hex)` (passed to `<ColorPicker onApply={onColorApply}>`)
+used to only do `form = { ...form, accentColor: hex }` then close the
+picker - a local, unsaved form update. It now mirrors the outer
+`save()` handler exactly: sets the form value, closes the picker, then
+awaits `saveSettings(form)` (persists to the backend via
+`SaveSettings`, updates the `settings` store, and calls
+`applyAccentColor()` to update the live CSS vars immediately), shows
+the same "✓ enregistré" `saved` confirmation state for 2s, and calls
+`onSaved(form)` so App.svelte's post-save side effects (file-list
+refresh etc.) run too. Picking a color now applies and persists in one
+click, with no behavioral difference from clicking the main Save
+button afterward.

@@ -42,9 +42,13 @@
     form = { ...form, [key]: next };
   }
 
-  function onColorApply(hex) {
+  async function onColorApply(hex) {
     form = { ...form, accentColor: hex };
     showColorPicker = false;
+    await saveSettings(form);
+    saved = true;
+    setTimeout(() => saved = false, 2000);
+    onSaved(form);
   }
 
   const DEFAULTS = {

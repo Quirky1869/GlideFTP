@@ -1,6 +1,7 @@
 <script>
+  import { onDestroy } from 'svelte';
   import { t } from '../i18n/index.js';
-  import { GetSites, CreateSite, UpdateSite, DeleteSite, ReorderSites, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites } from '../../wailsjs/go/main/App.js';
+  import { GetSites, CreateSite, UpdateSite, DeleteSite, ReorderSites, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites, TestConnection } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
@@ -44,6 +45,48 @@
 
   // Connection loading state
   let connecting = false;
+
+  // "Test connection" button state
+  let testState = 'idle'; // 'idle' | 'testing' | 'success' | 'error'
+  let testErrorMsg = '';
+  let testTimer = null;
+  let lastTestKey = null;
+
+  $: testKey = `${form.protocol}|${form.host}|${form.port}|${form.user}|${form.password}|${form.authType}|${form.sshKeyPath}|${form.encryption}`;
+  $: if (testState !== 'testing' && lastTestKey !== null && lastTestKey !== testKey) {
+    testState = 'idle';
+    testErrorMsg = '';
+    clearTimeout(testTimer);
+  }
+  $: lastTestKey = testKey;
+
+  async function testConnection() {
+    if (testState === 'testing') return;
+    clearTimeout(testTimer);
+    testState = 'testing';
+    testErrorMsg = '';
+    try {
+      await TestConnection({
+        protocol: form.protocol,
+        host: form.host,
+        port: form.port,
+        user: form.user,
+        password: form.password,
+        encryption: form.encryption,
+        authType: form.authType,
+        sshKeyPath: form.sshKeyPath,
+        timeoutSec: 0,
+        passive: false,
+      });
+      testState = 'success';
+    } catch (err) {
+      testState = 'error';
+      testErrorMsg = String(err?.message || err || '');
+    }
+    testTimer = setTimeout(() => { testState = 'idle'; testErrorMsg = ''; }, 3000);
+  }
+
+  onDestroy(() => clearTimeout(testTimer));
 
   // Keep-or-replace dialog (shown when already connected)
   let showKeepOrReplace = false;
@@ -716,6 +759,30 @@
               <textarea class="note-area" bind:value={form.note} rows="3" placeholder="..." on:contextmenu={(e) => handleCtxMenu(e, 'note')}></textarea>
             </div>
 
+            <button
+              type="button"
+              class="btn-test"
+              class:test-success={testState === 'success'}
+              class:test-error={testState === 'error'}
+              disabled={testState === 'testing'}
+              title={testState === 'error' ? testErrorMsg : ''}
+              on:click={testConnection}
+            >
+              {#key testState}
+                <span class="btn-test-content">
+                  {#if testState === 'testing'}
+                    <span class="test-dots"><i></i><i></i><i></i></span>
+                  {:else if testState === 'success'}
+                    {$t('connectionOk')}
+                  {:else if testState === 'error'}
+                    {$t('connectionFailed')}
+                  {:else}
+                    {$t('testConnection')}
+                  {/if}
+                </span>
+              {/key}
+            </button>
+
             <div class="form-actions">
               <button class="btn-primary" on:click={saveSite}>{$t('save')}</button>
               <button class="btn-secondary" on:click={() => { editMode = false; form = emptyForm(); selectedSite = null; }}>{$t('close')}</button>
@@ -1260,6 +1327,48 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   white-space: nowrap;
 }
 .browse-btn:hover { background: var(--bg-button-hover); }
+
+.btn-test {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 34px;
+  background: var(--bg-button);
+  border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+  overflow: hidden;
+}
+.btn-test:hover:not(:disabled) { background: var(--bg-button-hover); }
+.btn-test:disabled { cursor: default; }
+.btn-test.test-success,
+.btn-test.test-success:hover {
+  background: var(--success); border-color: var(--success); color: white;
+}
+.btn-test.test-error,
+.btn-test.test-error:hover {
+  background: var(--danger); border-color: var(--danger); color: white;
+}
+
+.btn-test-content {
+  display: flex; align-items: center; justify-content: center;
+  animation: test-content-in 0.25s ease;
+}
+@keyframes test-content-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.test-dots { display: flex; align-items: center; gap: 5px; height: 8px; }
+.test-dots i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; opacity: 0.25;
+  animation: test-dot-pulse 1.1s ease-in-out infinite;
+}
+.test-dots i:nth-child(2) { animation-delay: 0.18s; }
+.test-dots i:nth-child(3) { animation-delay: 0.36s; }
+@keyframes test-dot-pulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+  40% { opacity: 1; transform: scale(1.15); }
+}
 
 .form-actions { display: flex; gap: 8px; margin-top: 4px; }
 

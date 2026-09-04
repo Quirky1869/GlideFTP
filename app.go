@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"GlideFTP/internal/connection"
 	gfeCrypto "GlideFTP/internal/crypto"
@@ -466,6 +467,49 @@ func (a *App) Connect(cfg connection.Config) (connection.ConnInfo, error) {
 	}
 	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
+}
+
+// testConnectionTimeoutSec caps how long the "Test connection" button in SiteManager can take,
+// independently of the user's configured operation timeout (which can go up to 60s+) - a quick
+// yes/no button shouldn't ever make the user wait that long.
+const testConnectionTimeoutSec = 10
+
+// TestConnection tries to connect using the given config, then immediately disconnects.
+// It never touches the connection manager or any active session - used by the "Test connection"
+// button in SiteManager while creating/editing a site, so it can be tried before saving.
+// Bounded to testConnectionTimeoutSec via a watchdog, since the underlying dial timeout alone
+// doesn't cover a server that accepts the TCP connection but then hangs during login.
+func (a *App) TestConnection(cfg connection.Config) error {
+	cfg.TimeoutSec = testConnectionTimeoutSec
+	cfg.Passive = a.appSettings.PassiveMode
+
+	var client connection.Client
+	if cfg.Protocol == connection.ProtocolSFTP {
+		client = connection.NewSFTPClient(cfg)
+	} else {
+		client = connection.NewFTPClient(cfg)
+	}
+
+	ch := make(chan error, 1)
+	go func() {
+		err := client.Connect()
+		if err == nil {
+			client.Disconnect()
+		}
+		ch <- err
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-time.After(testConnectionTimeoutSec * time.Second):
+		go func() {
+			if err := <-ch; err == nil {
+				client.Disconnect()
+			}
+		}()
+		return fmt.Errorf("connection test timed out after %ds", testConnectionTimeoutSec)
+	}
 }
 
 // ConnectToSite connects to a saved site, replacing the currently active connection.

@@ -117,4 +117,6 @@ export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SwitchConnection(arg1:string):Promise<void>;
 
+export function TestConnection(arg1:connection.Config):Promise<void>;
+
 export function UpdateSite(arg1:sites.Site):Promise<void>;

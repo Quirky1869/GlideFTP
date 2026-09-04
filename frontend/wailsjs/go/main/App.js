@@ -222,6 +222,10 @@ export function SwitchConnection(arg1) {
   return window['go']['main']['App']['SwitchConnection'](arg1);
 }
 
+export function TestConnection(arg1) {
+  return window['go']['main']['App']['TestConnection'](arg1);
+}
+
 export function UpdateSite(arg1) {
   return window['go']['main']['App']['UpdateSite'](arg1);
 }
