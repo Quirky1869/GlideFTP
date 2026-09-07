@@ -15,6 +15,15 @@ export const NOTIFICATION_SOUNDS = [
   { id: 'bell', label: 'soundBell', url: SOUND_DATA_URLS.bell },
   { id: 'pop', label: 'soundPop', url: SOUND_DATA_URLS.pop },
   { id: 'glass', label: 'soundGlass', url: SOUND_DATA_URLS.glass },
+  { id: 'siren', label: 'soundSiren', url: SOUND_DATA_URLS.siren },
+  { id: 'buzzer', label: 'soundBuzzer', url: SOUND_DATA_URLS.buzzer },
+  { id: 'alert', label: 'soundAlert', url: SOUND_DATA_URLS.alert },
+  { id: 'alarm', label: 'soundAlarm', url: SOUND_DATA_URLS.alarm },
+  { id: 'ring', label: 'soundRing', url: SOUND_DATA_URLS.ring },
+  { id: 'trill', label: 'soundTrill', url: SOUND_DATA_URLS.trill },
+  { id: 'ping', label: 'soundPing', url: SOUND_DATA_URLS.ping },
+  { id: 'beep', label: 'soundBeep', url: SOUND_DATA_URLS.beep },
+  { id: 'signal', label: 'soundSignal', url: SOUND_DATA_URLS.signal },
 ];
 
 // One cached Audio instance per sound, kept alive for the app's lifetime.

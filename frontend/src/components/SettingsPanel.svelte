@@ -1,5 +1,5 @@
 <script>
-  import { t } from '../i18n/index.js';
+  import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
   import { BrowseLocalDir, ExportSettings, ImportSettings } from '../../wailsjs/go/main/App.js';
   import ColorPicker from './ColorPicker.svelte';
@@ -14,6 +14,13 @@
   let saved = false;
   let formReady = false;
   let showColorPicker = false;
+
+  // Alphabetical order depends on the active language (translated labels sort
+  // differently in en vs fr) - sorted reactively rather than baked into
+  // NOTIFICATION_SOUNDS's fixed array order.
+  $: sortedSounds = [...NOTIFICATION_SOUNDS].sort((a, b) =>
+    $t(a.label).localeCompare($t(b.label), $locale)
+  );
 
   $: if ($settings && !formReady) {
     form = { ...$settings };
@@ -199,7 +206,7 @@
           <label>{$t('notificationSound')} <button class="reset-btn" hidden={form.notificationSound === DEFAULTS.notificationSound} on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
           <div class="sound-row">
             <select bind:value={form.notificationSound}>
-              {#each NOTIFICATION_SOUNDS as sound (sound.id)}
+              {#each sortedSounds as sound (sound.id)}
                 <option value={sound.id}>{$t(sound.label)}</option>
               {/each}
             </select>
