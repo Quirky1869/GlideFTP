@@ -6,7 +6,7 @@
 ```bash
 ssh-keygen -t ed25519 -C "aur-glideftp" -f ~/.ssh/aur_glideftp -N ""
 ```
-→ crée `~/.ssh/aur_glideftp` (privée) et `~/.ssh/aur_glideftp.pub` (publique).
+→ crée `~/.ssh/aur_glideftp` (privée) et `~/.ssh/aur_glideftp.pub` (publique).  
 
 ### 2. Dire à SSH d'utiliser cette clé pour l'AUR
 ```bash
@@ -23,20 +23,20 @@ chmod 600 ~/.ssh/config
 ```bash
 cat ~/.ssh/aur_glideftp.pub
 ```
-→ copier le résultat, aller sur https://aur.archlinux.org/account/ → **My Account** → champ **SSH Public Key** → coller → **Update Account**.
+→ copier le résultat, aller sur https://aur.archlinux.org/account/ → **My Account** → champ **SSH Public Key** → coller → **Update Account**.  
 
 ### 4. Vérifier que ça fonctionne
 ```bash
 ssh aur@aur.archlinux.org
 ```
-→ un message de bienvenue Arch Linux s'affiche (normal : pas de shell interactif, l'AUR n'en fournit pas).
+→ un message de bienvenue Arch Linux s'affiche (normal : pas de shell interactif, l'AUR n'en fournit pas).  
 
 ### 5. Cloner le dépôt du paquet (emplacement permanent, pas `/tmp`)
 ```bash
 git clone ssh://aur@aur.archlinux.org/glideftp-bin.git /home/$USER/les-git-clones/AUR/glideftp-bin
 ```
-→ premier `git push` dans ce dossier = création réelle du paquet sur l'AUR.
-Ce dépôt ne contient **que** `PKGBUILD` et `.SRCINFO` - jamais le binaire, le `.desktop` ou l'icône (déjà dans l'archive `.tar.gz` téléchargée depuis GitHub par le `PKGBUILD` lui-même).
+→ premier `git push` dans ce dossier = création réelle du paquet sur l'AUR.  
+Ce dépôt ne contient **que** `PKGBUILD` et `.SRCINFO` - jamais le binaire, le `.desktop` ou l'icône (déjà dans l'archive `.tar.gz` téléchargée depuis GitHub par le `PKGBUILD` lui-même).  
 
 ---
 
@@ -44,10 +44,10 @@ Ce dépôt ne contient **que** `PKGBUILD` et `.SRCINFO` - jamais le binaire, le 
 
 ### 1. Mettre à jour les fichiers de suivi du projet
 - `v1.7.7.md` (notes de version EN/FR, format des releases précédentes)
-- `issues-to-github.txt` / `prompt-glideftp` si des issues ont été corrigées
+- `issues-to-github.txt` si des issues ont été corrigées
 - badge de version dans `SettingsPanel.svelte` (footer)
 
-Commit + push sur `main` (commandes à taper toi-même) :
+Commit + push sur `main` :
 ```bash
 git add -A
 git commit -m "v1.7.7 release notes"
@@ -71,7 +71,7 @@ cd /home/$USER/les-git-clones/GlideFTP
 ./make.sh appimage-arch 1.7.7
 ./create-archive.sh -p appimage-arch 1.7.7
 ```
-→ produit `GlideFTP-Linux-Arch-AppImage-v1.7.7.tar.gz` à la racine.
+→ produit `GlideFTP-Linux-Arch-AppImage-v1.7.7.tar.gz`/`GlideFTP-Linux-Arch-AppImage-v1.7.7.tar` à la racine.
 
 ### 5. Compléter la draft release sur GitHub
 - Onglet **Releases** → ouvrir la draft `V1.7.7`
@@ -93,7 +93,7 @@ Ouvrir `packaging/PKGBUILD`, vérifier/corriger :
 pkgver=1.7.7
 sha256sums_x86_64=('<hash obtenu à l'étape 6>')
 ```
-Si tu corriges le fichier, commit + push comme d'habitude :
+Si correction du fichier, commit + push comme d'habitude :
 ```bash
 git add packaging/PKGBUILD
 git commit -m "PKGBUILD: v1.7.7"
