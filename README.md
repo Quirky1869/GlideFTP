@@ -53,6 +53,10 @@
 - **System trash on delete** - deleting a local file sends it to the OS trash (Linux: XDG Trash spec; Windows: Recycle Bin) rather than permanently deleting it
 - **Connection keepalive** - a NOOP/ping is sent every 60 seconds to prevent the server from dropping idle connections; unexpected disconnects trigger a notification and automatic UI update
 
+### Logical Architecture Diagram
+
+![](./_images/diagram.png)
+
 ### Screenshots
 
 |Main|Saved sites|
@@ -275,6 +279,10 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 - **Support du chiffrement** - Aucun, TLS (implicite), FTPES (explicite)
 - **Corbeille système à la suppression** - la suppression d'un fichier local l'envoie dans la corbeille de l'OS (Linux : spec XDG Trash ; Windows : Corbeille) plutôt que de le supprimer définitivement
 - **Keepalive de connexion** - un NOOP/ping est envoyé toutes les 60 secondes pour éviter qu'un serveur coupe une connexion inactive ; une déconnexion inattendue affiche une notification et met à jour l'interface automatiquement
+
+### Schéma logique de l'architecture
+
+![](./_images/diagram.png)
 
 ### Screenshots
 
