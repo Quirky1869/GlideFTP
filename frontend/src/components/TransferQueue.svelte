@@ -1,6 +1,6 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { transfers, cancelTransfer, retryTransfer, clearTransfers, removeTransfer, formatBytes, progressPct, queueVisible } from '../stores/transfers.js';
+  import { transfers, cancelTransfer, cancelAllTransfers, retryTransfer, clearTransfers, removeTransfer, formatBytes, progressPct, queueVisible } from '../stores/transfers.js';
 
   let activeTab = 'pending';
   let queueHeight = 220;
@@ -103,6 +103,11 @@
       {/each}
     </div>
     <div class="queue-actions">
+      {#if activeTab === 'pending' && pending.length > 0}
+        <button class="small-btn danger cancel-all" on:click={cancelAllTransfers} title={$t('cancelAllTransfersHint')}>
+          {$t('cancelAllTransfers')}
+        </button>
+      {/if}
       {#if activeTab !== 'pending' && currentList.length > 0}
         <button class="small-btn" on:click={() => {
           if (activeTab === 'failed') { clearTransfers('failed'); clearTransfers('cancelled'); }
@@ -259,6 +264,10 @@
 .small-btn.danger {
   color: var(--danger);
   border-color: var(--danger);
+}
+.small-btn.cancel-all:hover {
+  background: var(--danger);
+  color: white;
 }
 
 .close-btn {

@@ -6,6 +6,7 @@
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
   import { notify } from '../stores/notify.js';
+  import { WindowGetSize } from '../../wailsjs/runtime/runtime.js';
   import { DEFAULT_DATE_FORMAT, SYSTEM_DATE_FORMAT, DATE_FORMAT_PRESETS, DATE_FORMAT_TOKENS, normalizeDateFormat, formatDateWith } from '../utils/dateFormat.js';
 
   export let onClose = () => {};
@@ -117,6 +118,29 @@
     notificationSoundEnabled: false,
     notificationSound: 'chime',
   };
+
+  // Fills Window width/height with the current window size (same units as
+  // main.go's options.Width/Height), clamped to the fields' min/max, and
+  // saves right away - same one-click behavior as onColorApply().
+  let sizeCopied = false;
+  let sizeCopiedTimer = null;
+  async function useCurrentWindowSize() {
+    try {
+      const { w, h } = await WindowGetSize();
+      form = {
+        ...form,
+        windowWidth: Math.max(800, Math.min(3840, w)),
+        windowHeight: Math.max(600, Math.min(2160, h)),
+      };
+      await saveSettings(form);
+      onSaved(form);
+      sizeCopied = true;
+      clearTimeout(sizeCopiedTimer);
+      sizeCopiedTimer = setTimeout(() => sizeCopied = false, 2000);
+    } catch (e) {
+      notify(e?.toString() || $t('unknownError'), 'error');
+    }
+  }
 
   function resetSetting(key) {
     if (key in DEFAULTS) form = { ...form, [key]: DEFAULTS[key] };
@@ -429,6 +453,13 @@
           <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', 50, 600, 2160)}>+</button>
         </div>
       </div>
+      <div class="setting-row" class:row-disabled={form.startMaximized}>
+        <label>{$t('windowSizeCurrent')}</label>
+        <div class="current-size-row">
+          {#if sizeCopied}<span class="saved-msg">{form.windowWidth} × {form.windowHeight} ✓</span>{/if}
+          <button class="browse-btn" disabled={form.startMaximized} on:click={useCurrentWindowSize}>{$t('useCurrentWindowSize')}</button>
+        </div>
+      </div>
     </section>
 
   </div>
@@ -714,6 +745,9 @@ input:focus { border-color: var(--accent); }
   padding: 5px 10px;
   cursor: pointer;
 }
+
+.current-size-row { display: flex; align-items: center; gap: 10px; }
+.browse-btn:hover:not(:disabled) { background: var(--bg-button-hover); color: var(--accent); }
 
 /* ── Notification sound row ── */
 .sound-row { display: flex; align-items: center; gap: 8px; }

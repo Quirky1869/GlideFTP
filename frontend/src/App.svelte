@@ -23,6 +23,7 @@
   import SettingsPanel from './components/SettingsPanel.svelte';
   import SiteManager from './components/SiteManager.svelte';
   import NotifyModal from './components/NotifyModal.svelte';
+  import WindowSizeOverlay from './components/WindowSizeOverlay.svelte';
   import { notification, closeNotify } from './stores/notify.js';
 
   let showSettings = false;
@@ -273,6 +274,7 @@
   {/if}
 
   <NotifyModal />
+  <WindowSizeOverlay />
 
   <!-- ── Disconnect-all confirmation ───────────────────────────── -->
   {#if showDisconnectConfirm}

@@ -10,6 +10,10 @@ export function BrowseSSHKey() {
   return window['go']['main']['App']['BrowseSSHKey']();
 }
 
+export function CancelAllTransfers() {
+  return window['go']['main']['App']['CancelAllTransfers']();
+}
+
 export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }

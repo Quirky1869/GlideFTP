@@ -11,6 +11,8 @@ export function BrowseLocalDir():Promise<string>;
 
 export function BrowseSSHKey():Promise<string>;
 
+export function CancelAllTransfers():Promise<void>;
+
 export function CancelTransfer(arg1:string):Promise<void>;
 
 export function ClearTransfers(arg1:string):Promise<void>;

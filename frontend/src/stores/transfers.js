@@ -1,6 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { EventsOn } from '../../wailsjs/runtime/runtime.js';
-import { GetTransfers, CancelTransfer, RetryTransfer, ClearTransfers, RemoveTransfer } from '../../wailsjs/go/main/App.js';
+import { GetTransfers, CancelTransfer, CancelAllTransfers, RetryTransfer, ClearTransfers, RemoveTransfer } from '../../wailsjs/go/main/App.js';
 import { settings } from './settings.js';
 import { playNotificationSound } from '../utils/sound.js';
 
@@ -15,14 +15,17 @@ function isActive(job) {
 // Plays the notification sound once the whole queue has drained (no more
 // pending/running jobs) - not after every individual file - so a batch of
 // N transfers only makes one sound, right when the last one wraps up.
+// A drain caused by "Cancel all" is not a finished batch - no sound then.
 let hadActiveJobs = false;
+let suppressDrainSound = false;
 transfers.subscribe(list => {
   const active = list.some(isActive);
   if (hadActiveJobs && !active) {
     const s = get(settings);
-    if (s?.notificationSoundEnabled) {
+    if (s?.notificationSoundEnabled && !suppressDrainSound) {
       playNotificationSound(s.notificationSound);
     }
+    suppressDrainSound = false;
   }
   hadActiveJobs = active;
 });
@@ -48,6 +51,15 @@ export async function initTransfers() {
     transfers.update(list => list.map(j => j.id === job.id ? { ...j, bytesDone: job.bytesDone, size: job.size } : j));
   });
 
+  // Bulk event from CancelAll: ids of the pending jobs it cancelled, in one
+  // store update (one event per job would mean thousands of list rebuilds).
+  EventsOn('transfer:cancelledAll', (ids) => {
+    if (!ids || ids.length === 0) return;
+    const set = new Set(ids);
+    const now = new Date().toISOString();
+    transfers.update(list => list.map(j => set.has(j.id) ? { ...j, status: 'cancelled', finishedAt: now } : j));
+  });
+
   EventsOn('transfer:cleared', (status) => {
     transfers.update(list => list.filter(j => j.status !== status));
   });
@@ -63,6 +75,11 @@ export function toggleQueue() {
 
 export async function cancelTransfer(id) {
   await CancelTransfer(id);
+}
+
+export async function cancelAllTransfers() {
+  if (get(transfers).some(isActive)) suppressDrainSound = true;
+  await CancelAllTransfers();
 }
 
 export async function retryTransfer(id) {

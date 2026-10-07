@@ -773,53 +773,71 @@ func (a *App) QueueDownload(remotePath, localPath string) {
 
 // QueueUploadDir recursively enumerates localPath and queues one upload job per file.
 // Remote subdirectories are created before their contents are queued.
+// The walk stops as soon as CancelAllTransfers is called (queue generation changes).
 func (a *App) QueueUploadDir(localPath, remotePath string) {
-	go a.enqueueUploadDir(localPath, remotePath)
+	gen := a.queue.Generation()
+	go a.enqueueUploadDir(gen, localPath, remotePath)
 }
 
-func (a *App) enqueueUploadDir(localPath, remotePath string) {
+// enqueueUploadDir returns false once the walk was cancelled, so recursion unwinds.
+func (a *App) enqueueUploadDir(gen uint64, localPath, remotePath string) bool {
+	if a.queue.Generation() != gen {
+		return false
+	}
 	if err := a.connMgr.MkDir(remotePath); err != nil {
-		return
+		return true
 	}
 	entries, err := os.ReadDir(localPath)
 	if err != nil {
-		return
+		return true
 	}
 	host := a.connMgr.GetActiveHost()
 	for _, e := range entries {
 		src := filepath.Join(localPath, e.Name())
 		dst := remotePath + "/" + e.Name()
 		if e.IsDir() {
-			a.enqueueUploadDir(src, dst)
-		} else {
-			a.queue.Add(transfer.Upload, src, dst, host)
+			if !a.enqueueUploadDir(gen, src, dst) {
+				return false
+			}
+		} else if a.queue.AddForGeneration(gen, transfer.Upload, src, dst, host) == nil {
+			return false
 		}
 	}
+	return true
 }
 
 // QueueDownloadDir recursively enumerates remotePath and queues one download job per file.
 // Local subdirectories are created before their contents are queued.
+// The walk stops as soon as CancelAllTransfers is called (queue generation changes).
 func (a *App) QueueDownloadDir(remotePath, localPath string) {
-	go a.enqueueDownloadDir(remotePath, localPath)
+	gen := a.queue.Generation()
+	go a.enqueueDownloadDir(gen, remotePath, localPath)
 }
 
-func (a *App) enqueueDownloadDir(remotePath, localPath string) {
+// enqueueDownloadDir returns false once the walk was cancelled, so recursion unwinds.
+func (a *App) enqueueDownloadDir(gen uint64, remotePath, localPath string) bool {
+	if a.queue.Generation() != gen {
+		return false
+	}
 	if err := os.MkdirAll(localPath, 0755); err != nil {
-		return
+		return true
 	}
 	entries, err := a.connMgr.ListDir(remotePath)
 	if err != nil {
-		return
+		return true
 	}
 	host := a.connMgr.GetActiveHost()
 	for _, e := range entries {
 		dst := filepath.Join(localPath, e.Name)
 		if e.IsDir {
-			a.enqueueDownloadDir(e.Path, dst)
-		} else {
-			a.queue.Add(transfer.Download, dst, e.Path, host)
+			if !a.enqueueDownloadDir(gen, e.Path, dst) {
+				return false
+			}
+		} else if a.queue.AddForGeneration(gen, transfer.Download, dst, e.Path, host) == nil {
+			return false
 		}
 	}
+	return true
 }
 
 func (a *App) GetTransfers() []*transfer.Job {
@@ -828,6 +846,12 @@ func (a *App) GetTransfers() []*transfer.Job {
 
 func (a *App) CancelTransfer(id string) error {
 	return a.queue.Cancel(id)
+}
+
+// CancelAllTransfers cancels every pending/running transfer and stops any
+// folder upload/download still enumerating files.
+func (a *App) CancelAllTransfers() {
+	a.queue.CancelAll()
 }
 
 func (a *App) RetryTransfer(id string) error {

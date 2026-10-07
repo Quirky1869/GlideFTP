@@ -3731,3 +3731,138 @@ Applied in FileBrowser.svelte to the 3 inline rename inputs (list view,
 search results, tree view `.tree-rename-input`) and to the conflict
 dialog's "rename" step input (`.conflict-rename-input`), which is also
 pre-filled with the file name.
+
+Verified by the user in the running app (v1.7.8 dev build).
+
+---
+
+#104
+Title: [Feature] "Cancel all" button in the transfer queue
+Labels: enhancement, transfers, ui
+Version fixed: v1.7.8
+Description:
+Dropping a big folder (e.g. a git repository) queues thousands of
+files, which takes very long, and there was no way to stop it: only a
+per-row "Cancel" button existed, and the folder walk kept adding new
+jobs in the background anyway.
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+- Queue (internal/transfer/queue.go): new `CancelAll()` - under the
+  lock, marks every pending job cancelled and collects the cancelFn of
+  every running job, then calls them outside the lock (running
+  transfers are interrupted mid-chunk, as with the single Cancel).
+  Pending cancellations are reported in ONE `transfer:cancelledAll`
+  event carrying the ids, instead of one `transfer:update` per job
+  (thousands of events = thousands of full list rebuilds in the
+  frontend store); running jobs still emit their own update when they
+  stop.
+- Stopping the folder walk: `Queue.generation` (uint64) is bumped by
+  `CancelAll()`. `QueueUploadDir` / `QueueDownloadDir` read
+  `Generation()` synchronously before starting their goroutine; the
+  recursive `enqueueUploadDir` / `enqueueDownloadDir` now take that gen,
+  return `bool` (false = cancelled, unwinds the recursion), and add
+  jobs via the new `AddForGeneration(gen, ...)`, which checks the
+  generation and appends under the same lock and returns nil when stale
+  - so no job can slip in after a Cancel all.
+- app.go: `CancelAllTransfers()` binding (wailsjs App.js/App.d.ts
+  updated by hand, regenerated identically by wails).
+- Frontend: `cancelAllTransfers()` in stores/transfers.js, handler for
+  `transfer:cancelledAll` (one store update with a Set of ids).
+  TransferQueue.svelte: red "Tout annuler" / "Cancel all" button in the
+  header, shown on the "En attente" tab while it has jobs (hover fills
+  red; tooltip `cancelAllTransfersHint`).
+- The transfer-complete notification sound is suppressed for the queue
+  drain caused by Cancel all (`suppressDrainSound` flag) - it's not a
+  finished batch.
+
+---
+
+#105
+Title: [Bug] Cancelling a pending transfer did not prevent it from running
+Labels: bug, transfers
+Version fixed: v1.7.8
+Description:
+Clicking "Cancel" on a job still waiting in the queue (status pending)
+showed it as cancelled, but the file was transferred anyway once a
+worker slot freed up.
+
+Solution (closing comment):
+Fixed in v1.7.8 in internal/transfer/queue.go.
+
+Root cause: `Queue.Cancel(id)` only flipped a pending job's status to
+cancelled. The job's goroutine (`run()`) was already blocked waiting on
+the worker semaphore; once it acquired a slot it unconditionally set
+the status to running and started the transfer. `run()` now re-checks
+the status under the lock right after acquiring the slot and returns
+immediately (releasing the slot) if the job was cancelled meanwhile.
+Found while implementing #104, which relies on the same path for
+thousands of pending jobs.
+
+Verified by the user in the running app (v1.7.8 dev build), together
+with #104 (Cancel all, including stopping a folder walk in progress).
+
+---
+
+#106
+Title: [Feature] Show the window size while resizing the window
+Labels: enhancement, ui
+Version fixed: v1.7.8
+Description:
+Settings > Interface has "Window width (px)" / "Window height (px)"
+fields for the size at startup, but there was no way to know the size
+of the current window - finding good values meant guessing. Show the
+size live while the window is being resized.
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+New component `frontend/src/components/WindowSizeOverlay.svelte`,
+mounted once in App.svelte next to NotifyModal. It listens to
+`<svelte:window on:resize>` and shows a centered badge "1400 × 900"
+(monospace, accent border + glow, `pointer-events: none`,
+z-index 4999 - just under NotifyModal's 5000), fading out 1.2s after
+the last resize event.
+- The size comes from Wails' `WindowGetSize()`, i.e. the same units as
+  `options.Width/Height` in main.go (fed by the WindowWidth/WindowHeight
+  settings) - not the webview's innerWidth/innerHeight, which excludes
+  window decorations on some platforms - so the displayed values can be
+  typed into the settings as-is.
+- Throttled to one `WindowGetSize()` call per animation frame
+  (`pending` flag + requestAnimationFrame), since resize events fire
+  many times per second.
+- Resize events during the first 1.5s are ignored so the badge doesn't
+  flash at startup (window creation / "Open maximized").
+
+---
+
+#107
+Title: [Feature] "Use current size" button for the startup window size settings
+Labels: enhancement, ui, settings
+Version fixed: v1.7.8
+Description:
+Follow-up to #106: instead of reading the size badge and typing the
+numbers into Window width / Window height, offer a button that fills
+both fields with the current window size in one click.
+
+Solution (closing comment):
+Implemented in v1.7.8 in SettingsPanel.svelte.
+
+New row "Taille actuelle de la fenêtre" / "Current window size" right
+below Window height, with a "Utiliser la taille actuelle" / "Use current
+size" button (`.browse-btn` style, accent hover). `useCurrentWindowSize()`
+calls Wails' `WindowGetSize()` (same units as main.go's
+options.Width/Height, like #106) and writes the values into `form`,
+clamped to the fields' bounds (width 800-3840, height 600-2160). A green
+"1400 × 900 ✓" confirmation (`.saved-msg`) shows next to the button for
+2s. The button also saves immediately (`await saveSettings(form)` +
+`onSaved(form)`, same one-click pattern as the color picker's
+`onColorApply()`) - no need to click "Enregistrer" afterwards (changed
+at the user's request after a first version that only filled the form).
+Like the color picker, it saves the whole form, so other unsaved edits
+in the panel are saved along with it. The row is disabled together with the
+width/height rows when "Open maximized" is on. i18n keys:
+windowSizeCurrent, useCurrentWindowSize. Errors go through the global
+notify() popup.
+

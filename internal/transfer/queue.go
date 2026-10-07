@@ -59,6 +59,10 @@ type Queue struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	speedLimitBps int64 // bytes/sec, 0 = unlimited
+	// generation is bumped by CancelAll. Folder walkers (QueueUploadDir /
+	// QueueDownloadDir) capture it when they start and stop adding jobs as
+	// soon as it changes - see AddForGeneration.
+	generation uint64
 }
 
 func NewQueue(workers int, emitter EventEmitter) *Queue {
@@ -85,6 +89,25 @@ func (q *Queue) SetSpeedLimit(kbps int) {
 }
 
 func (q *Queue) Add(dir Direction, localPath, remotePath, remoteHost string) *Job {
+	return q.add(dir, localPath, remotePath, remoteHost, nil)
+}
+
+// Generation returns the current cancel-all generation (see CancelAll).
+func (q *Queue) Generation() uint64 {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return q.generation
+}
+
+// AddForGeneration adds a job only if no CancelAll happened since gen was
+// read; returns nil otherwise so the caller (a folder walker) can stop.
+// The check and the append happen under the same lock, so no job can slip
+// in after a CancelAll.
+func (q *Queue) AddForGeneration(gen uint64, dir Direction, localPath, remotePath, remoteHost string) *Job {
+	return q.add(dir, localPath, remotePath, remoteHost, &gen)
+}
+
+func (q *Queue) add(dir Direction, localPath, remotePath, remoteHost string, gen *uint64) *Job {
 	job := &Job{
 		ID:         uuid.New().String(),
 		Direction:  dir,
@@ -100,6 +123,10 @@ func (q *Queue) Add(dir Direction, localPath, remotePath, remoteHost string) *Jo
 	}
 
 	q.mu.Lock()
+	if gen != nil && *gen != q.generation {
+		q.mu.Unlock()
+		return nil
+	}
 	q.jobs = append(q.jobs, job)
 	q.mu.Unlock()
 
@@ -128,6 +155,15 @@ func (q *Queue) run(job *Job) {
 		return
 	}
 	defer func() { <-sem }()
+
+	// The job may have been cancelled (Cancel / CancelAll) while it was
+	// waiting for a worker slot - don't start it in that case.
+	q.mu.Lock()
+	cancelled := job.Status == StatusCancelled
+	q.mu.Unlock()
+	if cancelled {
+		return
+	}
 
 	jobCtx, jobCancel := context.WithCancel(q.ctx)
 	q.mu.Lock()
@@ -230,6 +266,37 @@ func (q *Queue) Cancel(id string) error {
 		}
 	}
 	return fmt.Errorf("job not found or not cancellable")
+}
+
+// CancelAll cancels every pending and running job and stops in-progress
+// folder walkers from queueing more (generation bump). Pending jobs are
+// reported in one "transfer:cancelledAll" event (ids) rather than one event
+// per job - a dropped folder can hold thousands of files. Running jobs emit
+// their own "transfer:update" once their transfer is interrupted.
+func (q *Queue) CancelAll() {
+	q.mu.Lock()
+	q.generation++
+	now := time.Now()
+	var ids []string
+	var cancelFns []context.CancelFunc
+	for _, job := range q.jobs {
+		switch job.Status {
+		case StatusPending:
+			job.Status = StatusCancelled
+			job.FinishedAt = now
+			ids = append(ids, job.ID)
+		case StatusRunning:
+			if job.cancelFn != nil {
+				cancelFns = append(cancelFns, job.cancelFn)
+			}
+		}
+	}
+	q.mu.Unlock()
+
+	for _, cancel := range cancelFns {
+		cancel()
+	}
+	q.emitter("transfer:cancelledAll", ids)
 }
 
 func (q *Queue) Clear(status JobStatus) {

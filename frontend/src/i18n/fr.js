@@ -51,6 +51,8 @@ export default {
   cancel: 'Annuler',
   retry: 'Réessayer',
   clear: 'Vider',
+  cancelAllTransfers: 'Tout annuler',
+  cancelAllTransfersHint: 'Annuler tous les transferts en attente et en cours',
   noTransfers: 'Aucun transfert',
 
   // Site manager
@@ -166,6 +168,8 @@ export default {
   dateTokPercent: 'Caractère % littéral',
   windowWidth: 'Largeur de fenêtre (px)',
   windowHeight: 'Hauteur de fenêtre (px)',
+  windowSizeCurrent: 'Taille actuelle de la fenêtre',
+  useCurrentWindowSize: 'Utiliser la taille actuelle',
   startMaximized: 'Ouvrir maximisé',
   resetToDefault: 'Remettre par défaut',
   saveSettings: 'Enregistrer',

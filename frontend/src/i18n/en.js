@@ -51,6 +51,8 @@ export default {
   cancel: 'Cancel',
   retry: 'Retry',
   clear: 'Clear',
+  cancelAllTransfers: 'Cancel all',
+  cancelAllTransfersHint: 'Cancel every pending and running transfer',
   noTransfers: 'No transfers',
 
   // Site manager
@@ -166,6 +168,8 @@ export default {
   dateTokPercent: 'Literal % character',
   windowWidth: 'Window width (px)',
   windowHeight: 'Window height (px)',
+  windowSizeCurrent: 'Current window size',
+  useCurrentWindowSize: 'Use current size',
   startMaximized: 'Open maximized',
   resetToDefault: 'Reset to default',
   saveSettings: 'Save',
