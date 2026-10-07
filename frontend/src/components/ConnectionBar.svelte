@@ -419,14 +419,14 @@ input:disabled, select:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   flex-shrink: 0;
   transition: background 0.15s;
 }
 
 .btn-connect:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-hover-bg);
 }
 
 .btn-connect.connected {
@@ -495,13 +495,13 @@ input:disabled, select:disabled {
 }
 
 .btn-quick.active {
-  background: var(--accent);
+  background: var(--accent-bg) border-box;
   color: white;
-  border-color: var(--accent);
+  border-color: transparent;
 }
 
 .btn-quick.active:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-hover-bg);
 }
 
 .btn-quick svg {
@@ -573,5 +573,13 @@ input:disabled, select:disabled {
 .qdlg-btn.cancel:hover {
   color: var(--danger);
   background: transparent;
+}
+
+/* ── Accent gradient mode ── */
+:global(html[data-accent-gradient]) .quick-dialog-host {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 </style>

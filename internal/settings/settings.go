@@ -21,6 +21,8 @@ type Settings struct {
 	DateFormat                     string `json:"dateFormat"`
 	MaxTransferSpeedKBps           int    `json:"maxTransferSpeedKBps"`
 	AccentColor                    string `json:"accentColor"`
+	AccentGradient                 bool   `json:"accentGradient"`
+	AccentColor2                   string `json:"accentColor2"`
 	MaxConnections                 int    `json:"maxConnections"`
 	ConnectCardShadow              bool   `json:"connectCardShadow"`
 	WindowWidth                    int    `json:"windowWidth"`
@@ -48,6 +50,8 @@ func Default() *Settings {
 		DateFormat:                     "%yyyy-%MM-%dd %hh:%mm",
 		MaxTransferSpeedKBps:           0,
 		AccentColor:                    "#5B8AF5",
+		AccentGradient:                 false,
+		AccentColor2:                   "#C15BF5",
 		MaxConnections:                 3,
 		ConnectCardShadow:              false,
 		WindowWidth:                    1400,

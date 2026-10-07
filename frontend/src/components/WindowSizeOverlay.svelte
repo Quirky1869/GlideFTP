@@ -80,4 +80,17 @@
   transition: opacity 0.08s ease, transform 0.08s ease;
 }
 .times { color: var(--accent); }
+
+/* ── Accent gradient mode ── */
+:global(html[data-accent-gradient]) .times {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:global(html[data-accent-gradient]) .size-badge {
+  border-color: transparent;
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, var(--accent-gradient) border-box;
+  box-shadow: -10px 0 24px var(--accent-glow), 10px 0 24px var(--accent-glow-2), 0 8px 32px rgba(0,0,0,0.35);
+}
 </style>

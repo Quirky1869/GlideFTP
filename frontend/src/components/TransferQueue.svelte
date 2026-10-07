@@ -181,7 +181,7 @@
 }
 
 .queue-resize-handle:hover, .queue-resize-handle.active {
-  background: var(--accent);
+  background: var(--accent-bg);
 }
 
 .queue-header {
@@ -233,7 +233,7 @@
 }
 
 .badge {
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   border-radius: 10px;
   font-size: 10px;
@@ -351,7 +351,7 @@
 
 .progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: var(--accent-bg);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -408,4 +408,19 @@
 .remove-btn:hover {
   color: var(--danger);
 }
+
+/* ── Accent gradient mode ── */
+:global(html[data-accent-gradient]) .tab.active,
+:global(html[data-accent-gradient]) .job-direction,
+:global(html[data-accent-gradient]) .job-status.running,
+:global(html[data-accent-gradient]) .speed-label,
+:global(html[data-accent-gradient]) .avg-speed {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* text-fill-color is inherited: keep the count badge's number visible */
+:global(html[data-accent-gradient]) .tab.active .badge { -webkit-text-fill-color: white; }
+:global(html[data-accent-gradient]) .tab.active { border-image: var(--accent-gradient) 1; }
 </style>

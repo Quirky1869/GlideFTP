@@ -54,6 +54,18 @@
   color-scheme: light;
 }
 
+/* Accent gradient vars - overwritten by applyAccentColor() (stores/settings.js)
+   as soon as settings load; these defaults = plain accent, gradient off. */
+:root {
+  --accent-2:          var(--accent);
+  --accent-glow-2:     var(--accent-glow);
+  --accent-subtle-2:   var(--accent-subtle);
+  --accent-gradient:   linear-gradient(135deg, var(--accent), var(--accent));
+  --accent-bg:         var(--accent);
+  --accent-hover-bg:   var(--accent-hover);
+  --accent-subtle-bg:  var(--accent-subtle);
+}
+
 html, body {
   height: 100%;
   width: 100%;

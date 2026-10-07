@@ -87,8 +87,8 @@
     form = { ...form, [key]: next };
   }
 
-  async function onColorApply(hex) {
-    form = { ...form, accentColor: hex };
+  async function onColorApply({ color, gradient, color2 }) {
+    form = { ...form, accentColor: color, accentGradient: gradient, accentColor2: color2 };
     showColorPicker = false;
     await saveSettings(form);
     saved = true;
@@ -209,8 +209,13 @@
       <div class="setting-row">
         <label>{$t('accentColor')}</label>
         <div class="color-row">
-          <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
-          <span class="color-hex">{form.accentColor || '#5B8AF5'}</span>
+          {#if form.accentGradient}
+            <div class="color-swatch" style="background: linear-gradient(135deg, {form.accentColor || '#5B8AF5'}, {form.accentColor2 || '#C15BF5'})"></div>
+            <span class="color-hex">{form.accentColor || '#5B8AF5'} → {form.accentColor2 || '#C15BF5'}</span>
+          {:else}
+            <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
+            <span class="color-hex">{form.accentColor || '#5B8AF5'}</span>
+          {/if}
           <button class="color-pick-btn" on:click={() => showColorPicker = true}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
             {$t('accentColor')}
@@ -502,6 +507,8 @@
 {#if showColorPicker}
   <ColorPicker
     value={form.accentColor || '#5B8AF5'}
+    gradient={!!form.accentGradient}
+    value2={form.accentColor2 || '#C15BF5'}
     onClose={() => showColorPicker = false}
     onApply={onColorApply}
   />
@@ -606,8 +613,8 @@ h3 {
   transition: all 0.12s;
 }
 .toggle-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-bg) border-box;
+  border-color: transparent;
   color: white;
 }
 .theme-icon {
@@ -667,7 +674,7 @@ h3 {
   transition: background 0.2s;
   outline: none;
 }
-.sw.on { background: var(--accent); }
+.sw.on { background: var(--accent-bg); }
 .sw:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
 
 .sw-knob {
@@ -720,7 +727,7 @@ h3 {
   user-select: none;
 }
 .num-btn:hover { background: var(--bg-button-hover); color: var(--text-primary); }
-.num-btn:active { background: var(--accent); color: white; }
+.num-btn:active { background: var(--accent-bg); color: white; }
 
 /* ── Text / number inputs ── */
 input[type="text"], input[type="number"] {
@@ -904,7 +911,7 @@ input:focus { border-color: var(--accent); }
 .saved-msg { font-size: 13px; color: var(--success); }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-bg);
   border: none;
   border-radius: 5px;
   color: white;
@@ -913,5 +920,24 @@ input:focus { border-color: var(--accent); }
   font-weight: 500;
   cursor: pointer;
 }
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:hover { background: var(--accent-hover-bg); }
+
+/* ── Accent gradient mode ── */
+:global(html[data-accent-gradient]) h3,
+:global(html[data-accent-gradient]) .version-badge,
+:global(html[data-accent-gradient]) .date-preview strong,
+:global(html[data-accent-gradient]) .date-tip-title,
+:global(html[data-accent-gradient]) .date-tip code {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* block elements: shrink to the text so the whole gradient shows on it */
+:global(html[data-accent-gradient]) h3,
+:global(html[data-accent-gradient]) .date-tip-title { width: fit-content; }
+:global(html[data-accent-gradient]) .date-tip {
+  border-color: transparent;
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, var(--accent-gradient) border-box;
+}
 </style>

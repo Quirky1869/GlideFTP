@@ -50,7 +50,7 @@
   .notify-box.is-error .notify-message { color: var(--danger); }
 
   .notify-close {
-    background: var(--accent);
+    background: var(--accent-bg);
     border: none;
     border-radius: 6px;
     color: white;
@@ -59,5 +59,12 @@
     font-weight: 500;
     cursor: pointer;
   }
-  .notify-close:hover { background: var(--accent-hover); }
+  .notify-close:hover { background: var(--accent-hover-bg); }
+
+  /* ── Accent gradient mode ── */
+  :global(html[data-accent-gradient]) .notify-box {
+    border-color: transparent;
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, var(--accent-gradient) border-box;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), -3px 0 0 4px var(--accent-subtle), 3px 0 0 4px var(--accent-subtle-2);
+  }
 </style>

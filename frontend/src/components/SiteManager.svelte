@@ -1192,7 +1192,7 @@
   font-weight: 500;
   transition: background 0.1s;
 }
-.new-site-btn:hover { background: var(--accent-subtle); }
+.new-site-btn:hover { background: var(--accent-subtle-bg); }
 .new-site-btn svg { width: 14px; height: 14px; }
 
 .site-list-toolbar {
@@ -1215,7 +1215,7 @@
   transition: background 0.1s, color 0.1s;
 }
 .reorder-toggle-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.reorder-toggle-btn.active { background: var(--accent-subtle); color: var(--accent); }
+.reorder-toggle-btn.active { background: var(--accent-subtle-bg); color: var(--accent); }
 .reorder-toggle-btn svg { width: 16px; height: 16px; }
 
 .site-item {
@@ -1228,10 +1228,10 @@
   transition: background 0.1s;
 }
 .site-item:hover { background: var(--bg-hover); }
-.site-item.active { background: var(--accent-subtle); }
+.site-item.active { background: var(--accent-subtle-bg); }
 .site-item.reorder-mode { cursor: grab; }
 .site-item.reorder-mode:active { cursor: grabbing; }
-.site-item.drag-over { background: var(--accent-subtle); outline: 2px dashed var(--accent); outline-offset: -2px; }
+.site-item.drag-over { background: var(--accent-subtle-bg); outline: 2px dashed var(--accent); outline-offset: -2px; }
 
 .drag-handle {
   display: flex;
@@ -1245,7 +1245,7 @@
 .site-protocol {
   font-size: 10px;
   font-weight: 700;
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   padding: 2px 5px;
   border-radius: 3px;
@@ -1311,7 +1311,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   cursor: pointer;
   transition: all 0.12s;
 }
-.proto-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+.proto-btn.active { background: var(--accent-bg) border-box; border-color: transparent; color: white; }
 .protocol-row label { font-size: 12px; }
 
 .input-with-btn { display: flex; gap: 6px; }
@@ -1374,12 +1374,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 
 .btn-primary {
   display: flex; align-items: center; gap: 6px;
-  background: var(--accent);
+  background: var(--accent-bg);
   border: none; border-radius: 5px;
   color: white; padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
   transition: background 0.12s;
 }
-.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:hover { background: var(--accent-hover-bg); }
 
 .btn-secondary {
   display: flex; align-items: center; gap: 6px;
@@ -1472,8 +1472,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   transition: background 0.12s, border-color 0.12s;
 }
 .export-checkbox.checked {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-bg) border-box;
+  border-color: transparent;
 }
 .export-checkbox.partial {
   border-color: var(--accent);
@@ -1591,7 +1591,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .export-choice-btn:hover { background: var(--bg-button-hover); border-color: var(--accent); }
 .export-choice-btn--accent { border-color: var(--accent); }
-.export-choice-btn--accent:hover { background: var(--accent-subtle); }
+.export-choice-btn--accent:hover { background: var(--accent-subtle-bg); }
 
 /* ── Paste context menu ── */
 .paste-ctx-menu {

@@ -3,10 +3,15 @@
   import { t } from '../i18n/index.js';
 
   export let value = '#5B8AF5';
+  export let gradient = false;      // accent gradient on/off
+  export let value2 = '#C15BF5';    // gradient end color
   export let onClose = () => {};
-  export let onApply = (_hex) => {};
+  export let onApply = (_accent) => {}; // ({ color, gradient, color2 })
 
   const DEFAULT_COLOR = '#5B8AF5';
+  const DEFAULT_COLOR_2 = '#C15BF5';
+  const HISTORY_KEY = 'glideftp_color_history';
+  const HISTORY_KEY_2 = 'glideftp_color_history_gradient';
 
   let canvas;
   let hue = 210;
@@ -18,15 +23,50 @@
   let initialized = false;
   let colorHistory = [];
 
+  // Gradient end color: hex + RGB inputs and its own recent-colors list
+  // (no canvas - picked by value or from history).
+  let hex2 = DEFAULT_COLOR_2;
+  let hex2Input = DEFAULT_COLOR_2;
+  let r2 = 193, g2 = 91, b2 = 245;
+  let colorHistory2 = [];
+
+  function loadHistory(key) {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [];
+  }
+
   onMount(() => {
     initFromHex(value || DEFAULT_COLOR);
+    initFromHex2(value2 || DEFAULT_COLOR_2);
     initialized = true;
     drawCanvas();
-    try {
-      const stored = localStorage.getItem('glideftp_color_history');
-      if (stored) colorHistory = JSON.parse(stored);
-    } catch {}
+    colorHistory = loadHistory(HISTORY_KEY);
+    colorHistory2 = loadHistory(HISTORY_KEY_2);
   });
+
+  function initFromHex2(h) {
+    const rgb = hexToRgb(h);
+    if (!rgb) return;
+    r2 = rgb.r; g2 = rgb.g; b2 = rgb.b;
+    hex2 = h.toLowerCase();
+    hex2Input = hex2;
+  }
+
+  function onHex2Change() {
+    hex2Input = hex2Input.startsWith('#') ? hex2Input : '#' + hex2Input;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex2Input)) initFromHex2(hex2Input);
+  }
+
+  function onRgb2Change() {
+    r2 = Math.max(0, Math.min(255, parseInt(r2) || 0));
+    g2 = Math.max(0, Math.min(255, parseInt(g2) || 0));
+    b2 = Math.max(0, Math.min(255, parseInt(b2) || 0));
+    hex2 = rgbToHex(r2, g2, b2);
+    hex2Input = hex2;
+  }
 
   $: if (initialized && canvas) drawCanvas();
 
@@ -132,19 +172,24 @@
     drawCanvas();
   }
 
+  // Back to factory accent: default color, gradient off.
   function resetToDefault() {
     initFromHex(DEFAULT_COLOR);
+    initFromHex2(DEFAULT_COLOR_2);
+    gradient = false;
     drawCanvas();
   }
 
-  function addToHistory(h) {
-    colorHistory = [h, ...colorHistory.filter(c => c !== h)].slice(0, 8);
-    try { localStorage.setItem('glideftp_color_history', JSON.stringify(colorHistory)); } catch {}
+  function pushHistory(list, key, h) {
+    const next = [h, ...list.filter(c => c !== h)].slice(0, 8);
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+    return next;
   }
 
   function apply() {
-    addToHistory(hex);
-    onApply(hex);
+    colorHistory = pushHistory(colorHistory, HISTORY_KEY, hex);
+    if (gradient) colorHistory2 = pushHistory(colorHistory2, HISTORY_KEY_2, hex2);
+    onApply({ color: hex, gradient, color2: hex2 });
   }
 
   // ── Color math ─────────────────────────────────────────────────────────────
@@ -198,6 +243,24 @@
   </div>
 
   <div class="cp-body">
+
+    <!-- Gradient on/off (off = single accent color, the original UI) -->
+    <div class="gradient-toggle-row">
+      <span class="gradient-toggle-label">{$t('accentGradient')}</span>
+      <button
+        type="button"
+        class="sw"
+        class:on={gradient}
+        style={gradient ? `background: linear-gradient(135deg, ${hex}, ${hex2})` : ''}
+        on:click={() => gradient = !gradient}
+        aria-pressed={gradient}
+      ><span class="sw-knob"></span></button>
+    </div>
+
+    {#if gradient}
+      <div class="gradient-preview" style="background: linear-gradient(135deg, {hex}, {hex2})"></div>
+      <div class="section-title">{$t('accentPrimaryColor')}</div>
+    {/if}
 
     <!-- 2D gradient canvas -->
     <canvas
@@ -266,6 +329,56 @@
         {/each}
       </div>
     </div>
+
+    {#if gradient}
+      <!-- Gradient end color -->
+      <div class="section-title section-title-2">{$t('accentGradientColor')}</div>
+
+      <div class="input-row">
+        <div class="preview-swatch" style="background: {hex2}"></div>
+        <label class="input-label">HEX</label>
+        <input
+          class="hex-input"
+          type="text"
+          bind:value={hex2Input}
+          on:change={onHex2Change}
+          maxlength="7"
+          spellcheck="false"
+        />
+      </div>
+
+      <div class="rgb-row">
+        <div class="rgb-field">
+          <label class="input-label">R</label>
+          <input type="number" min="0" max="255" bind:value={r2} on:change={onRgb2Change} />
+        </div>
+        <div class="rgb-field">
+          <label class="input-label">G</label>
+          <input type="number" min="0" max="255" bind:value={g2} on:change={onRgb2Change} />
+        </div>
+        <div class="rgb-field">
+          <label class="input-label">B</label>
+          <input type="number" min="0" max="255" bind:value={b2} on:change={onRgb2Change} />
+        </div>
+      </div>
+
+      <div class="history-section">
+        <label class="input-label history-label">{$t('colorHistory')}</label>
+        <div class="history-swatches">
+          {#each colorHistory2 as c}
+            <button
+              class="history-swatch"
+              style="background: {c}"
+              title={c}
+              on:click={() => initFromHex2(c)}
+            ></button>
+          {/each}
+          {#each { length: 8 - colorHistory2.length } as _}
+            <div class="history-swatch-empty"></div>
+          {/each}
+        </div>
+      </div>
+    {/if}
 
   </div>
 
@@ -482,6 +595,64 @@
   opacity: 0.4;
 }
 
+.gradient-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.gradient-toggle-label { font-size: 13px; color: var(--text-primary); }
+
+/* Same switch as SettingsPanel's .sw (WebKit-GTK: no hidden checkboxes) */
+.sw {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  border-radius: 24px;
+  background: var(--border);
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition: background 0.2s;
+  outline: none;
+}
+.sw.on { background: var(--accent-bg); }
+.sw:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.sw-knob {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+  pointer-events: none;
+}
+.sw.on .sw-knob { transform: translateX(18px); }
+
+.gradient-preview {
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.section-title-2 {
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
 .cp-footer {
   display: flex;
   align-items: center;
@@ -515,7 +686,7 @@
 .btn-cancel:hover { background: var(--bg-button-hover); }
 
 .btn-apply {
-  background: var(--accent);
+  background: var(--accent-bg);
   border: none;
   border-radius: 5px;
   color: white;
@@ -524,5 +695,5 @@
   font-weight: 500;
   cursor: pointer;
 }
-.btn-apply:hover { background: var(--accent-hover); }
+.btn-apply:hover { background: var(--accent-hover-bg); }
 </style>

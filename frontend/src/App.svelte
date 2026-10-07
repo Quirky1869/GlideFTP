@@ -424,7 +424,7 @@
 }
 
 .topbar-badge {
-  background: var(--accent);
+  background: var(--accent-bg);
   color: white;
   border-radius: 10px;
   font-size: 10px;
@@ -596,8 +596,8 @@
   box-shadow:
     0 8px 32px rgba(0,0,0,0.3),
     4px 4px 8px var(--accent-glow),
-    8px 8px 20px var(--accent-glow),
-    14px 14px 45px var(--accent-subtle);
+    8px 8px 20px var(--accent-glow-2),
+    14px 14px 45px var(--accent-subtle-2);
 }
 
 .connect-title {
@@ -669,6 +669,16 @@
 }
 
 .browser-splitter:hover, .browser-splitter.active {
-  background: var(--accent);
+  background: var(--accent-bg);
 }
+
+/* ── Accent gradient mode (Settings > Color > Gradient) ── */
+:global(html[data-accent-gradient]) .app-logo,
+:global(html[data-accent-gradient]) .link-btn {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+:global(html[data-accent-gradient]) .conn-tab.active { border-image: var(--accent-gradient) 1; }
 </style>

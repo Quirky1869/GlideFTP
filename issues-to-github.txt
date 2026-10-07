@@ -3835,6 +3835,8 @@ the last resize event.
 - Resize events during the first 1.5s are ignored so the badge doesn't
   flash at startup (window creation / "Open maximized").
 
+Verified by the user in the running app (v1.7.8 dev build).
+
 ---
 
 #107
@@ -3865,4 +3867,82 @@ in the panel are saved along with it. The row is disabled together with the
 width/height rows when "Open maximized" is on. i18n keys:
 windowSizeCurrent, useCurrentWindowSize. Errors go through the global
 notify() popup.
+
+Verified by the user in the running app (v1.7.8 dev build): fills and
+saves in one click, window reopens at that size.
+
+---
+
+#108
+Title: [Feature] Accent color gradient (two-color accent applied everywhere)
+Labels: enhancement, ui, settings
+Version fixed: v1.7.8
+Description:
+Allow a gradient instead of a single accent color. In the color picker,
+an on/off switch (off by default = unchanged UI), placed between the
+"Sélecteur de couleur" title and the main color square. When on, a
+second color selector appears under the main color (HEX + RGB + its own
+recent colors) for the gradient's end color. The gradient must apply to
+every accent-colored element (text, buttons, shadow box, etc.).
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+Settings (internal/settings/settings.go + wailsjs models.ts):
+`AccentGradient bool` (default false) and `AccentColor2 string`
+(default "#C15BF5").
+
+CSS variables (stores/settings.js `applyAccentColor(hex, gradient,
+hex2)`, called via `applyAccentFromSettings(s)` on load/save). With the
+gradient off every new var equals the plain color, so the app looks
+exactly as before:
+- `--accent-bg`, `--accent-hover-bg`, `--accent-subtle-bg`: plain color,
+  or `linear-gradient(135deg, c1, c2)` (darkened / 14% alpha variants).
+- `--accent-gradient`: always an image (c1→c2, or c1→c1).
+- `--accent-2`, `--accent-glow-2`, `--accent-subtle-2`: color 2.
+- `html[data-accent-gradient]` attribute while the gradient is on.
+Defaults for all of these in style.css (`:root`) until settings load.
+
+How each kind of accent usage was converted (a CSS gradient is only
+valid as a background image):
+- Backgrounds (buttons, switches, active toggles, badges, progress bar,
+  splitters, selected rows, hover states): every `background:
+  var(--accent|--accent-hover|--accent-subtle)` in the components →
+  `--accent-bg|--accent-hover-bg|--accent-subtle-bg`.
+- Elements with both an accent background and an accent border
+  (.toggle-btn.active, .proto-btn.active, .btn-quick.active,
+  .export-checkbox.checked): border made transparent over a
+  `border-box` background - identical in solid mode, no solid frame
+  cutting the gradient in gradient mode.
+- Accent text (logo, section titles h3, "manage sites" link, panel side
+  labels, sort arrows, queue tabs/direction/speeds, version badge,
+  date-format preview & tooltip, quick-connect host, size badge "×"):
+  gradient text (`background-clip: text` + `-webkit-text-fill-color:
+  transparent`) under `:global(html[data-accent-gradient])`. Only on
+  pure-text elements: on SVG icons (stroke = currentColor) it would make
+  them invisible, so icons keep color 1. The queue tab's count badge
+  resets `-webkit-text-fill-color: white` (inherited property).
+- Underlines (connection tabs, queue tabs): `border-image:
+  var(--accent-gradient) 1`.
+- Framed popups (notification modal, date-format tooltip, window size
+  badge): gradient border via `background: linear-gradient(bg, bg)
+  padding-box, var(--accent-gradient) border-box` + transparent border.
+- Shadows can't be gradients: two-tone instead. Connect-card shadow
+  box: inner layer color 1, outer layers color 2 (always, = color 1 when
+  off); size badge / notification ring: color 1 on the left, color 2 on
+  the right in gradient mode.
+- Thin 1px focus borders and icons stay color 1 (a gradient isn't
+  visible at that size).
+
+ColorPicker.svelte: `gradient` / `value2` props, `onApply({ color,
+gradient, color2 })`. Gradient switch (.sw pattern) at the top of the
+body; when on: c1→c2 preview bar, "Couleur principale" title over the
+existing canvas/hue/HEX/RGB/recent block, then "Couleur du dégradé"
+section with HEX + RGB inputs + its own 8 recent colors (localStorage
+`glideftp_color_history_gradient`). The switch previews the live
+gradient. "Couleur par défaut" resets both colors and turns the gradient
+off. SettingsPanel: `onColorApply` saves all three fields at once (still
+one click), and the Color row swatch/label show the gradient
+("#5b8af5 → #c15bf5"). i18n: accentGradient, accentPrimaryColor,
+accentGradientColor.
 

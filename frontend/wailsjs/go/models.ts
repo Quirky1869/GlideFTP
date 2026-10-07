@@ -177,6 +177,8 @@ export namespace settings {
 	    dateFormat: string;
 	    maxTransferSpeedKBps: number;
 	    accentColor: string;
+	    accentGradient: boolean;
+	    accentColor2: string;
 	    maxConnections: number;
 	    connectCardShadow: boolean;
 	    windowWidth: number;
@@ -206,6 +208,8 @@ export namespace settings {
 	        this.dateFormat = source["dateFormat"];
 	        this.maxTransferSpeedKBps = source["maxTransferSpeedKBps"];
 	        this.accentColor = source["accentColor"];
+	        this.accentGradient = source["accentGradient"];
+	        this.accentColor2 = source["accentColor2"];
 	        this.maxConnections = source["maxConnections"];
 	        this.connectCardShadow = source["connectCardShadow"];
 	        this.windowWidth = source["windowWidth"];

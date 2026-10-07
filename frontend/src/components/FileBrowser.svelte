@@ -1558,7 +1558,7 @@
 
 .file-row.drag-target,
 .tree-row.drag-target {
-  background: var(--accent-subtle);
+  background: var(--accent-subtle-bg);
   outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
@@ -1651,7 +1651,7 @@
   text-overflow: ellipsis;
 }
 .path-sugg:hover, .path-sugg.highlighted {
-  background: var(--accent-subtle);
+  background: var(--accent-subtle-bg);
   color: var(--accent);
 }
 .sugg-icon {
@@ -1685,7 +1685,7 @@
 .icon-btn svg { width: 15px; height: 15px; }
 
 .transfer-btn { color: var(--accent); }
-.transfer-btn:hover { background: var(--accent-subtle); color: var(--accent); }
+.transfer-btn:hover { background: var(--accent-subtle-bg); color: var(--accent); }
 
 .error-bar {
   background: var(--danger);
@@ -1838,11 +1838,11 @@
   transition: background 0.08s;
 }
 .file-row:hover { background: var(--bg-hover); }
-.file-row.selected { background: var(--accent-subtle); }
+.file-row.selected { background: var(--accent-subtle-bg); }
 
 .parent-row { color: var(--text-muted); }
 .parent-row:hover { color: var(--text-primary); }
-.parent-row.focused { background: var(--accent-subtle); color: var(--accent); }
+.parent-row.focused { background: var(--accent-subtle-bg); color: var(--accent); }
 
 .file-icon { font-size: 14px; margin-right: 4px; flex-shrink: 0; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
@@ -1968,10 +1968,10 @@
 }
 .conflict-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
 .conflict-replace-btn {
-  background: var(--accent); border: none; border-radius: 5px;
+  background: var(--accent-bg); border: none; border-radius: 5px;
   color: white; padding: 7px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
 }
-.conflict-replace-btn:hover { background: var(--accent-hover); }
+.conflict-replace-btn:hover { background: var(--accent-hover-bg); }
 .conflict-rename-btn {
   background: var(--bg-button); border: 1px solid var(--border); border-radius: 5px;
   color: var(--text-secondary); padding: 7px 14px; font-size: 13px; cursor: pointer;
@@ -2010,7 +2010,7 @@
 }
 .tree-row:hover { background: var(--bg-hover); }
 .tree-row.tree-active {
-  background: var(--accent-subtle);
+  background: var(--accent-subtle-bg);
   color: var(--accent);
   font-weight: 600;
 }
@@ -2067,7 +2067,7 @@
 .tree-file-row { color: var(--text-secondary); }
 .tree-file-row:hover { color: var(--text-primary); }
 .tree-file-row:hover .tree-transfer-btn { opacity: 1; }
-.tree-selected { background: var(--accent-subtle); color: var(--accent); }
+.tree-selected { background: var(--accent-subtle-bg); color: var(--accent); }
 .tree-selected .tree-transfer-btn { opacity: 1; }
 
 .tree-file-size {
@@ -2095,7 +2095,7 @@
   transition: opacity 0.15s, background 0.1s;
 }
 .tree-transfer-btn svg { width: 14px; height: 14px; }
-.tree-transfer-btn:hover { background: var(--accent-subtle); }
+.tree-transfer-btn:hover { background: var(--accent-subtle-bg); }
 
 .tree-spin {
   animation: tree-spin-anim 0.8s linear infinite;
@@ -2108,15 +2108,24 @@
 
 .icon-btn.active {
   color: var(--accent);
-  background: var(--accent-subtle);
+  background: var(--accent-subtle-bg);
 }
 
 /* ── Rubber band ── */
 .rubber-band {
   position: fixed;
   border: 1px solid var(--accent);
-  background: var(--accent-subtle);
+  background: var(--accent-subtle-bg);
   pointer-events: none;
   z-index: 200;
+}
+
+/* ── Accent gradient mode ── */
+:global(html[data-accent-gradient]) .side-label,
+:global(html[data-accent-gradient]) .sort-arr {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 </style>
