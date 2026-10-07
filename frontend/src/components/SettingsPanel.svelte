@@ -6,6 +6,7 @@
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
   import { notify } from '../stores/notify.js';
+  import { DEFAULT_DATE_FORMAT, SYSTEM_DATE_FORMAT, DATE_FORMAT_PRESETS, DATE_FORMAT_TOKENS, normalizeDateFormat, formatDateWith } from '../utils/dateFormat.js';
 
   export let onClose = () => {};
   export let onSaved = (_settings) => {};
@@ -23,8 +24,44 @@
   );
 
   $: if ($settings && !formReady) {
-    form = { ...$settings };
+    form = { ...$settings, dateFormat: normalizeDateFormat($settings.dateFormat) };
+    syncDateAdvanced();
     formReady = true;
+  }
+
+  // ── Date format ──
+  // The dropdown lists the presets + "Advanced"; advanced reveals a free text
+  // input. dateAdvanced is explicit state (not derived from the value) so
+  // typing a custom format that happens to match a preset doesn't hide the input.
+  const DATE_ADVANCED = '__advanced';
+  let dateAdvanced = false;
+  let showDateTip = false;
+  let dateTipPos = { x: 0, y: 0, above: true };
+  let now = new Date();
+
+  function syncDateAdvanced() {
+    dateAdvanced = !DATE_FORMAT_PRESETS.includes(form.dateFormat);
+  }
+
+  function onDatePresetChange(e) {
+    const v = e.target.value;
+    if (v === DATE_ADVANCED) {
+      dateAdvanced = true;
+      // start from the current format so the user edits rather than retypes
+      if (form.dateFormat === SYSTEM_DATE_FORMAT) form = { ...form, dateFormat: DEFAULT_DATE_FORMAT };
+    } else {
+      dateAdvanced = false;
+      form = { ...form, dateFormat: v };
+    }
+  }
+
+  // The tooltip is position:fixed so .panel-body's overflow can't clip it.
+  function openDateTip(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const above = r.top > window.innerHeight / 2;
+    dateTipPos = { x: r.right, y: above ? r.top - 8 : r.bottom + 8, above };
+    now = new Date();
+    showDateTip = true;
   }
 
   async function save() {
@@ -68,7 +105,7 @@
     passiveMode: true,
     autoReconnect: false,
     confirmOnDelete: true,
-    dateFormat: '2006-01-02 15:04',
+    dateFormat: DEFAULT_DATE_FORMAT,
     maxTransferSpeedKBps: 0,
     maxConnections: 3,
     connectCardShadow: false,
@@ -83,6 +120,7 @@
 
   function resetSetting(key) {
     if (key in DEFAULTS) form = { ...form, [key]: DEFAULTS[key] };
+    if (key === 'dateFormat') syncDateAdvanced();
   }
 
   async function exportSettings() {
@@ -98,7 +136,8 @@
       const imported = await ImportSettings();
       if (!imported) return;
       await saveSettings(imported);
-      form = { ...imported };
+      form = { ...imported, dateFormat: normalizeDateFormat(imported.dateFormat) };
+      syncDateAdvanced();
       notify($t('settingsImported'));
     } catch (e) {
       if (e) notify(e.toString(), 'error');
@@ -335,8 +374,35 @@
       </div>
       <div class="setting-row">
         <label>{$t('dateFormat')} <button class="reset-btn" hidden={form.dateFormat === DEFAULTS.dateFormat} on:click|stopPropagation={() => resetSetting('dateFormat')} title={$t('resetToDefault')}>↺</button></label>
-        <input type="text" bind:value={form.dateFormat} placeholder="2006-01-02 15:04" style="width: 160px" />
+        <select class="date-select" value={dateAdvanced ? DATE_ADVANCED : form.dateFormat} on:change={onDatePresetChange} on:focus={() => now = new Date()}>
+          {#each DATE_FORMAT_PRESETS as preset}
+            <option value={preset}>
+              {preset === SYSTEM_DATE_FORMAT ? `${$t('dateFormatSystem')} (${formatDateWith(now, preset, $locale)})` : formatDateWith(now, preset, $locale)}
+            </option>
+          {/each}
+          <option value={DATE_ADVANCED}>{$t('dateFormatAdvanced')}</option>
+        </select>
       </div>
+      {#if dateAdvanced}
+        <div class="setting-row">
+          <label>{$t('dateFormatCustom')}</label>
+          <div class="date-custom">
+            <input type="text" bind:value={form.dateFormat} placeholder={DEFAULT_DATE_FORMAT} spellcheck="false" />
+            <button
+              type="button"
+              class="info-btn"
+              aria-label={$t('dateFormatTokens')}
+              on:mouseenter={openDateTip}
+              on:mouseleave={() => showDateTip = false}
+              on:focus={openDateTip}
+              on:blur={() => showDateTip = false}
+            >i</button>
+          </div>
+        </div>
+        <div class="date-preview">
+          {$t('dateFormatPreview')} : <strong>{formatDateWith(now, form.dateFormat, $locale) || '-'}</strong>
+        </div>
+      {/if}
       <div class="setting-row">
         <label>{$t('startMaximized')} <button class="reset-btn" hidden={form.startMaximized === DEFAULTS.startMaximized} on:click|stopPropagation={() => resetSetting('startMaximized')} title={$t('resetToDefault')}>↺</button></label>
         <button
@@ -368,7 +434,7 @@
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.7</span>
+    <span class="version-badge">v1.7.8</span>
     <button class="io-icon-btn" on:click={exportSettings} title={$t('exportSettings')} aria-label={$t('exportSettings')}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </button>
@@ -382,6 +448,25 @@
     <button class="btn-primary" on:click={save}>{$t('saveSettings')}</button>
   </div>
 </div>
+
+{#if showDateTip}
+  <div
+    class="date-tip"
+    class:above={dateTipPos.above}
+    style="left: {dateTipPos.x}px; top: {dateTipPos.y}px"
+  >
+    <div class="date-tip-title">{$t('dateFormatTokens')}</div>
+    <div class="date-tip-grid">
+      {#each DATE_FORMAT_TOKENS as tok}
+        <code>{tok.token}</code>
+        <span>{$t(tok.label)}</span>
+      {/each}
+    </div>
+    <div class="date-tip-example">
+      <code>%dd/%MM/%yyyy %hh:%mm</code> → {formatDateWith(now, '%dd/%MM/%yyyy %hh:%mm', $locale)}
+    </div>
+  </div>
+{/if}
 
 {#if showColorPicker}
   <ColorPicker
@@ -661,6 +746,77 @@ input:focus { border-color: var(--accent); }
 }
 .sound-test-btn:hover { background: var(--bg-button-hover); color: var(--accent); }
 .sound-test-btn svg { width: 15px; height: 15px; }
+
+/* ── Date format ── */
+.date-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  padding: 5px 8px;
+  font-size: 13px;
+  outline: none;
+  min-width: 200px;
+}
+.date-select:focus { border-color: var(--accent); }
+
+.date-custom { display: flex; align-items: center; gap: 8px; }
+.date-custom input { width: 200px; font-family: monospace; }
+
+.info-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  font: italic 700 12px/1 Georgia, serif;
+  cursor: help;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+.info-btn:hover, .info-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+
+.date-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.date-preview strong { color: var(--accent); font-weight: 600; }
+
+.date-tip {
+  position: fixed;
+  transform: translateX(-100%);
+  z-index: 600;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  pointer-events: none;
+  min-width: 260px;
+}
+.date-tip.above { transform: translate(-100%, -100%); }
+.date-tip-title { font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.date-tip-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+}
+.date-tip code { font-family: monospace; color: var(--accent); }
+.date-tip-example {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
 
 .divider { height: 1px; background: var(--border); margin: 16px 0; }
 

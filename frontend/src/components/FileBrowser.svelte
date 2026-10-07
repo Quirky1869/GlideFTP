@@ -1,10 +1,11 @@
 <script>
-  import { t } from '../i18n/index.js';
+  import { t, locale } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
   import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath } from '../../wailsjs/go/main/App.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
+  import { formatDateWith } from '../utils/dateFormat.js';
   import { clipboard, localCopy, remoteCopy, remoteCopyDir } from '../stores/connection.js';
 
   export let side = 'local';
@@ -58,16 +59,32 @@
   function cutEntries(ents) {
     if (!ents || ents.length === 0) return;
     clipboard.set({ entries: ents.map(e => ({ path: e.path, name: e.name, isDir: e.isDir })), operation: 'cut', side });
+    showClipboardMsg(ents, 'cut');
   }
 
   function copyEntries(ents) {
     if (!ents || ents.length === 0) return;
     clipboard.set({ entries: ents.map(e => ({ path: e.path, name: e.name, isDir: e.isDir })), operation: 'copy', side });
+    showClipboardMsg(ents, 'copy');
   }
 
+  // "file.txt" copied / 3 items cut - confirms Ctrl+C/X and the context menu,
+  // which otherwise give no visual feedback until the paste.
+  function showClipboardMsg(ents, operation) {
+    const key = operation === 'cut' ? 'clipboardCut' : 'clipboardCopied';
+    const text = ents.length === 1
+      ? $t(key + 'One').replace('{name}', ents[0].name)
+      : $t(key + 'Many').replace('{n}', ents.length);
+    showPasteMsg(text, true);
+  }
+
+  // One shared timer: a new message restarts the 4s countdown instead of
+  // being erased early by the previous message's pending timeout.
+  let pasteMsgTimer = null;
   function showPasteMsg(text, ok) {
     pasteMsg = { text, ok };
-    setTimeout(() => { pasteMsg = null; }, 4000);
+    clearTimeout(pasteMsgTimer);
+    pasteMsgTimer = setTimeout(() => { pasteMsg = null; }, 4000);
   }
 
   // Returns a unique name like "file (copie).txt", "file (copie 1).txt", etc.
@@ -323,10 +340,15 @@
     else { sortKey = key; sortDir = 'asc'; }
   }
 
-  function formatDate(dateStr) {
+  $: dateFormat = $settings?.dateFormat;
+  // Size the Date column to the configured format, measured on a wide sample
+  // date (longest month name, 2-digit everything) - 130px stays the minimum.
+  $: dateColWidth = Math.max(130, Math.ceil(formatDateWith(new Date(2026, 8, 28, 23, 59, 59), dateFormat, $locale).length * 7.2) + 12);
+
+  // dateFormat/$locale passed in so Svelte re-renders the column when they change
+  function formatDate(dateStr, fmt, loc) {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return formatDateWith(dateStr, fmt, loc);
   }
 
   // ── Selection ─────────────────────────────────────────────────────────────
@@ -1024,6 +1046,7 @@
 <div
   class="browser"
   class:drag-over={dragOver}
+  style="--date-col-w: {dateColWidth}px"
   bind:this={panelEl}
   tabindex="-1"
   on:keydown={handlePanelKeydown}
@@ -1203,7 +1226,7 @@
               {/if}
             </span>
             <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
-            <span class="col-date">{formatDate(entry.modTime)}</span>
+            <span class="col-date">{formatDate(entry.modTime, dateFormat, $locale)}</span>
           </div>
         {/each}
       {/if}
@@ -1354,7 +1377,7 @@
               {/if}
             </span>
             <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
-            <span class="col-date">{formatDate(entry.modTime)}</span>
+            <span class="col-date">{formatDate(entry.modTime, dateFormat, $locale)}</span>
           </div>
         {/each}
       {/if}
@@ -1797,7 +1820,7 @@
 
 .col-name { flex: 1; min-width: 0; }
 .col-size { width: 80px; text-align: right; flex-shrink: 0; }
-.col-date { width: 130px; text-align: right; flex-shrink: 0; }
+.col-date { width: var(--date-col-w, 130px); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .file-row .col-name { display: flex; align-items: center; }
 .file-list-header .col-name { display: flex; align-items: center; gap: 4px; }

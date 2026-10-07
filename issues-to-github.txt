@@ -3593,3 +3593,112 @@ the same "✓ enregistré" `saved` confirmation state for 2s, and calls
 refresh etc.) run too. Picking a color now applies and persists in one
 click, with no behavioral difference from clicking the main Save
 button afterward.
+
+---
+
+#100
+Title: [Feature] Date format picker in Settings (presets + advanced custom format with token help)
+Labels: enhancement, ui, settings
+Version fixed: v1.7.8
+Description:
+Settings > Interface > "Date format" was a bare free-text field with no
+guidance on what to type. Users want a list of common formats to choose
+from, plus an "advanced" option to type their own pattern, with a small
+"i" next to it that shows the available variables on mouse hover (e.g.
+%d day, %mm minutes, %h hours, ...).
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+- New `frontend/src/utils/dateFormat.js`: `formatDateWith(date, fmt,
+  locale)` replaces %-tokens, matched longest-first and case-sensitive
+  (uppercase M = month, lowercase m = minutes):
+  %yyyy %yy (year), %MMMM %MMM (localized month name, long/short),
+  %MM %M (month), %dd %d (day), %hh %h (hours 24h), %II %I (hours 12h),
+  %p (AM/PM), %mm %m (minutes), %ss %s (seconds), %% (literal %).
+  The special value "system" keeps the OS locale format. The module also
+  exports `DATE_FORMAT_PRESETS`, `DATE_FORMAT_TOKENS` (tooltip content)
+  and `normalizeDateFormat()`.
+- SettingsPanel.svelte: the text input is replaced by a <select> whose
+  options are rendered with today's date in each preset (ISO, ISO with
+  seconds, FR dd/MM/yyyy, dd/MM/yy, US MM/dd/yyyy 12h, DE dd.MM.yyyy,
+  "dd MMM yyyy", System default) plus "Advanced (custom)…".
+  `dateAdvanced` is explicit state (not derived from the value) so
+  typing a custom pattern that happens to equal a preset doesn't hide
+  the input; it is re-synced on the ↺ reset button and on settings
+  import. Advanced mode shows a monospace text input, an "i" button
+  whose hover/focus opens the token tooltip, and a live preview line.
+  The tooltip is `position: fixed` (coordinates from the button's
+  getBoundingClientRect, opened above or below depending on the
+  available space) so `.panel-body`'s `overflow-y: auto` can't clip it.
+- FileBrowser.svelte: the Date column width adapts to the format via a
+  `--date-col-w` CSS var on `.browser`, measured on a wide sample date
+  (min 130px, nowrap + ellipsis fallback).
+- i18n: dateFormatSystem/Advanced/Custom/Preview/Tokens + one
+  dateTok* label per variable, in en.js and fr.js.
+- See #101 for the related fix (the setting was previously ignored).
+
+---
+
+#101
+Title: [Bug] "Date format" setting was saved but never applied to the file lists
+Labels: bug, settings
+Version fixed: v1.7.8
+Description:
+Changing Settings > Interface > "Date format" had no visible effect:
+the value (default "2006-01-02 15:04", a Go time layout) was persisted
+in settings.json but nothing read it. FileBrowser.svelte's
+`formatDate()` always used `toLocaleDateString()` +
+`toLocaleTimeString()`, so the Date column followed the OS locale
+whatever the user typed.
+
+Solution (closing comment):
+Fixed in v1.7.8.
+
+- FileBrowser.svelte: `formatDate(dateStr, fmt, loc)` now delegates to
+  `formatDateWith()` (see #100) with `$settings.dateFormat` and the
+  active `$locale`, both passed as arguments so Svelte re-renders the
+  column as soon as the setting or the language changes.
+- Default changed to "%yyyy-%MM-%dd %hh:%mm" (Go `settings.Default()`
+  and the frontend `DEFAULTS` in SettingsPanel.svelte).
+- Migration: `settings.Load()` (internal/settings/settings.go) replaces
+  any stored value that is not "system" and contains no "%" token (i.e.
+  the old Go layout) with the new default; `normalizeDateFormat()`
+  does the same on the frontend side (settings form init + import) as
+  a safety net, so the old layout is never printed literally.
+
+Verified by the user in the running app (v1.7.8 dev build): the Date
+column follows the selected preset / custom format.
+
+---
+
+#102
+Title: [Bug] No confirmation message after Copy / Cut in the file panels (only Paste showed one)
+Labels: bug, ui
+Version fixed: v1.7.8
+Description:
+Copying or cutting files/folders (Ctrl+C / Ctrl+X or the right-click
+menu) worked, but nothing told the user it had happened - the green
+message bar at the bottom of the panel only appeared after a Paste
+("Copie(s) terminée(s)" / "Collage(s) terminé(s)").
+
+Solution (closing comment):
+Fixed in v1.7.8 in FileBrowser.svelte.
+
+Root cause: `cutEntries()` / `copyEntries()` only wrote the shared
+`clipboard` store; the only caller of `showPasteMsg()` was
+`pasteToFolder()`. Both now call a new `showClipboardMsg(ents, op)`
+which shows the same green bar with `"name" copié - Ctrl+V pour coller`
+(1 item) or `N éléments copiés - Ctrl+V pour coller` (several), and the
+"coupé(s)" equivalents for cut. New i18n keys in en.js/fr.js:
+clipboardCopiedOne/Many, clipboardCutOne/Many ({name} / {n}
+placeholders replaced in the component).
+
+Also fixed: `showPasteMsg()` started a new 4s `setTimeout` per message
+without clearing the previous one, so a message shown shortly after
+another (e.g. Copy then Paste) was erased early by the older timer. It
+now keeps a single `pasteMsgTimer` and restarts it.
+
+Verified by the user in the running app (v1.7.8 dev build): Copy and
+Cut now show the green confirmation bar, via Ctrl+C/Ctrl+X and the
+right-click menu.

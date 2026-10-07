@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Settings struct {
@@ -44,7 +45,7 @@ func Default() *Settings {
 		PassiveMode:                    true,
 		AutoReconnect:                  false,
 		ConfirmOnDelete:                true,
-		DateFormat:                     "2006-01-02 15:04",
+		DateFormat:                     "%yyyy-%MM-%dd %hh:%mm",
 		MaxTransferSpeedKBps:           0,
 		AccentColor:                    "#5B8AF5",
 		MaxConnections:                 3,
@@ -79,6 +80,11 @@ func Load() (*Settings, error) {
 	s := Default()
 	if err := json.Unmarshal(data, s); err != nil {
 		return Default(), nil
+	}
+	// Pre-v1.7.8 files hold an unused Go layout ("2006-01-02 15:04"); the
+	// frontend now expects %-tokens (see frontend/src/utils/dateFormat.js).
+	if s.DateFormat != "system" && !strings.Contains(s.DateFormat, "%") {
+		s.DateFormat = Default().DateFormat
 	}
 	return s, nil
 }
