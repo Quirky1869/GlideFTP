@@ -9,7 +9,7 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 UI reference sketch in `_images/exemple.png`. The original French design spec (`prompt-glideftp`) was removed from the repo in commit `af4095f` - no longer present, don't reference it as an existing file.
 
 **Project tracking files** (keep in sync after each session):
-- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#102. Add new entries after each fix.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#103. Add new entries after each fix.
 
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
@@ -265,7 +265,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Editable path bar**: click the path display to enter edit mode; Enter navigates, Esc cancels; debounced autocomplete dropdown shows matching subdirs
 - **Column sort**: click Name/Size/Date headers; dirs always listed first; second click reverses order
 - **Multi-select**: Ctrl+click toggles, Shift+click range-selects, rubber-band (click-drag on empty area)
-- **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2
+- **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2; every rename input (list, search results, tree, conflict-dialog rename step) uses `use:selectBaseName={isDir}` (`utils/selectBaseName.js`, v1.7.8 #103) instead of `autofocus` - pre-selects the name without its last extension (whole name for folders/dot-files), deferred one `requestAnimationFrame` because WebKit-GTK's `autofocus` selects everything
 - **Delete key**: keydown handler calls `handleDelete(selected)` - deletes the full selection
 - **Right-click context menu**: on a file → Rename / Transfer / Delete (deletes full selection if right-clicked item is in selection); on empty area → New Folder
 - **Delete confirmation**: `confirmDeleteEntries` (array); popup shows filename (1 item) or "N éléments" (multiple); `doDeleteAll()` iterates and calls `onDelete` for each, single refresh at end

@@ -3702,3 +3702,32 @@ now keeps a single `pasteMsgTimer` and restarts it.
 Verified by the user in the running app (v1.7.8 dev build): Copy and
 Cut now show the green confirmation bar, via Ctrl+C/Ctrl+X and the
 right-click menu.
+
+---
+
+#103
+Title: [Enhancement] Rename: pre-select the file name without its extension
+Labels: enhancement, ui
+Version fixed: v1.7.8
+Description:
+When renaming a file (F2 or right-click > Rename), the whole name was
+selected, extension included - typing a new name wiped the extension,
+which then had to be retyped. Most file managers (Windows Explorer,
+Dolphin, Nautilus, FileZilla) only pre-select the base name.
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+New Svelte action `frontend/src/utils/selectBaseName.js`:
+`use:selectBaseName={isDir}` focuses the input and calls
+`setSelectionRange(0, lastIndexOf('.'))`. Folders and dot-files with no
+other dot (".bashrc") select the whole name; only the last extension is
+excluded ("archive.tar.gz" → "archive.tar" selected). The selection is
+deferred with `requestAnimationFrame` (cancelled in `destroy`) because
+`autofocus` selects the whole value on WebKit-GTK and would override
+it; `autofocus` was removed from those inputs since the action focuses.
+
+Applied in FileBrowser.svelte to the 3 inline rename inputs (list view,
+search results, tree view `.tree-rename-input`) and to the conflict
+dialog's "rename" step input (`.conflict-rename-input`), which is also
+pre-filled with the file name.

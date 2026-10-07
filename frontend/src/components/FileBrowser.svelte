@@ -6,6 +6,7 @@
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { formatDateWith } from '../utils/dateFormat.js';
+  import { selectBaseName } from '../utils/selectBaseName.js';
   import { clipboard, localCopy, remoteCopy, remoteCopyDir } from '../stores/connection.js';
 
   export let side = 'local';
@@ -1216,7 +1217,7 @@
                   bind:value={renameValue}
                   on:click|stopPropagation
                   on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
-                  autofocus
+                  use:selectBaseName={entry.isDir}
                 />
               {:else}
                 <span class="file-name">{entry.name}</span>
@@ -1284,7 +1285,7 @@
                 bind:value={renameValue}
                 on:click|stopPropagation
                 on:keydown={(e) => { if (e.key === 'Enter') doRename(renamingEntry); if (e.key === 'Escape') renamingEntry = null; }}
-                autofocus
+                use:selectBaseName={node.isDir}
               />
             {:else}
               {node.name}
@@ -1370,7 +1371,7 @@
                   bind:value={renameValue}
                   on:click|stopPropagation
                   on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
-                  autofocus
+                  use:selectBaseName={entry.isDir}
                 />
               {:else}
                 <span class="file-name">{entry.name}</span>
@@ -1517,7 +1518,7 @@
             type="text"
             bind:value={conflictState.inputVal}
             on:keydown={(e) => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') conflictState = null; }}
-            autofocus
+            use:selectBaseName={conflictState.entry?.isDir}
           />
         {/key}
         <div class="confirm-actions">
