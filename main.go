@@ -54,7 +54,9 @@ func main() {
 		},
 		OnStartup:  app.startup,
 		OnShutdown: app.shutdown,
-		Bind:       []interface{}{app},
+		// Warns about opened files with changes not sent back (app_openfile.go).
+		OnBeforeClose: app.beforeClose,
+		Bind:          []interface{}{app},
 	})
 
 	if err != nil {

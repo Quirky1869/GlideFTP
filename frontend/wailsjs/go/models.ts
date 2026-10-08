@@ -158,6 +158,22 @@ export namespace main {
 	        this.needsPassphrase = source["needsPassphrase"];
 	    }
 	}
+	export class OpenResult {
+	    id: string;
+	    path: string;
+	    noDefaultApp: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new OpenResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.path = source["path"];
+	        this.noDefaultApp = source["noDefaultApp"];
+	    }
+	}
 
 }
 

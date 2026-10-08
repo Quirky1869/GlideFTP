@@ -14,8 +14,16 @@ export function CancelAllTransfers() {
   return window['go']['main']['App']['CancelAllTransfers']();
 }
 
+export function CancelOpenRemoteFile() {
+  return window['go']['main']['App']['CancelOpenRemoteFile']();
+}
+
 export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
+}
+
+export function ChooseAppAndOpen(arg1) {
+  return window['go']['main']['App']['ChooseAppAndOpen'](arg1);
 }
 
 export function ClearTransfers(arg1) {
@@ -130,6 +138,10 @@ export function GetTransfers() {
   return window['go']['main']['App']['GetTransfers']();
 }
 
+export function IgnoreOpenedFileChange(arg1) {
+  return window['go']['main']['App']['IgnoreOpenedFileChange'](arg1);
+}
+
 export function ImportSettings() {
   return window['go']['main']['App']['ImportSettings']();
 }
@@ -158,8 +170,20 @@ export function LocalSearch(arg1, arg2, arg3) {
   return window['go']['main']['App']['LocalSearch'](arg1, arg2, arg3);
 }
 
+export function OpenContainingFolder(arg1) {
+  return window['go']['main']['App']['OpenContainingFolder'](arg1);
+}
+
 export function OpenImportDialog() {
   return window['go']['main']['App']['OpenImportDialog']();
+}
+
+export function OpenLocalFile(arg1) {
+  return window['go']['main']['App']['OpenLocalFile'](arg1);
+}
+
+export function OpenRemoteFile(arg1) {
+  return window['go']['main']['App']['OpenRemoteFile'](arg1);
 }
 
 export function QueueDownload(arg1, arg2) {
@@ -222,6 +246,10 @@ export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
 
+export function SetOpenedFileAutoUpload(arg1, arg2) {
+  return window['go']['main']['App']['SetOpenedFileAutoUpload'](arg1, arg2);
+}
+
 export function SwitchConnection(arg1) {
   return window['go']['main']['App']['SwitchConnection'](arg1);
 }
@@ -232,4 +260,8 @@ export function TestConnection(arg1) {
 
 export function UpdateSite(arg1) {
   return window['go']['main']['App']['UpdateSite'](arg1);
+}
+
+export function UploadOpenedFile(arg1, arg2) {
+  return window['go']['main']['App']['UploadOpenedFile'](arg1, arg2);
 }

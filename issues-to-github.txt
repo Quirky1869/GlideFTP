@@ -4009,3 +4009,149 @@ maximum (`linuxMaxWindowSize = 16384`) for MaxWidth/MaxHeight, so Wails
 never substitutes the monitor size. Windows keeps 0 (already "no
 limit" there, behavior unchanged).
 
+---
+
+#110
+Title: [Feature] Open files with the system's default application (and send edited remote files back)
+Labels: enhancement, ui, transfers
+Version fixed: v1.7.8
+Description:
+Open any file (text, image, PDF, video, Office...) straight from
+GlideFTP with the system's default application, like FileZilla's
+"View/Edit", and send remote files back to the server automatically when
+they are modified. Spec: memo/feature-open-with-default-app.md.
+
+Solution (closing comment):
+Implemented in v1.7.8. "Ouvrir" / "Open" entry at the top of the file
+context menu (list and tree views, files only - double-click unchanged).
+
+Local file: opened in place, no copy, no watching.
+
+Remote file (app_openfile.go `OpenRemoteFile`):
+- Downloaded with the existing `Client.Download` (FTP uses its own
+  dedicated connection, no conflict with the control connection) to
+  os.TempDir()/GlideFTP/open/<uuid>/<original name> - one folder per
+  opening keeps the real name/extension and avoids collisions; names are
+  sanitized for Windows-forbidden characters. Not through the transfer
+  queue: synchronous, with a small non-modal "Opening x..." box and a
+  Cancel button (`CancelOpenRemoteFile` → context cancel). Re-opening a
+  file already open reuses its temp copy (keeps local edits).
+- Remote ModTime/Size recorded before download (ListDir of the parent,
+  bounded by the operation timeout) for conflict detection.
+
+Opening (internal/fs/open_linux.go / open_windows.go / open_other.go,
+same layout as trash_*.go):
+- Linux: xdg-open, started then reaped in a goroutine (no zombie); an
+  error is reported only if it exits non-zero within 2s (xdg-open's
+  generic mode - e.g. Hyprland without a full DE - runs the app in the
+  foreground, so "still running" = launched). Exit codes 3/4 →
+  `ErrNoDefaultApp`. Generic mode pre-check: with no application for a
+  MIME type, generic xdg-open silently falls back to a web browser and
+  exits 0 (seen while testing a .bundle = application/x-git-bundle on
+  Hyprland: "No applications found for mimetype", then "Opening in
+  existing browser session", code 0 - the file was just downloaded and
+  nothing visible happened). So when XDG_CURRENT_DESKTOP is not a full
+  desktop (GNOME, KDE, XFCE, LXDE, LXQt, MATE, Cinnamon, Enlightenment,
+  Deepin, UKUI, Budgie; nor KDE_FULL_SESSION / GNOME_DESKTOP_SESSION_ID
+  set), `xdg-mime query filetype` + `xdg-mime query default` are asked
+  first - they read the same mimeapps.list / defaults.list /
+  mimeinfo.cache files as generic xdg-open - and an empty default returns
+  `ErrNoDefaultApp` directly. Full desktops are left to their own opener
+  (gio/kde-open/exo-open), which resolves parent types (a script opens in
+  the text editor) and fails properly or shows its own chooser. If
+  xdg-mime itself fails, xdg-open decides as before. AppImage: when APPIMAGE/APPDIR is set, the child
+  environment is cleaned - LD_LIBRARY_PATH, WEBKIT_EXEC_PATH,
+  GDK_PIXBUF_*, GIO_*, GTK_*, GST_PLUGIN_*, PYTHON*, QT_PLUGIN_PATH... are
+  dropped and any path entry inside $APPDIR is removed from the other
+  variables (PATH, XDG_DATA_DIRS...), so external apps don't load the
+  AppImage's bundled libraries.
+- Windows: ShellExecuteW "open" via syscall.NewLazyDLL (no CGo, mingw
+  OK); SE_ERR_NOASSOC (31) → `rundll32 shell32.dll,OpenAs_RunDLL`, the
+  native "Open with..." dialog.
+- No application found (Linux): dialog "Aucune application associée"
+  with "Choisir une application…" (OpenFileDialog, /usr/bin by default,
+  launches the chosen executable with the file), "Télécharger" (remote
+  files only: copies the already downloaded temp file into the local
+  panel's folder - instant, no second download, works even if the
+  connection dropped; never overwrites, "name (1).ext"... if taken; local
+  panel refreshed + toast) and "Ouvrir le dossier" (file manager, which
+  always offers "Open with").
+
+Watching modifications (internal/openfile/watcher.go): polling every 2s
+of ModTime + Size of each temp file, not fsnotify (editors that save
+atomically by rename break inotify watches on the file) and never
+"editor closed" detection (openers return immediately, single-instance
+editors hand the file to a running process). Debounce: a change is
+reported once its state is identical on two consecutive polls. Event
+`openfile:modified` → popup "x a été modifié. Le renvoyer sur le
+serveur host ?" with Oui / Non / Toujours pour ce fichier (`AutoUpload`:
+later saves are sent silently with a discreet toast). Several modified
+files are queued, one prompt each.
+
+Upload (`UploadOpenedFile(id, force)`): on the file's original
+connection (`Manager.ClientByID`, not necessarily the active tab).
+Before uploading, the remote ModTime/Size is compared with the recorded
+one: if the server copy changed → "remote_changed" → "Fichier modifié
+sur le serveur... L'écraser quand même ?" (Écraser / Annuler) - also in
+auto-upload mode, a server change is never overwritten silently. After
+upload: new remote state recorded, remote panel refreshed if it shows
+that folder. Connection closed → clear error message.
+
+Cleanup:
+- Startup and shutdown: os.TempDir()/GlideFTP/open is removed.
+- Quit with unsent changes (a "No", a failed upload, or a save not yet
+  answered): `OnBeforeClose` native question dialog "N fichier(s)
+  modifié(s)... Quitter quand même ?" (Wails runs OnBeforeClose in a
+  goroutine on Linux, so the dialog can't deadlock).
+- Closing / replacing / losing a connection (`CloseConnection`,
+  `Disconnect`, the 3 `Connect*` that replace the active one): its files
+  stop being watched; if some had unsent changes, an `openfile:orphaned`
+  notification lists them.
+
+Frontend: stores/openfile.js (state + Wails events),
+components/OpenedFileModal.svelte (opening box, prompts, no-app dialog,
+toast; gradient-border rule applied), i18n keys openFile, openingFile,
+openFileError, noDefaultApp, openFolder, chooseApp, fileModifiedTitle,
+fileModifiedUpload, uploadAlways, remoteFileChangedTitle,
+remoteFileChanged, overwrite, openFileUploaded, openFileUploadError,
+openFileConnectionClosed, openFileOrphaned, openFileMorePending.
+Not done (optional in the spec): remembering the chosen application per
+extension (OpenWithOverrides).
+
+Verified by the user on Linux (Hyprland, binary build): local/remote
+opening, no-application dialog incl. Download, .apk opened by the
+archive manager (system association). AppImage and Windows still to be
+tested.
+
+---
+
+#111
+Title: [Feature] Quick connect button on each saved site in Site Manager
+Labels: enhancement, ui
+Version fixed: v1.7.8
+Description:
+Connecting to a saved site took two clicks (select the site, then
+Connect in the detail panel). Add a quick connect button at the right end
+of each site row in the list, as wide as the reorder button above it, an
+arrow pointing right, neutral like the rest of the interface and filled
+with the user's accent color on hover.
+
+Solution (closing comment):
+Implemented in v1.7.8 in SiteManager.svelte.
+
+`.site-quick-connect` button at the end of each `.site-item`: full row
+height (`align-self: stretch` + negative margins cancelling the row's
+padding), 40px wide with a 1px left separator - same width and position
+as `.reorder-toggle-btn`, so both line up as one column. Right-arrow
+icon, `--text-secondary` by default, `background: var(--accent-bg)` +
+white icon on hover (so it follows the accent color and the gradient).
+Click (`stopPropagation`, so the row's own click doesn't fire) selects
+the site and calls the existing `connectToSite(id)` - same flow as the
+detail panel's Connect button: keep-or-replace dialog when already
+connected, password prompt for "ask password" sites, spinner state.
+Disabled while a connection is in progress; hidden in reorder and
+export-selection modes, where clicking a row already has another
+meaning. `.site-info` gets `flex: 1` to push the button to the right.
+i18n: quickConnectSite (tooltip).
+
+Verified by the user in the running app (v1.7.8 dev build).

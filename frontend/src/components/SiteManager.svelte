@@ -653,6 +653,19 @@
               <span class="site-name">{site.name}</span>
               <span class="site-host">{site.host}:{site.port}</span>
             </div>
+            {#if !reorderMode && !exportSelectMode}
+              <!-- Quick connect: same flow as the detail panel's Connect button -->
+              <button
+                type="button"
+                class="site-quick-connect"
+                title={$t('quickConnectSite')}
+                aria-label={$t('quickConnectSite')}
+                disabled={connecting}
+                on:click|stopPropagation={() => { selectSite(site); connectToSite(site.id); }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            {/if}
           </div>
         {/each}
 
@@ -1255,8 +1268,33 @@
 .site-info {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
+
+/* Quick connect: full-height 40px column at the row's right edge (negative
+   margins cancel .site-item's padding), with the same left separator and
+   width as .reorder-toggle-btn so both line up. Neutral like the rest of
+   the list; filled with the accent color/gradient on hover. */
+.site-quick-connect {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  width: 40px;
+  flex-shrink: 0;
+  margin: -10px -14px -10px 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.site-quick-connect svg { width: 16px; height: 16px; }
+.site-quick-connect:hover:not(:disabled) { background: var(--accent-bg); color: white; }
+.site-quick-connect:disabled { opacity: 0.4; cursor: default; }
 .site-name { font-size: 13px; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-host { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

@@ -7,12 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"GlideFTP/internal/connection"
 	gfeCrypto "GlideFTP/internal/crypto"
 	localfs "GlideFTP/internal/fs"
 	"GlideFTP/internal/keyring"
+	"GlideFTP/internal/openfile"
 	"GlideFTP/internal/settings"
 	"GlideFTP/internal/sites"
 	"GlideFTP/internal/transfer"
@@ -27,6 +29,12 @@ type App struct {
 	siteMgr     *sites.Manager
 	appSettings *settings.Settings
 	keyringMgr  *keyring.Manager
+
+	// Files opened with the default application (app_openfile.go).
+	openWatcher *openfile.Watcher
+	openMu      sync.Mutex
+	openCancel  context.CancelFunc // cancels the download in progress in OpenRemoteFile
+	openSeq     uint64
 }
 
 func NewApp() *App {
@@ -51,6 +59,7 @@ func (a *App) startup(ctx context.Context) {
 		runtime.EventsEmit(ctx, "connection:lost", map[string]string{"id": id, "host": host})
 	})
 	a.migratePasswords()
+	a.initOpenFiles()
 	s := a.appSettings
 	if s.StartMaximized {
 		runtime.WindowMaximise(ctx)
@@ -61,6 +70,7 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) shutdown(ctx context.Context) {
 	a.connMgr.Disconnect()
+	a.cleanupOpenFiles()
 }
 
 // migratePasswords moves any plaintext passwords still in sites.json into the keyring.
@@ -461,6 +471,7 @@ func (a *App) Connect(cfg connection.Config) (connection.ConnInfo, error) {
 		cfg.TimeoutSec = a.appSettings.ConnectionTimeoutSec
 	}
 	name := cfg.Host
+	a.forgetOpenedFiles(a.connMgr.ActiveID())
 	id, err := a.connMgr.Connect(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
@@ -523,6 +534,7 @@ func (a *App) ConnectToSite(siteID string) (connection.ConnInfo, error) {
 		name = site.Host
 	}
 	cfg := a.buildSiteConfig(site, "")
+	a.forgetOpenedFiles(a.connMgr.ActiveID())
 	id, err := a.connMgr.Connect(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
@@ -543,6 +555,7 @@ func (a *App) ConnectWithPassword(siteID, password string) (connection.ConnInfo,
 	}
 	cfg := a.buildSiteConfig(site, password)
 	cfg.AuthType = connection.AuthPassword
+	a.forgetOpenedFiles(a.connMgr.ActiveID())
 	id, err := a.connMgr.Connect(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
@@ -604,6 +617,9 @@ func (a *App) SwitchConnection(id string) error {
 
 // CloseConnection disconnects and removes a specific connection.
 func (a *App) CloseConnection(id string) error {
+	// Before CloseOne: a connection lost on keepalive is already gone from the
+	// manager (CloseOne errors) but its opened files must still be released.
+	a.forgetOpenedFiles(id)
 	if err := a.connMgr.CloseOne(id); err != nil {
 		return err
 	}
@@ -617,6 +633,9 @@ func (a *App) GetActiveConnectionID() string {
 }
 
 func (a *App) Disconnect() error {
+	for _, c := range a.connMgr.GetConnections() {
+		a.forgetOpenedFiles(c.ID)
+	}
 	a.queue.SetExecutor(nil)
 	return a.connMgr.Disconnect()
 }

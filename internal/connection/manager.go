@@ -356,6 +356,20 @@ func (m *Manager) GetClient() Client {
 	return m.getActiveClient()
 }
 
+// ClientByID returns the client and config of a specific connection (not
+// necessarily the active one) - used to send an opened file back to the
+// server it came from even if another tab is active.
+func (m *Manager) ClientByID(id string) (Client, Config, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range m.conns {
+		if c.id == id && c.client != nil {
+			return c.client, c.cfg, true
+		}
+	}
+	return nil, Config{}, false
+}
+
 func (m *Manager) GetActiveHost() string {
 	m.mu.Lock()
 	defer m.mu.Unlock()

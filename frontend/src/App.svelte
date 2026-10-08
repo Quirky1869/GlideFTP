@@ -24,6 +24,8 @@
   import SiteManager from './components/SiteManager.svelte';
   import NotifyModal from './components/NotifyModal.svelte';
   import WindowSizeOverlay from './components/WindowSizeOverlay.svelte';
+  import OpenedFileModal from './components/OpenedFileModal.svelte';
+  import { initOpenFile } from './stores/openfile.js';
   import { notification, closeNotify } from './stores/notify.js';
 
   let showSettings = false;
@@ -45,6 +47,7 @@
     lastDefaultLocalDir = s?.defaultLocalDir || '';
     await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
+    initOpenFile();
     EventsOn('connection:lost', ({ id, host }) => {
       closeTab(id);
       lostNotif = { host };
@@ -275,6 +278,7 @@
 
   <NotifyModal />
   <WindowSizeOverlay />
+  <OpenedFileModal />
 
   <!-- ── Disconnect-all confirmation ───────────────────────────── -->
   {#if showDisconnectConfirm}

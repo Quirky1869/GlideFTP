@@ -13,7 +13,11 @@ export function BrowseSSHKey():Promise<string>;
 
 export function CancelAllTransfers():Promise<void>;
 
+export function CancelOpenRemoteFile():Promise<void>;
+
 export function CancelTransfer(arg1:string):Promise<void>;
+
+export function ChooseAppAndOpen(arg1:string):Promise<void>;
 
 export function ClearTransfers(arg1:string):Promise<void>;
 
@@ -71,6 +75,8 @@ export function GetSites():Promise<Array<sites.Site>>;
 
 export function GetTransfers():Promise<Array<transfer.Job>>;
 
+export function IgnoreOpenedFileChange(arg1:string):Promise<void>;
+
 export function ImportSettings():Promise<settings.Settings>;
 
 export function LocalCopy(arg1:string,arg2:string):Promise<void>;
@@ -85,7 +91,13 @@ export function LocalRename(arg1:string,arg2:string):Promise<void>;
 
 export function LocalSearch(arg1:string,arg2:string,arg3:boolean):Promise<Array<fs.FileEntry>>;
 
+export function OpenContainingFolder(arg1:string):Promise<void>;
+
 export function OpenImportDialog():Promise<main.ImportFileInfo>;
+
+export function OpenLocalFile(arg1:string):Promise<main.OpenResult>;
+
+export function OpenRemoteFile(arg1:string):Promise<main.OpenResult>;
 
 export function QueueDownload(arg1:string,arg2:string):Promise<void>;
 
@@ -117,8 +129,12 @@ export function RetryTransfer(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
+export function SetOpenedFileAutoUpload(arg1:string,arg2:boolean):Promise<void>;
+
 export function SwitchConnection(arg1:string):Promise<void>;
 
 export function TestConnection(arg1:connection.Config):Promise<void>;
 
 export function UpdateSite(arg1:sites.Site):Promise<void>;
+
+export function UploadOpenedFile(arg1:string,arg2:boolean):Promise<void>;
