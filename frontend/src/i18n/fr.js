@@ -110,6 +110,7 @@ export default {
   accentGradient: 'Dégradé',
   accentPrimaryColor: 'Couleur principale',
   accentGradientColor: 'Couleur du dégradé',
+  recentGradients: 'Dégradés récents',
   transfers: 'Transferts',
   maxConcurrent: 'Transferts simultanés maximum',
   transferSpeedLimit: 'Limite de vitesse (Ko/s, 0 = illimité)',

@@ -3938,8 +3938,20 @@ ColorPicker.svelte: `gradient` / `value2` props, `onApply({ color,
 gradient, color2 })`. Gradient switch (.sw pattern) at the top of the
 body; when on: c1→c2 preview bar, "Couleur principale" title over the
 existing canvas/hue/HEX/RGB/recent block, then "Couleur du dégradé"
-section with HEX + RGB inputs + its own 8 recent colors (localStorage
-`glideftp_color_history_gradient`). The switch previews the live
+section with the same tools: its own saturation/brightness canvas + hue
+slider (added after user feedback - HEX/RGB alone made picking a color
+impractical), HEX + RGB inputs and its own 8 recent colors (localStorage
+`glideftp_color_history_gradient`). The canvas drawing / drag-picking
+code was made generic for this (`paintSV(canvas, h, s, v)`,
+`dragOnCanvas(e, canvas, onPick)`), shared by both palettes; the second
+canvas is repainted by a reactive statement when it mounts (it only
+exists while the gradient is on).
+"Dégradés récents" row right under the c1→c2 preview bar (also added
+after user feedback): the last 8 applied color pairs, drawn as gradient
+swatches; one click sets both colors (and both palettes' cursors).
+Stored as `[{ c1, c2 }]` in localStorage `glideftp_gradient_history`,
+pushed on Save only while the gradient is on, deduplicated by pair;
+invalid entries are filtered out on load. i18n: recentGradients. The switch previews the live
 gradient. "Couleur par défaut" resets both colors and turns the gradient
 off. SettingsPanel: `onColorApply` saves all three fields at once (still
 one click), and the Color row swatch/label show the gradient

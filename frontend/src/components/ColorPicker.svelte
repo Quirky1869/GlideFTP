@@ -12,6 +12,7 @@
   const DEFAULT_COLOR_2 = '#C15BF5';
   const HISTORY_KEY = 'glideftp_color_history';
   const HISTORY_KEY_2 = 'glideftp_color_history_gradient';
+  const GRADIENT_HISTORY_KEY = 'glideftp_gradient_history'; // [{ c1, c2 }]
 
   let canvas;
   let hue = 210;
@@ -23,12 +24,15 @@
   let initialized = false;
   let colorHistory = [];
 
-  // Gradient end color: hex + RGB inputs and its own recent-colors list
-  // (no canvas - picked by value or from history).
+  // Gradient end color: same tools as the main color (SV canvas + hue
+  // slider + HEX + RGB) and its own recent-colors list.
+  let canvas2;
+  let hue2 = 281, sat2 = 63, bri2 = 96;
   let hex2 = DEFAULT_COLOR_2;
   let hex2Input = DEFAULT_COLOR_2;
   let r2 = 193, g2 = 91, b2 = 245;
   let colorHistory2 = [];
+  let gradientHistory = []; // recent color pairs, one click sets both colors
 
   function loadHistory(key) {
     try {
@@ -45,14 +49,31 @@
     drawCanvas();
     colorHistory = loadHistory(HISTORY_KEY);
     colorHistory2 = loadHistory(HISTORY_KEY_2);
+    gradientHistory = loadHistory(GRADIENT_HISTORY_KEY)
+      .filter(p => p && hexToRgb(p.c1 || '') && hexToRgb(p.c2 || ''));
   });
 
   function initFromHex2(h) {
     const rgb = hexToRgb(h);
     if (!rgb) return;
+    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    hue2 = hsv.h; sat2 = hsv.s * 100; bri2 = hsv.v * 100;
     r2 = rgb.r; g2 = rgb.g; b2 = rgb.b;
     hex2 = h.toLowerCase();
     hex2Input = hex2;
+    drawCanvas2();
+  }
+
+  function updateFromHsv2() {
+    const rgb = hsvToRgb(hue2, sat2, bri2);
+    r2 = rgb.r; g2 = rgb.g; b2 = rgb.b;
+    hex2 = rgbToHex(r2, g2, b2);
+    hex2Input = hex2;
+  }
+
+  function onHue2Input() {
+    updateFromHsv2();
+    drawCanvas2();
   }
 
   function onHex2Change() {
@@ -66,9 +87,23 @@
     b2 = Math.max(0, Math.min(255, parseInt(b2) || 0));
     hex2 = rgbToHex(r2, g2, b2);
     hex2Input = hex2;
+    const hsv = rgbToHsv(r2, g2, b2);
+    hue2 = hsv.h; sat2 = hsv.s * 100; bri2 = hsv.v * 100;
+    drawCanvas2();
+  }
+
+  function handleCanvas2MouseDown(e) {
+    dragOnCanvas(e, canvas2, (x, y) => {
+      sat2 = x * 100;
+      bri2 = (1 - y) * 100;
+      updateFromHsv2();
+      drawCanvas2();
+    });
   }
 
   $: if (initialized && canvas) drawCanvas();
+  // canvas2 only exists while the gradient is on - paint it when it mounts
+  $: if (initialized && canvas2) drawCanvas2();
 
   function initFromHex(h) {
     const rgb = hexToRgb(h);
@@ -83,10 +118,19 @@
   }
 
   function drawCanvas() {
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
+    paintSV(canvas, hue, saturation, brightness);
+  }
+
+  function drawCanvas2() {
+    paintSV(canvas2, hue2, sat2, bri2);
+  }
+
+  // Saturation/brightness square for a given hue, with the cursor at (sat, bri).
+  function paintSV(cv, hue, saturation, brightness) {
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    const w = cv.width;
+    const h = cv.height;
 
     const hueRgb = hsvToRgb(hue, 100, 100);
     ctx.fillStyle = `rgb(${hueRgb.r},${hueRgb.g},${hueRgb.b})`;
@@ -119,19 +163,26 @@
     ctx.stroke();
   }
 
-  function pickFromCanvas(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    saturation = x * 100;
-    brightness = (1 - y) * 100;
-    updateFromHsv();
-    drawCanvas();
+  function handleCanvasMouseDown(e) {
+    dragOnCanvas(e, canvas, (x, y) => {
+      saturation = x * 100;
+      brightness = (1 - y) * 100;
+      updateFromHsv();
+      drawCanvas();
+    });
   }
 
-  function handleCanvasMouseDown(e) {
-    pickFromCanvas(e);
-    const onMove = (ev) => pickFromCanvas(ev);
+  // Click-and-drag on an SV canvas: onPick(x, y) with x/y normalized to 0..1.
+  function dragOnCanvas(e, cv, onPick) {
+    const pick = (ev) => {
+      const rect = cv.getBoundingClientRect();
+      onPick(
+        Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width)),
+        Math.max(0, Math.min(1, (ev.clientY - rect.top) / rect.height)),
+      );
+    };
+    pick(e);
+    const onMove = (ev) => pick(ev);
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -188,7 +239,12 @@
 
   function apply() {
     colorHistory = pushHistory(colorHistory, HISTORY_KEY, hex);
-    if (gradient) colorHistory2 = pushHistory(colorHistory2, HISTORY_KEY_2, hex2);
+    if (gradient) {
+      colorHistory2 = pushHistory(colorHistory2, HISTORY_KEY_2, hex2);
+      const pair = { c1: hex, c2: hex2 };
+      gradientHistory = [pair, ...gradientHistory.filter(p => p.c1 !== hex || p.c2 !== hex2)].slice(0, 8);
+      try { localStorage.setItem(GRADIENT_HISTORY_KEY, JSON.stringify(gradientHistory)); } catch {}
+    }
     onApply({ color: hex, gradient, color2: hex2 });
   }
 
@@ -259,6 +315,24 @@
 
     {#if gradient}
       <div class="gradient-preview" style="background: linear-gradient(135deg, {hex}, {hex2})"></div>
+
+      <!-- Recent gradients: one click restores both colors -->
+      <div class="history-section">
+        <label class="input-label history-label">{$t('recentGradients')}</label>
+        <div class="history-swatches">
+          {#each gradientHistory as p}
+            <button
+              class="history-swatch"
+              style="background: linear-gradient(135deg, {p.c1}, {p.c2})"
+              title="{p.c1} → {p.c2}"
+              on:click={() => { initFromHex(p.c1); drawCanvas(); initFromHex2(p.c2); }}
+            ></button>
+          {/each}
+          {#each { length: 8 - gradientHistory.length } as _}
+            <div class="history-swatch-empty"></div>
+          {/each}
+        </div>
+      </div>
       <div class="section-title">{$t('accentPrimaryColor')}</div>
     {/if}
 
@@ -334,8 +408,26 @@
       <!-- Gradient end color -->
       <div class="section-title section-title-2">{$t('accentGradientColor')}</div>
 
-      <div class="input-row">
+      <canvas
+        bind:this={canvas2}
+        class="color-canvas"
+        width="280"
+        height="180"
+        on:mousedown={handleCanvas2MouseDown}
+      ></canvas>
+
+      <div class="hue-row">
         <div class="preview-swatch" style="background: {hex2}"></div>
+        <input
+          type="range"
+          class="hue-slider"
+          min="0" max="360"
+          bind:value={hue2}
+          on:input={onHue2Input}
+        />
+      </div>
+
+      <div class="input-row">
         <label class="input-label">HEX</label>
         <input
           class="hex-input"

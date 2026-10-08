@@ -110,6 +110,7 @@ export default {
   accentGradient: 'Gradient',
   accentPrimaryColor: 'Main color',
   accentGradientColor: 'Gradient color',
+  recentGradients: 'Recent gradients',
   transfers: 'Transfers',
   maxConcurrent: 'Max concurrent transfers',
   transferSpeedLimit: 'Speed limit (KB/s, 0 = unlimited)',
