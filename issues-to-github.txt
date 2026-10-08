@@ -3978,3 +3978,34 @@ SettingsPanel.svelte: `onColorApply` saves all three fields at once
 
 i18n: accentGradient, accentPrimaryColor, accentGradientColor,
 recentGradients.
+
+---
+
+#109
+Title: [Bug] Linux/Hyprland: window can't grow beyond the size of the monitor it was opened on
+Labels: bug, linux, ui
+Version fixed: v1.7.8
+Description:
+On Hyprland, with a 1920x1200 laptop screen and a larger 34" ultrawide
+second screen, the window could never get bigger than 1920x1200 - not
+even maximized or fullscreen on the ultrawide: the rest of the screen
+stayed empty. Not reproduced on compositors that ignore size hints when
+maximizing.
+
+Solution (closing comment):
+Fixed in v1.7.8 in main.go.
+
+Root cause, in Wails itself (v2.15.0,
+internal/frontend/desktop/linux/window.c `SetMinMaxSize`): when
+`options.App.MaxWidth/MaxHeight` are 0 (our "no limit"), the GTK
+backend substitutes the geometry of the monitor the window is on at
+startup and sends it as a `GDK_HINT_MAX_SIZE` geometry hint
+(`gtk_window_set_geometry_hints`). Hyprland enforces max-size hints
+strictly, even for maximized/fullscreen windows, so the window was
+capped at the startup monitor's 1920x1200.
+
+Fix: on Linux (`runtime.GOOS == "linux"`), pass an explicit large
+maximum (`linuxMaxWindowSize = 16384`) for MaxWidth/MaxHeight, so Wails
+never substitutes the monitor size. Windows keeps 0 (already "no
+limit" there, behavior unchanged).
+
