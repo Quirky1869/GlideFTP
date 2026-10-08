@@ -314,6 +314,7 @@
     </div>
 
     {#if gradient}
+     <div class="cp-group grouped group-gradient" style="--grad-a: {hex}; --grad-b: {hex2}">
       <div class="gradient-preview" style="background: linear-gradient(135deg, {hex}, {hex2})"></div>
 
       <!-- Recent gradients: one click restores both colors -->
@@ -333,7 +334,14 @@
           {/each}
         </div>
       </div>
-      <div class="section-title">{$t('accentPrimaryColor')}</div>
+     </div>
+    {/if}
+
+    <!-- Main color. In gradient mode it becomes a shaded card (display:
+         contents otherwise, so the single-color layout is unchanged). -->
+    <div class="cp-group group-colored" class:grouped={gradient} class:group-shaded={gradient} style="--group-color: {hex}">
+    {#if gradient}
+      <div class="section-title"><span class="group-dot"></span>{$t('accentPrimaryColor')}</div>
     {/if}
 
     <!-- 2D gradient canvas -->
@@ -403,10 +411,12 @@
         {/each}
       </div>
     </div>
+    </div>
 
     {#if gradient}
-      <!-- Gradient end color -->
-      <div class="section-title section-title-2">{$t('accentGradientColor')}</div>
+     <!-- Gradient end color -->
+     <div class="cp-group grouped group-colored" style="--group-color: {hex2}">
+      <div class="section-title"><span class="group-dot"></span>{$t('accentGradientColor')}</div>
 
       <canvas
         bind:this={canvas2}
@@ -470,6 +480,7 @@
           {/each}
         </div>
       </div>
+     </div>
     {/if}
 
   </div>
@@ -734,15 +745,53 @@
 }
 
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
-.section-title-2 {
-  padding-top: 12px;
-  border-top: 1px solid var(--border-subtle);
+/* ── Gradient mode: 3 visually separate blocks ──
+   gradient (preview + recent pairs) / main color (shaded, like an
+   alternating spreadsheet row) / gradient color. Each color block has a
+   left bar + dot in its own color (--group-color). */
+.cp-group { display: contents; }
+.cp-group.grouped {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+.cp-group.grouped.group-colored {
+  border-left: 3px solid var(--group-color);
+}
+.cp-group.group-shaded { background: var(--bg-hover); }
+.group-gradient {
+  gap: 10px;
+  /* Same 3px left bar as the color cards, but itself a gradient (main color
+     at the top, gradient color at the bottom). Done with background layers
+     rather than border-image so the 8px rounded corners are kept:
+     card background (padding-box) / 3px gradient strip at the left
+     (border-box) / plain border color (border-box). */
+  border-color: transparent;
+  border-left-width: 3px;
+  background:
+    linear-gradient(var(--bg-primary), var(--bg-primary)) padding-box,
+    linear-gradient(180deg, var(--grad-a), var(--grad-b)) left / 3px 100% no-repeat border-box,
+    linear-gradient(var(--border), var(--border)) border-box;
+}
+.group-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--group-color);
+  flex-shrink: 0;
 }
 
 .cp-footer {

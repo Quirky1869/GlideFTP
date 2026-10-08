@@ -3880,10 +3880,17 @@ Version fixed: v1.7.8
 Description:
 Allow a gradient instead of a single accent color. In the color picker,
 an on/off switch (off by default = unchanged UI), placed between the
-"Sélecteur de couleur" title and the main color square. When on, a
-second color selector appears under the main color (HEX + RGB + its own
-recent colors) for the gradient's end color. The gradient must apply to
-every accent-colored element (text, buttons, shadow box, etc.).
+"Sélecteur de couleur" title and the main color square. When on:
+- a preview of the gradient, with the recent gradients (8 max) right
+  under it - one click restores both colors;
+- a second color selector under the main color for the gradient's end
+  color, with the same tools as the main one (interactive palette, HEX,
+  RGB, its own recent colors);
+- the gradient part, the main color and the gradient color are visually
+  separated (distinct backgrounds), so the picker doesn't read as one
+  big block.
+The gradient must apply to every accent-colored element (text, buttons,
+shadow box, etc.).
 
 Solution (closing comment):
 Implemented in v1.7.8.
@@ -3934,27 +3941,40 @@ valid as a background image):
 - Thin 1px focus borders and icons stay color 1 (a gradient isn't
   visible at that size).
 
-ColorPicker.svelte: `gradient` / `value2` props, `onApply({ color,
-gradient, color2 })`. Gradient switch (.sw pattern) at the top of the
-body; when on: c1→c2 preview bar, "Couleur principale" title over the
-existing canvas/hue/HEX/RGB/recent block, then "Couleur du dégradé"
-section with the same tools: its own saturation/brightness canvas + hue
-slider (added after user feedback - HEX/RGB alone made picking a color
-impractical), HEX + RGB inputs and its own 8 recent colors (localStorage
-`glideftp_color_history_gradient`). The canvas drawing / drag-picking
-code was made generic for this (`paintSV(canvas, h, s, v)`,
-`dragOnCanvas(e, canvas, onPick)`), shared by both palettes; the second
-canvas is repainted by a reactive statement when it mounts (it only
-exists while the gradient is on).
-"Dégradés récents" row right under the c1→c2 preview bar (also added
-after user feedback): the last 8 applied color pairs, drawn as gradient
-swatches; one click sets both colors (and both palettes' cursors).
-Stored as `[{ c1, c2 }]` in localStorage `glideftp_gradient_history`,
-pushed on Save only while the gradient is on, deduplicated by pair;
-invalid entries are filtered out on load. i18n: recentGradients. The switch previews the live
-gradient. "Couleur par défaut" resets both colors and turns the gradient
-off. SettingsPanel: `onColorApply` saves all three fields at once (still
-one click), and the Color row swatch/label show the gradient
-("#5b8af5 → #c15bf5"). i18n: accentGradient, accentPrimaryColor,
-accentGradientColor.
+ColorPicker.svelte:
+- Props `gradient` / `value2`, `onApply({ color, gradient, color2 })`.
+- Gradient switch (.sw pattern, WebKit-GTK safe) at the top of the
+  body; it previews the live c1→c2 gradient.
+- Gradient mode splits the body into 3 cards (`.cp-group.grouped`, 1px
+  border, 8px radius, 12px padding):
+  1. gradient: c1→c2 preview bar + "Dégradés récents" row - the last 8
+     applied color pairs as gradient swatches, one click sets both
+     colors (and both palettes' cursors). Stored as `[{ c1, c2 }]` in
+     localStorage `glideftp_gradient_history`, pushed on Save only while
+     the gradient is on, deduplicated by pair, invalid entries filtered
+     on load;
+  2. "Couleur principale": the existing canvas / hue / HEX / RGB /
+     recent block, on a shaded background (`--bg-hover`, like an
+     alternating spreadsheet row);
+  3. "Couleur du dégradé": the same tools - its own saturation/
+     brightness canvas + hue slider, HEX + RGB inputs and its own 8
+     recent colors (localStorage `glideftp_color_history_gradient`).
+  Each card has a 3px left bar: cards 2 and 3 in their own color
+  (`--group-color`, live, plus a dot before their title); card 1 a
+  vertical c1→c2 gradient bar, drawn with background layers (padding-box
+  card color / 3px gradient strip at the left / border color, all
+  border-box) instead of border-image, to keep the rounded corners. The main-color wrapper is
+  `display: contents` when the gradient is off, so the single-color
+  layout is strictly unchanged.
+- Canvas drawing and drag-picking are generic (`paintSV(canvas, h, s,
+  v)`, `dragOnCanvas(e, canvas, onPick)`), shared by both palettes; the
+  second canvas is painted by a reactive statement when it mounts (it
+  only exists while the gradient is on).
+- "Couleur par défaut" resets both colors and turns the gradient off.
 
+SettingsPanel.svelte: `onColorApply` saves all three fields at once
+(still one click), and the Color row swatch/label show the gradient
+("#5b8af5 → #c15bf5").
+
+i18n: accentGradient, accentPrimaryColor, accentGradientColor,
+recentGradients.
