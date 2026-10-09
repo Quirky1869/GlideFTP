@@ -11,7 +11,9 @@ import { t } from '../i18n/index.js';
 import { notify } from './notify.js';
 import { activeConnectionId, remotePath, refreshRemote, localPath, localEntries, refreshLocal, localCopy } from './connection.js';
 
-export const openingFile = writable(null); // { name } while a remote file downloads
+// { name, done, total, speed, eta } while a remote file downloads (speed in bytes/s,
+// eta in seconds - null until measurable)
+export const openingFile = writable(null);
 export const openPrompts = writable([]);   // queue of { mode: 'modified'|'conflict', file, busy }
 export const noAppPrompt = writable(null); // { path, name, remote } - no application for this type
 export const openToast = writable(null);   // { text } - discreet confirmation
@@ -65,7 +67,26 @@ function uploadErrorText(file, msg) {
   return tr('openFileUploadError').replace('{name}', file.name) + '\n' + msg;
 }
 
+// Download progress of the file being opened. Speed is an exponential
+// moving average so the "time left" doesn't jump around at every event.
+let progressPrev = null; // { done, time }
+function onOpenProgress({ done, total }) {
+  const now = Date.now();
+  openingFile.update(o => {
+    if (!o) return o;
+    let speed = o.speed;
+    if (progressPrev && now > progressPrev.time && done >= progressPrev.done) {
+      const instant = (done - progressPrev.done) / ((now - progressPrev.time) / 1000);
+      speed = speed == null ? instant : speed * 0.7 + instant * 0.3;
+    }
+    progressPrev = { done, time: now };
+    const eta = speed > 0 && total > 0 ? Math.max(0, (total - done) / speed) : null;
+    return { ...o, done, total, speed, eta };
+  });
+}
+
 export function initOpenFile() {
+  EventsOn('openfile:progress', onOpenProgress);
   EventsOn('openfile:modified', (f) => enqueue(f.conflict ? 'conflict' : 'modified', f));
   EventsOn('openfile:uploaded', (f) => {
     refreshIfVisible(f);
@@ -90,7 +111,8 @@ export async function openEntry(side, entry) {
     return;
   }
   if (get(openingFile)) return; // one download at a time
-  openingFile.set({ name: entry.name });
+  progressPrev = null;
+  openingFile.set({ name: entry.name, done: 0, total: entry.size || 0, speed: null, eta: null });
   try {
     const r = await OpenRemoteFile(entry.path);
     if (r?.noDefaultApp) noAppPrompt.set({ path: r.path, name: entry.name, remote: true });

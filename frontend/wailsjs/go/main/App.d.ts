@@ -3,9 +3,9 @@
 import {connection} from '../models';
 import {sites} from '../models';
 import {fs} from '../models';
+import {main} from '../models';
 import {settings} from '../models';
 import {transfer} from '../models';
-import {main} from '../models';
 
 export function BrowseLocalDir():Promise<string>;
 
@@ -15,9 +15,13 @@ export function CancelAllTransfers():Promise<void>;
 
 export function CancelOpenRemoteFile():Promise<void>;
 
+export function CancelSearch():Promise<void>;
+
 export function CancelTransfer(arg1:string):Promise<void>;
 
 export function ChooseAppAndOpen(arg1:string):Promise<void>;
+
+export function ClearSearchIndex():Promise<void>;
 
 export function ClearTransfers(arg1:string):Promise<void>;
 
@@ -69,6 +73,8 @@ export function GetLocalRoots():Promise<Array<fs.FileEntry>>;
 
 export function GetRemoteCwd():Promise<string>;
 
+export function GetSearchIndexInfo():Promise<main.SearchIndexInfo>;
+
 export function GetSettings():Promise<settings.Settings>;
 
 export function GetSites():Promise<Array<sites.Site>>;
@@ -119,7 +125,7 @@ export function RemoteMkDir(arg1:string):Promise<void>;
 
 export function RemoteRename(arg1:string,arg2:string):Promise<void>;
 
-export function RemoteSearch(arg1:string,arg2:string,arg3:boolean):Promise<Array<connection.RemoteFileEntry>>;
+export function RemoteSearch(arg1:string,arg2:string,arg3:string,arg4:boolean):Promise<main.RemoteSearchResult>;
 
 export function RemoveTransfer(arg1:string):Promise<void>;
 

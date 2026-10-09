@@ -56,7 +56,14 @@ func main() {
 		OnShutdown: app.shutdown,
 		// Warns about opened files with changes not sent back (app_openfile.go).
 		OnBeforeClose: app.beforeClose,
-		Bind:          []interface{}{app},
+		// One GlideFTP per user session: a second launch just brings the
+		// running window back (D-Bus on Linux, a named mutex on Windows).
+		// Keeps two instances from writing the same search index / settings.
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:               "com.quirky1869.glideftp",
+			OnSecondInstanceLaunch: app.onSecondInstanceLaunch,
+		},
+		Bind: []interface{}{app},
 	})
 
 	if err != nil {

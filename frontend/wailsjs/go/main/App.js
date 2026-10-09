@@ -18,12 +18,20 @@ export function CancelOpenRemoteFile() {
   return window['go']['main']['App']['CancelOpenRemoteFile']();
 }
 
+export function CancelSearch() {
+  return window['go']['main']['App']['CancelSearch']();
+}
+
 export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }
 
 export function ChooseAppAndOpen(arg1) {
   return window['go']['main']['App']['ChooseAppAndOpen'](arg1);
+}
+
+export function ClearSearchIndex() {
+  return window['go']['main']['App']['ClearSearchIndex']();
 }
 
 export function ClearTransfers(arg1) {
@@ -126,6 +134,10 @@ export function GetRemoteCwd() {
   return window['go']['main']['App']['GetRemoteCwd']();
 }
 
+export function GetSearchIndexInfo() {
+  return window['go']['main']['App']['GetSearchIndexInfo']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
@@ -226,8 +238,8 @@ export function RemoteRename(arg1, arg2) {
   return window['go']['main']['App']['RemoteRename'](arg1, arg2);
 }
 
-export function RemoteSearch(arg1, arg2, arg3) {
-  return window['go']['main']['App']['RemoteSearch'](arg1, arg2, arg3);
+export function RemoteSearch(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RemoteSearch'](arg1, arg2, arg3, arg4);
 }
 
 export function RemoveTransfer(arg1) {

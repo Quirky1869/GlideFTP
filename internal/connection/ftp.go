@@ -2,12 +2,16 @@ package connection
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/textproto"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	goftp "github.com/jlaffaye/ftp"
@@ -69,7 +73,72 @@ func (c *FTPClient) Connect() error {
 	return nil
 }
 
-// Keepalive sends a NOOP command to keep the control connection alive.
+// isConnLost reports whether err means the control connection itself is
+// gone (closed by the server, network cut) rather than a command error such
+// as "550 permission denied". Windows socket errors don't map to syscall.EPIPE
+// / ECONNRESET, hence the message checks.
+func isConnLost(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) {
+		return true
+	}
+	var tpErr *textproto.Error
+	if errors.As(err, &tpErr) && tpErr.Code == 421 { // "Service not available, closing control connection"
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{"broken pipe", "connection reset", "use of closed network connection",
+		"forcibly closed", "connection was aborted", "connection refused"} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// reconnectLocked replaces a dead control connection with a fresh one (new
+// dial + login). Paths are always absolute, so no state needs restoring.
+// Caller must hold c.mu.
+func (c *FTPClient) reconnectLocked() error {
+	conn, err := c.dial()
+	if err != nil {
+		return err
+	}
+	if old := c.conn; old != nil {
+		go old.Quit() // dead anyway; don't block on it
+	}
+	c.conn = conn
+	return nil
+}
+
+// control runs a control-connection operation under c.mu. If it fails
+// because the server closed the session (idle timeout, flood protection,
+// network cut...), it reconnects and retries once, so the user doesn't have
+// to disconnect/reconnect by hand. If reconnecting fails too, the original
+// error is returned.
+func (c *FTPClient) control(op func(conn *goftp.ServerConn) error) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.conn == nil {
+		return fmt.Errorf("not connected")
+	}
+	err := op(c.conn)
+	if !isConnLost(err) {
+		return err
+	}
+	if rerr := c.reconnectLocked(); rerr != nil {
+		return err
+	}
+	return op(c.conn)
+}
+
+// Keepalive sends a NOOP command to keep the control connection alive. If
+// the server has dropped the session, it reconnects; only a failed
+// reconnection is reported (and makes the manager declare the connection lost).
 // Uses TryLock so it never blocks if another control operation is already running.
 func (c *FTPClient) Keepalive() error {
 	if !c.mu.TryLock() {
@@ -79,7 +148,11 @@ func (c *FTPClient) Keepalive() error {
 	if c.conn == nil {
 		return fmt.Errorf("not connected")
 	}
-	return c.conn.NoOp()
+	err := c.conn.NoOp()
+	if isConnLost(err) {
+		return c.reconnectLocked()
+	}
+	return err
 }
 
 func (c *FTPClient) Disconnect() error {
@@ -94,15 +167,19 @@ func (c *FTPClient) Disconnect() error {
 }
 
 func (c *FTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return nil, fmt.Errorf("not connected")
-	}
-	entries, err := c.conn.List(path)
+	var entries []*goftp.Entry
+	err := c.control(func(conn *goftp.ServerConn) error {
+		var lerr error
+		entries, lerr = conn.List(path)
+		return lerr
+	})
 	if err != nil {
 		return nil, err
 	}
+	return ftpEntries(path, entries), nil
+}
+
+func ftpEntries(path string, entries []*goftp.Entry) []RemoteFileEntry {
 	var result []RemoteFileEntry
 	for _, e := range entries {
 		if e.Name == "." || e.Name == ".." {
@@ -122,47 +199,79 @@ func (c *FTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
 			ModTime: e.Time,
 		})
 	}
-	return result, nil
+	return result
+}
+
+// ftpLister is a search worker's own FTP connection (jlaffaye/ftp can't run
+// commands concurrently on one connection - same reason transfers dial
+// their own). Opened once per search and reused for every folder.
+type ftpLister struct {
+	c    *FTPClient
+	conn *goftp.ServerConn
+}
+
+func (c *FTPClient) OpenLister() (Lister, error) {
+	conn, err := c.dial()
+	if err != nil {
+		return nil, err
+	}
+	return &ftpLister{c: c, conn: conn}, nil
+}
+
+// ListDir reconnects and retries once if the server dropped this connection,
+// like FTPClient.control does for the main one.
+func (l *ftpLister) ListDir(path string) ([]RemoteFileEntry, error) {
+	entries, err := l.conn.List(path)
+	if isConnLost(err) {
+		if conn, derr := l.c.dial(); derr == nil {
+			go l.conn.Quit()
+			l.conn = conn
+			entries, err = l.conn.List(path)
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ftpEntries(path, entries), nil
+}
+
+func (l *ftpLister) Close() error {
+	return l.conn.Quit()
 }
 
 func (c *FTPClient) MkDir(path string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return fmt.Errorf("not connected")
-	}
-	return c.conn.MakeDir(path)
+	return c.control(func(conn *goftp.ServerConn) error {
+		return conn.MakeDir(path)
+	})
 }
 
 func (c *FTPClient) Delete(path string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return fmt.Errorf("not connected")
-	}
-	err := c.conn.Delete(path)
-	if err != nil {
-		return c.conn.RemoveDirRecur(path)
-	}
-	return nil
+	return c.control(func(conn *goftp.ServerConn) error {
+		err := conn.Delete(path)
+		if err == nil {
+			return nil
+		}
+		if isConnLost(err) {
+			return err // let control() reconnect and retry
+		}
+		return conn.RemoveDirRecur(path) // not a file: remove it as a directory
+	})
 }
 
 func (c *FTPClient) Rename(oldPath, newPath string) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return fmt.Errorf("not connected")
-	}
-	return c.conn.Rename(oldPath, newPath)
+	return c.control(func(conn *goftp.ServerConn) error {
+		return conn.Rename(oldPath, newPath)
+	})
 }
 
 func (c *FTPClient) CurrentDir() (string, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.conn == nil {
-		return "", fmt.Errorf("not connected")
-	}
-	return c.conn.CurrentDir()
+	var dir string
+	err := c.control(func(conn *goftp.ServerConn) error {
+		var derr error
+		dir, derr = conn.CurrentDir()
+		return derr
+	})
+	return dir, err
 }
 
 // Upload opens a dedicated FTP connection for this transfer so multiple uploads

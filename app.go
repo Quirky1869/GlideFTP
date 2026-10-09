@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,10 +14,12 @@ import (
 	localfs "GlideFTP/internal/fs"
 	"GlideFTP/internal/keyring"
 	"GlideFTP/internal/openfile"
+	"GlideFTP/internal/searchindex"
 	"GlideFTP/internal/settings"
 	"GlideFTP/internal/sites"
 	"GlideFTP/internal/transfer"
 
+	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -35,6 +36,14 @@ type App struct {
 	openMu      sync.Mutex
 	openCancel  context.CancelFunc // cancels the download in progress in OpenRemoteFile
 	openSeq     uint64
+
+	// Remembered remote folders, to speed up searches (app_search.go).
+	searchIdx *searchindex.Manager
+
+	// Remote search: only one walk at a time (see RemoteSearch).
+	searchMu     sync.Mutex
+	searchCancel context.CancelFunc
+	searchSeq    uint64
 }
 
 func NewApp() *App {
@@ -60,6 +69,7 @@ func (a *App) startup(ctx context.Context) {
 	})
 	a.migratePasswords()
 	a.initOpenFiles()
+	a.searchIdx = searchindex.NewManager()
 	s := a.appSettings
 	if s.StartMaximized {
 		runtime.WindowMaximise(ctx)
@@ -68,9 +78,22 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
+// onSecondInstanceLaunch: GlideFTP was launched again while already running
+// (options.SingleInstanceLock) - show the existing window instead.
+func (a *App) onSecondInstanceLaunch(_ options.SecondInstanceData) {
+	if a.ctx == nil {
+		return
+	}
+	runtime.WindowUnminimise(a.ctx)
+	runtime.WindowShow(a.ctx)
+}
+
 func (a *App) shutdown(ctx context.Context) {
 	a.connMgr.Disconnect()
 	a.cleanupOpenFiles()
+	if a.searchIdx != nil {
+		a.searchIdx.Close()
+	}
 }
 
 // migratePasswords moves any plaintext passwords still in sites.json into the keyring.
@@ -652,6 +675,10 @@ func (a *App) RemoteListDir(path string) ([]connection.RemoteFileEntry, error) {
 		return nil, err
 	}
 	a.connMgr.SetCwd(path)
+	// Normal navigation feeds the search index too (when enabled).
+	if idx := a.indexForActive(); idx != nil {
+		idx.Put(path, toIndexEntries(entries))
+	}
 	return entries, nil
 }
 
@@ -669,44 +696,6 @@ func (a *App) RemoteRename(oldPath, newPath string) error {
 
 func (a *App) GetRemoteCwd() string {
 	return a.connMgr.GetCwd()
-}
-
-// remoteSearchResultLimit caps how many matches RemoteSearch returns, to
-// keep a recursive search over a huge remote tree from hanging the UI
-// (each subdirectory requires a network round-trip).
-const remoteSearchResultLimit = 500
-
-func (a *App) RemoteSearch(path, query string, recursive bool) ([]connection.RemoteFileEntry, error) {
-	var result []connection.RemoteFileEntry
-	err := a.remoteSearchWalk(path, strings.ToLower(query), recursive, &result)
-	if err != nil && len(result) == 0 {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (a *App) remoteSearchWalk(path, q string, recursive bool, result *[]connection.RemoteFileEntry) error {
-	if len(*result) >= remoteSearchResultLimit {
-		return nil
-	}
-	entries, err := a.connMgr.ListDir(path)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if len(*result) >= remoteSearchResultLimit {
-			return nil
-		}
-		if strings.Contains(strings.ToLower(e.Name), q) {
-			*result = append(*result, e)
-		}
-		if recursive && e.IsDir {
-			// Best-effort: a permission error on one subdirectory
-			// shouldn't abort the rest of the search.
-			_ = a.remoteSearchWalk(e.Path, q, recursive, result)
-		}
-	}
-	return nil
 }
 
 // ─── Local Filesystem ─────────────────────────────────────────────────────────

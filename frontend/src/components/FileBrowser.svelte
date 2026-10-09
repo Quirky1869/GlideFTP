@@ -1,4 +1,5 @@
 <script>
+  import { tick } from 'svelte';
   import { t, locale } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
@@ -21,6 +22,7 @@
   export let onDelete = async (_path) => {};
   export let onRename = async (_old, _new) => {};
   export let onSearch = async (_path, _query, _recursive) => [];
+  export let onCancelSearch = () => {};
   export let otherPath = '';
   export let otherEntries = [];
 
@@ -44,6 +46,7 @@
   let contextMenu = null;
   let contextEntry = null;
   let contextIsEmpty = false;
+  let contextFromSearch = false; // right-click on a search result: extra "go to" / "copy path" entries
   let dragOver = false;
   let rowDragOverPath = null; // path of the folder row currently hovered during drag
   let pasteMsg = null; // { text, ok } - green if ok, orange if !ok
@@ -441,10 +444,11 @@
 
   // ── Context menu ──────────────────────────────────────────────────────────
 
-  function handleFileContextMenu(e, entry) {
+  function handleFileContextMenu(e, entry, fromSearch = false) {
     e.preventDefault();
     contextEntry = entry;
     contextIsEmpty = false;
+    contextFromSearch = fromSearch;
     contextMenu = { x: e.clientX, y: e.clientY };
     if (!selected.some(s => s.path === entry.path)) selected = [entry];
   }
@@ -453,6 +457,7 @@
     e.preventDefault();
     contextEntry = null;
     contextIsEmpty = true;
+    contextFromSearch = false;
     contextMenu = { x: e.clientX, y: e.clientY };
   }
 
@@ -460,6 +465,7 @@
     contextMenu = null;
     contextEntry = null;
     contextIsEmpty = false;
+    contextFromSearch = false;
   }
 
   // ── Rename ────────────────────────────────────────────────────────────────
@@ -769,6 +775,9 @@
   let searchRecursive = true;
   let searching = false;
   let searchResults = [];
+  let searchError = '';      // last recursive search failure (was silently shown as "no results")
+  let searchTruncated = false; // remote search stopped at its folder/result limit
+  let searchListed = 0;        // folders listed so far by the running remote search
   let searchDebounceTimer = null;
   let searchReqId = 0;
   let searchInputEl;
@@ -797,7 +806,11 @@
     searchMode = false;
     searchQuery = '';
     searchResults = [];
+    searchError = '';
+    searchTruncated = false;
+    if (searching) onCancelSearch();
     searching = false;
+    searchReqId++;
     clearTimeout(searchDebounceTimer);
   }
 
@@ -824,14 +837,35 @@
 
   async function runRecursiveSearch() {
     const q = searchQueryTrim;
-    if (!q) { searchResults = []; searching = false; return; }
+    if (!q) { searchResults = []; searchError = ''; searchTruncated = false; searching = false; return; }
     const reqId = ++searchReqId;
     searching = true;
+    searchResults = [];
+    searchListed = 0;
+    searchError = '';
+    searchTruncated = false;
+    // Remote search streams its matches while it runs (local search ignores this).
+    const onProgress = (p) => {
+      if (reqId !== searchReqId) return;
+      if (p.entries?.length) searchResults = [...searchResults, ...p.entries];
+      searchListed = p.listed || searchListed;
+    };
     try {
-      const res = await onSearch(path, q, true);
-      if (reqId === searchReqId) searchResults = res || [];
-    } catch {
-      if (reqId === searchReqId) searchResults = [];
+      // Local search returns an array; remote search { entries, truncated }.
+      const res = await onSearch(path, q, true, onProgress);
+      if (reqId === searchReqId) {
+        searchResults = Array.isArray(res) ? res : (res?.entries || []);
+        searchTruncated = !Array.isArray(res) && !!res?.truncated;
+        searchError = '';
+      }
+    } catch (e) {
+      const msg = typeof e === 'string' ? e : e?.message || String(e);
+      // 'cancelled' = superseded by a newer search (the backend runs one at a time)
+      if (reqId === searchReqId && msg !== 'cancelled') {
+        searchResults = [];
+        searchTruncated = false;
+        searchError = msg;
+      }
     } finally {
       if (reqId === searchReqId) searching = false;
     }
@@ -850,6 +884,41 @@
     const sep = rest.includes('/') ? '/' : '\\';
     const idx = rest.lastIndexOf(sep);
     return idx > 0 ? rest.slice(0, idx) : '';
+  }
+
+  // Folder containing p ("/a/b/file" → "/a/b", "/file" → "/", "C:\\x\\f" → "C:\\x", "C:\\f" → "C:\\").
+  function parentOf(p) {
+    const i = Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\'));
+    if (i <= 0) return p.slice(0, 1) || '/';
+    if (p[i - 1] === ':') return p.slice(0, i + 1);
+    return p.slice(0, i);
+  }
+
+  // A search result's location: the folder itself, or the folder holding the file.
+  const searchResultLocation = (entry) => (entry.isDir ? entry.path : parentOf(entry.path));
+
+  // "Go to location": opens the folder (or the file's folder, with the file
+  // selected) and leaves the search.
+  async function goToSearchResult(entry) {
+    closeContext();
+    closeSearch();
+    await onNavigate(searchResultLocation(entry));
+    await tick(); // let the new folder's entries reach this component
+    if (!entry.isDir) {
+      const found = entries.find(e => e.path === entry.path);
+      if (found) selected = [found];
+    }
+  }
+
+  async function copySearchResultPath(entry) {
+    closeContext();
+    const text = searchResultLocation(entry);
+    try {
+      await navigator.clipboard.writeText(text);
+      showPasteMsg($t('pathCopied').replace('{path}', text), true);
+    } catch (e) {
+      showPasteMsg(e?.message || String(e), false);
+    }
   }
 
   function handleSearchResultDblClick(entry) {
@@ -1192,10 +1261,18 @@
       {#if searching && sortedSearchResults.length === 0}
         <div class="tree-loading">
           <svg class="tree-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          {#if searchListed > 0}<span class="search-listed">{$t('searchListed').replace('{n}', searchListed)}</span>{/if}
         </div>
+      {:else if searchRecursive && searchError}
+        <div class="empty search-error">{$t('searchFailed')}<br /><span class="search-error-detail">{searchError}</span></div>
       {:else if sortedSearchResults.length === 0}
-        <div class="empty">{$t('noSearchResults')}</div>
+        <div class="empty">{searchRecursive && searchTruncated ? $t('searchTruncated') : $t('noSearchResults')}</div>
       {:else}
+        {#if searchRecursive && searching}
+          <div class="search-truncated">{$t('searchInProgress').replace('{n}', searchListed)}</div>
+        {:else if searchRecursive && searchTruncated}
+          <div class="search-truncated">{$t('searchTruncated')}</div>
+        {/if}
         {#each sortedSearchResults as entry (entry.path)}
           <div
             class="file-row"
@@ -1204,7 +1281,7 @@
             draggable={true}
             on:click={(e) => handleClick(e, entry)}
             on:dblclick={() => handleSearchResultDblClick(entry)}
-            on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry)}
+            on:contextmenu|stopPropagation={(e) => handleFileContextMenu(e, entry, true)}
             on:dragstart={(e) => handleDragStart(e, entry)}
           >
             <span class="col-name">
@@ -1400,6 +1477,18 @@
         {$t('newFolder')}
       </button>
     {:else}
+      {#if contextFromSearch}
+        <!-- Search results only: jump to / copy the result's location -->
+        <button on:click={() => goToSearchResult(contextEntry)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 10 15 13 12 16"/><line x1="8" y1="13" x2="15" y2="13"/></svg>
+          {contextEntry?.isDir ? $t('openFolderLocation') : $t('goToFileLocation')}
+        </button>
+        <button on:click={() => copySearchResultPath(contextEntry)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          {$t('copyPath')}
+        </button>
+        <hr class="menu-sep" />
+      {/if}
       {#if !contextEntry?.isDir}
         <!-- Open with the system's default application (stores/openfile.js) -->
         <button on:click={() => { const ent = contextEntry; closeContext(); openEntry(side, ent); }}>
@@ -1786,6 +1875,15 @@
   flex-shrink: 0;
 }
 .icon-btn.small svg { width: 13px; height: 13px; }
+.search-error { color: var(--danger); }
+.search-error-detail { font-size: 11px; color: var(--text-muted); }
+.search-truncated {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
 .search-row-spin {
   width: 14px;
   height: 14px;
@@ -1999,9 +2097,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   padding: 32px;
   color: var(--text-muted);
 }
+/* Unsized inline SVGs fill their container under WebKit-GTK */
+.tree-loading svg { width: 22px; height: 22px; flex-shrink: 0; }
+.search-listed { font-size: 12px; }
 
 .tree-row {
   display: flex;

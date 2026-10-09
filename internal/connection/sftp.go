@@ -165,6 +165,20 @@ func (c *SFTPClient) ListDir(path string) ([]RemoteFileEntry, error) {
 	return result, nil
 }
 
+// OpenLister: pkg/sftp's client is safe for concurrent use and pipelines
+// requests over the one SSH session, so search workers simply share it.
+func (c *SFTPClient) OpenLister() (Lister, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("not connected")
+	}
+	return sftpLister{c}, nil
+}
+
+type sftpLister struct{ c *SFTPClient }
+
+func (l sftpLister) ListDir(path string) ([]RemoteFileEntry, error) { return l.c.ListDir(path) }
+func (l sftpLister) Close() error                                    { return nil }
+
 func (c *SFTPClient) MkDir(path string) error {
 	if c.client == nil {
 		return fmt.Errorf("not connected")

@@ -32,6 +32,11 @@ type Settings struct {
 	DoubleClickNavigateUp          bool   `json:"doubleClickNavigateUp"`
 	NotificationSoundEnabled       bool   `json:"notificationSoundEnabled"`
 	NotificationSound              string `json:"notificationSound"`
+	// Remember listed remote folders to speed up searches (opt-in, see
+	// internal/searchindex). SearchIndexAsked: the first-launch explanation
+	// popup has been answered on this device.
+	SearchIndexEnabled bool `json:"searchIndexEnabled"`
+	SearchIndexAsked   bool `json:"searchIndexAsked"`
 }
 
 func Default() *Settings {
@@ -61,6 +66,8 @@ func Default() *Settings {
 		DoubleClickNavigateUp:          false,
 		NotificationSoundEnabled:       false,
 		NotificationSound:              "chime",
+		SearchIndexEnabled:             false,
+		SearchIndexAsked:               false,
 	}
 }
 

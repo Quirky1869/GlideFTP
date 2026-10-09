@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { t } from './i18n/index.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
-  import { loadSettings, settings } from './stores/settings.js';
+  import { loadSettings, settings, saveSettings } from './stores/settings.js';
   import {
     connectionStatus,
     connections, activeConnectionId, switchTab, closeTab,
@@ -12,7 +12,7 @@
     initLocalDir, refreshLocal, navigateLocalUp,
     refreshRemote,
     localMkDir, localDelete, localRename, localCopy, localSearch,
-    remoteMkDir, remoteDelete, remoteRename, remoteSearch,
+    remoteMkDir, remoteDelete, remoteRename, remoteSearch, cancelRemoteSearch,
     disconnect,
   } from './stores/connection.js';
   import { transfers, queueVisible, initTransfers, completedTransfer } from './stores/transfers.js';
@@ -26,6 +26,7 @@
   import WindowSizeOverlay from './components/WindowSizeOverlay.svelte';
   import OpenedFileModal from './components/OpenedFileModal.svelte';
   import { initOpenFile } from './stores/openfile.js';
+  import SearchIndexModal from './components/SearchIndexModal.svelte';
   import { notification, closeNotify } from './stores/notify.js';
 
   let showSettings = false;
@@ -42,8 +43,16 @@
   $: isConnected = $connectionStatus === 'connected';
   $: pendingCount = $transfers.filter(j => j.status === 'pending' || j.status === 'running').length;
 
+  let showSearchIndexIntro = false;
+  async function answerSearchIndexIntro(enable) {
+    showSearchIndexIntro = false;
+    await saveSettings({ ...get(settings), searchIndexEnabled: enable, searchIndexAsked: true });
+  }
+
   onMount(async () => {
     const s = await loadSettings();
+    // First launch on this device: explain the (opt-in) search index once.
+    if (s && !s.searchIndexAsked) showSearchIndexIntro = true;
     lastDefaultLocalDir = s?.defaultLocalDir || '';
     await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
@@ -255,6 +264,7 @@
             onDelete={remoteDelete}
             onRename={remoteRename}
             onSearch={remoteSearch}
+            onCancelSearch={cancelRemoteSearch}
           />
         </div>
       </div>
@@ -279,6 +289,13 @@
   <NotifyModal />
   <WindowSizeOverlay />
   <OpenedFileModal />
+  {#if showSearchIndexIntro}
+    <SearchIndexModal
+      mode="intro"
+      onEnable={() => answerSearchIndexIntro(true)}
+      onDecline={() => answerSearchIndexIntro(false)}
+    />
+  {/if}
 
   <!-- ── Disconnect-all confirmation ───────────────────────────── -->
   {#if showDisconnectConfirm}

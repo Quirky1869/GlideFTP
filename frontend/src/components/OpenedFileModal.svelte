@@ -4,6 +4,7 @@
   // "no application for this file type" dialog, and a discreet toast.
   // Mounted once in App.svelte.
   import { t } from '../i18n/index.js';
+  import { formatBytes } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import {
     openingFile, openPrompts, noAppPrompt, openToast,
@@ -11,6 +12,17 @@
   } from '../stores/openfile.js';
 
   $: prompt = $openPrompts[0];
+
+  $: pct = $openingFile?.total > 0 ? Math.min(100, Math.round(($openingFile.done / $openingFile.total) * 100)) : 0;
+
+  function formatEta(sec) {
+    if (sec == null || !isFinite(sec)) return '';
+    sec = Math.round(sec);
+    if (sec < 60) return `${sec} s`;
+    if (sec < 3600) return `${Math.floor(sec / 60)} min ${String(sec % 60).padStart(2, '0')} s`;
+    return `${Math.floor(sec / 3600)} h ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')} min`;
+  }
+  const formatSpeed = (bps) => (bps > 0 ? `${formatBytes(bps)}/s` : '');
 
   const fill = (text, vars) => Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, v), text);
 
@@ -24,9 +36,20 @@
 
 {#if $openingFile}
   <div class="opening-box">
-    <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-    <span class="opening-text">{fill($t('openingFile'), { name: $openingFile.name })}</span>
-    <button class="btn-secondary" on:click={cancelOpening}>{$t('cancel')}</button>
+    <div class="opening-head">
+      <svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <span class="opening-text">{fill($t('openingFile'), { name: $openingFile.name })}</span>
+      <button class="btn-secondary" on:click={cancelOpening}>{$t('cancel')}</button>
+    </div>
+    {#if $openingFile.total > 0}
+      <div class="opening-bar"><div class="opening-fill" style="width: {pct}%"></div></div>
+      <div class="opening-detail">
+        <span class="opening-pct">{pct} %</span>
+        <span>{formatBytes($openingFile.done)} / {formatBytes($openingFile.total)}</span>
+        {#if formatSpeed($openingFile.speed)}<span>{formatSpeed($openingFile.speed)}</span>{/if}
+        {#if formatEta($openingFile.eta)}<span>{fill($t('openFileRemaining'), { time: formatEta($openingFile.eta) })}</span>{/if}
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -177,8 +200,8 @@
   transform: translateX(-50%);
   z-index: 4700;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   padding: 10px 12px 10px 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--accent);
@@ -186,10 +209,32 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   color: var(--text-primary);
   font-size: 13px;
+  min-width: 420px;
   max-width: 80vw;
 }
+.opening-head { display: flex; align-items: center; gap: 12px; }
+.opening-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.opening-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-bg);
+  transition: width 0.2s linear;
+}
+.opening-detail {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.opening-pct { color: var(--accent); font-weight: 600; }
 .opening-box .spinner { color: var(--accent); width: 16px; height: 16px; }
-.opening-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opening-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .opening-box .btn-secondary { padding: 5px 12px; font-size: 12px; }
 
 .of-toast {

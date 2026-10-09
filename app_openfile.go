@@ -126,7 +126,16 @@ func (a *App) OpenRemoteFile(remotePath string) (*OpenResult, error) {
 	}
 	name := path.Base(remotePath)
 	tmp := filepath.Join(dir, safeLocalName(name))
-	if err := client.Download(ctx, remotePath, tmp, nil); err != nil {
+	// Progress for the "Opening x..." box (bar, %, speed, time left):
+	// "openfile:progress" events, at most every 200ms plus the final one.
+	var lastEmit time.Time
+	progress := func(done, total int64) {
+		if now := time.Now(); now.Sub(lastEmit) >= 200*time.Millisecond || done >= total {
+			lastEmit = now
+			runtime.EventsEmit(a.ctx, "openfile:progress", map[string]int64{"done": done, "total": total})
+		}
+	}
+	if err := client.Download(ctx, remotePath, tmp, progress); err != nil {
 		_ = os.RemoveAll(dir)
 		if ctx.Err() != nil {
 			return nil, errors.New(openErrCancelled)

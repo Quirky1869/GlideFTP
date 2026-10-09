@@ -1,7 +1,9 @@
 <script>
   import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
-  import { BrowseLocalDir, ExportSettings, ImportSettings } from '../../wailsjs/go/main/App.js';
+  import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex } from '../../wailsjs/go/main/App.js';
+  import SearchIndexModal from './SearchIndexModal.svelte';
+  import { formatBytes } from '../stores/transfers.js';
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
@@ -117,7 +119,37 @@
     doubleClickNavigateUp: false,
     notificationSoundEnabled: false,
     notificationSound: 'chime',
+    searchIndexEnabled: false,
   };
+
+  // ── Search index (section "Recherche") ──
+  let showSearchIndexHelp = false;
+  let searchIndexSize = 0;
+  async function refreshSearchIndexSize() {
+    try { searchIndexSize = (await GetSearchIndexInfo())?.sizeBytes || 0; } catch {}
+  }
+  refreshSearchIndexSize();
+
+  // "Activer" in the "?" popup: switch on and save right away (one click,
+  // like the color picker's Save).
+  async function enableSearchIndexFromHelp() {
+    showSearchIndexHelp = false;
+    form = { ...form, searchIndexEnabled: true, searchIndexAsked: true };
+    await saveSettings(form);
+    saved = true;
+    setTimeout(() => saved = false, 2000);
+    onSaved(form);
+  }
+
+  async function clearSearchIndex() {
+    try {
+      await ClearSearchIndex();
+      searchIndexSize = 0;
+      notify($t('searchIndexCleared'));
+    } catch (e) {
+      notify(e?.toString() || $t('unknownError'), 'error');
+    }
+  }
 
   // Fills Window width/height with the current window size (same units as
   // main.go's options.Width/Height), clamped to the fields' min/max, and
@@ -467,6 +499,32 @@
       </div>
     </section>
 
+    <div class="divider"></div>
+
+    <!-- Search -->
+    <section>
+      <h3>{$t('searchSection')}</h3>
+      <div class="setting-row">
+        <!-- |self|preventDefault: clicking the text must not "click" the ? button inside -->
+        <label on:click|self|preventDefault>
+          {$t('searchIndexEnabled')}
+          <button type="button" class="help-btn" on:click|stopPropagation={() => showSearchIndexHelp = true} title={$t('searchIndexHelp')} aria-label={$t('searchIndexHelp')}>?</button>
+          <button class="reset-btn" hidden={form.searchIndexEnabled === DEFAULTS.searchIndexEnabled} on:click|stopPropagation={() => resetSetting('searchIndexEnabled')} title={$t('resetToDefault')}>↺</button>
+        </label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.searchIndexEnabled}
+          on:click={() => toggle('searchIndexEnabled')}
+          aria-pressed={form.searchIndexEnabled}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
+        <label>{$t('searchIndexCache')} <span class="cache-size">({formatBytes(searchIndexSize)})</span></label>
+        <button class="browse-btn" disabled={searchIndexSize === 0} on:click={clearSearchIndex}>{$t('searchIndexClear')}</button>
+      </div>
+    </section>
+
   </div>
 
   <div class="panel-footer">
@@ -502,6 +560,17 @@
       <code>%dd/%MM/%yyyy %hh:%mm</code> → {formatDateWith(now, '%dd/%MM/%yyyy %hh:%mm', $locale)}
     </div>
   </div>
+{/if}
+
+{#if showSearchIndexHelp}
+  <!-- Option off: same choice as the first-launch popup (Activer / Non merci).
+       Option on: explanations only (Fermer). -->
+  <SearchIndexModal
+    mode={form.searchIndexEnabled ? 'info' : 'intro'}
+    onEnable={enableSearchIndexFromHelp}
+    onDecline={() => showSearchIndexHelp = false}
+    onClose={() => showSearchIndexHelp = false}
+  />
 {/if}
 
 {#if showColorPicker}
@@ -752,6 +821,25 @@ input:focus { border-color: var(--accent); }
   padding: 5px 10px;
   cursor: pointer;
 }
+
+.help-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-button);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+  margin-left: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.help-btn:hover, .help-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.cache-size { color: var(--text-muted); font-size: 12px; }
+.browse-btn:disabled { opacity: 0.5; cursor: default; }
 
 .current-size-row { display: flex; align-items: center; gap: 10px; }
 .browse-btn:hover:not(:disabled) { background: var(--bg-button-hover); color: var(--accent); }

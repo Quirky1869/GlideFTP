@@ -1,9 +1,10 @@
 import { writable, get } from 'svelte/store';
+import { EventsOn } from '../../wailsjs/runtime/runtime.js';
 import {
   Connect, ConnectAdditional, Disconnect, GetConnectionStatus,
   ConnectToSite, ConnectToSiteAdditional, ConnectWithPassword,
   GetConnections, SwitchConnection, CloseConnection,
-  RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename, RemoteCopy, RemoteCopyDir, RemoteSearch,
+  RemoteListDir, RemoteMkDir, RemoteDelete, RemoteRename, RemoteCopy, RemoteCopyDir, RemoteSearch, CancelSearch,
   LocalListDir, LocalMkDir, LocalDelete, LocalRename, LocalCopy, LocalSearch,
   GetLocalHome, GetLocalParent, ExpandLocalPath,
 } from '../../wailsjs/go/main/App.js';
@@ -268,7 +269,20 @@ export async function remoteRename(oldPath, newPath)  { await RemoteRename(oldPa
 export async function remoteCopy(srcPath, destPath)   { await RemoteCopy(srcPath, destPath); }
 export async function remoteCopyDir(srcPath, destPath) { await RemoteCopyDir(srcPath, destPath); }
 export async function localSearch(path, query, recursive)  { return await LocalSearch(path, query, recursive); }
-export async function remoteSearch(path, query, recursive) { return await RemoteSearch(path, query, recursive); }
+// Returns { entries, truncated }; rejects with 'cancelled' when superseded by a
+// newer search. onProgress({ entries, listed }) receives the matches as they are
+// found (backend "search:progress" events, tagged with this search's id).
+let remoteSearchCounter = 0;
+export async function remoteSearch(path, query, recursive, onProgress) {
+  const id = `rs-${Date.now()}-${++remoteSearchCounter}`;
+  const off = onProgress ? EventsOn('search:progress', (p) => { if (p.id === id) onProgress(p); }) : null;
+  try {
+    return await RemoteSearch(id, path, query, recursive);
+  } finally {
+    if (off) off();
+  }
+}
+export function cancelRemoteSearch() { CancelSearch(); }
 
 // Intra-panel clipboard: { entries: [{path, name, isDir}], operation: 'copy'|'cut', side: 'local'|'remote' }
 export const clipboard = writable(null);

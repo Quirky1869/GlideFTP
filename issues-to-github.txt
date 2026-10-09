@@ -4044,7 +4044,14 @@ Remote file (app_openfile.go `OpenRemoteFile`):
   opening keeps the real name/extension and avoids collisions; names are
   sanitized for Windows-forbidden characters. Not through the transfer
   queue: synchronous, with a small non-modal "Opening x..." box and a
-  Cancel button (`CancelOpenRemoteFile` → context cancel). Re-opening a
+  Cancel button (`CancelOpenRemoteFile` → context cancel). The box shows
+  the download progress - useful for big files such as videos: a
+  progress bar (`--accent-bg`, follows the gradient), the percentage,
+  "done / total", the speed and the time left. The Download progress
+  callback (already used by transfers) emits "openfile:progress"
+  {done, total} at most every 200ms + the final one; stores/openfile.js
+  computes the speed as an exponential moving average (so the time left
+  doesn't jump around) and the ETA. Re-opening a
   file already open reuses its temp copy (keeps local edits).
 - Remote ModTime/Size recorded before download (ListDir of the parent,
   bounded by the operation timeout) for conflict detection.
@@ -4165,3 +4172,269 @@ meaning. `.site-info` gets `flex: 1` to push the button to the right.
 i18n: quickConnectSite (tooltip).
 
 Verified by the user in the running app (v1.7.8 dev build).
+
+---
+
+#112
+Title: [Bug] Remote search disconnects from the FTP server and finds nothing
+Labels: bug, search, ftp
+Version fixed: v1.7.8
+Description:
+Using the search in the remote panel broke the FTP session: afterwards
+it was impossible to open a folder or rename anything until
+disconnecting/reconnecting by hand. And it didn't find what was asked:
+searching "bundle" from /Perso_Micka (a QNAP share) returned nothing,
+although /Perso_Micka/Linux-Windows contains 2 .bundle files. Once
+errors were displayed, the search showed:
+"write tcp ...->176.147.99.234:65422: write: broken pipe" - the server
+had closed the FTP control connection during the walk. And it was very
+slow: searching "bundle" from the share root (one level above
+Linux-Windows) was still running after 5 minutes, with nothing shown and
+a giant loading spinner filling the panel.
+
+Solution (closing comment):
+Fixed in v1.7.8 (app.go `RemoteSearch`, internal/connection/ftp.go,
+FileBrowser.svelte).
+
+Root causes:
+1. The walk went into NAS system folders: on QNAP, @Recently-Snapshot
+   holds a full copy of the share per snapshot (plus @Recycle...) -
+   gigantic, duplicated trees, listed before reaching Linux-Windows. Each
+   listed folder = one LIST + one new FTP data connection, and it's
+   during that walk that the server cut the session.
+2. No cancellation + a search on every keystroke pause: `searchReqId`
+   only ignored stale *results* - every pause ("b", "bu", "bun"...)
+   started another full recursive walk in Go, all in parallel,
+   multiplying the connections.
+3. Depth-first walk with no folder limit.
+4. Errors swallowed: `catch { searchResults = [] }` - a failed walk was
+   displayed as "no results".
+5. The FTP client never recovered a control connection closed by the
+   server: every following command (open a folder, rename...) failed on
+   the dead connection until a manual reconnect.
+6. Slowness: FTP has no server-side search, every folder needs its own
+   LIST round-trip + data connection (0.2-0.5s over the internet), done
+   one after another on the single control connection - and results
+   were only returned once the whole walk was over.
+7. The loading spinner's SVG had no size in the search results (only
+   styled in tree view) and filled the whole panel.
+
+Fix:
+- FTP control connection self-healing (ftp.go): all control operations
+  (ListDir, MkDir, Delete, Rename, CurrentDir) go through `control()`:
+  if the command fails because the connection itself is gone
+  (`isConnLost`: EOF, broken pipe / EPIPE, connection reset/aborted,
+  closed connection, server reply 421, and the Windows wordings), it
+  re-dials + logs in (`reconnectLocked`) and retries once; command
+  errors such as "550 permission denied" are returned as-is. Keepalive
+  (NOOP every 60s) reconnects the same way, so the connection is only
+  declared lost if reconnecting fails. Works for any cause of
+  disconnection (idle timeout, flood protection, network cut), not just
+  search.
+- NAS system folders are not walked (`isNASSystemDir`): names starting
+  with "@" (QNAP @Recently-Snapshot, @Recycle; Synology @eaDir...),
+  ".@" (QNAP .@__thumb), "#recycle" / "#snapshot" (Synology). Their own
+  names can still match.
+- Search moved to app_search.go and rewritten:
+  - Parallel breadth-first walk: 4 workers (`remoteSearchWorkers`)
+    share a queue (`searchWalk`: mutex + cond, `next()` waits while
+    other workers may still add subfolders). Each worker lists on its own
+    connection from the new `connection.ParallelLister` interface
+    (lister.go): FTP `OpenLister()` dials a dedicated connection, reused
+    for the whole search and self-healing like the main one (jlaffaye/ftp
+    can't run concurrent commands on one connection); SFTP shares its
+    session (pkg/sftp is concurrency-safe and pipelines requests). If no
+    extra connection can be opened (server limit), it falls back to the
+    main connection. Starting folder listed on the main connection.
+  - Results streamed: "search:progress" events {id, entries, listed}
+    with the new matches (and every 10 folders for the counter); the
+    frontend's `remoteSearch(path, query, recursive, onProgress)`
+    subscribes to its own search id only and unsubscribes at the end.
+    The panel shows matches as they come plus "Recherche en cours... N
+    dossiers parcourus"; the final result replaces the streamed list.
+  - One search at a time: a new `RemoteSearch(searchID, ...)` cancels
+    the previous walk (context + seq) which returns "cancelled" (ignored
+    by the frontend); `CancelSearch()` when the search is closed
+    (`onCancelSearch` prop, `cancelRemoteSearch`). Also stops on tab
+    switch. Listings already in flight finish, nothing new starts.
+  - Limits: 500 matches, 3000 folders; hitting one sets `truncated` →
+    "Recherche partielle..." note.
+  - Repeated LIST failures (3 per worker in a row) stop the walk; one
+    unreadable subfolder is skipped; a failure on the starting folder is
+    returned.
+- Errors are displayed ("La recherche a échoué" + message), prefixed
+  with the folder being listed.
+- `RemoteSearch` returns `{ entries, truncated }` (`RemoteSearchResult`);
+  local search still returns an array, the panel handles both.
+- `.tree-loading svg` sized (22px) - fixes the giant spinner in search
+  results (and tree loading).
+i18n: searchFailed, searchTruncated, searchListed, searchInProgress.
+
+Side finding, not changed: the "Reconnexion automatique" setting
+(AutoReconnect) exists in Settings but is not used anywhere in the code.
+
+Verified by the user in the running app (v1.7.8 build): no more dead
+connection after a search, results stream in and the search is much
+faster (remaining time = network round-trips per folder).
+
+---
+
+#113
+Title: [Feature] Search results: "Go to location" and "Copy path" in the right-click menu
+Labels: enhancement, ui, search
+Version fixed: v1.7.8
+Description:
+Search results show where each match is (relative path), but there was
+no way to get there. Add two entries to the right-click menu, only for
+search results:
+1. Go to the location: for a file, open the folder that contains it;
+   for a folder, open the folder itself.
+2. Copy the path: for a file, the path of its containing folder (without
+   the file name); for a folder, the folder's own path.
+
+Solution (closing comment):
+Implemented in v1.7.8 in FileBrowser.svelte (local and remote panels).
+
+- `handleFileContextMenu(e, entry, fromSearch)`: search result rows pass
+  `true`, which sets `contextFromSearch` (reset by the empty-area menu and
+  `closeContext()`); the two entries are shown at the top of the menu,
+  above "Ouvrir", only in that case.
+- `searchResultLocation(entry)` = the entry's path for a folder, its
+  parent (`parentOf`, handles "/" and Windows "C:\" roots and both
+  separators) for a file.
+- "Aller à l'emplacement" (file) / "Ouvrir le dossier" (folder):
+  `goToSearchResult` closes the search (which also cancels a running
+  remote search), navigates there, and for a file selects it in the
+  folder once its entries are loaded (`await tick()`).
+- "Copier le chemin": `navigator.clipboard.writeText` + the panel's green
+  message bar "Chemin copié : <path>" (orange with the error otherwise).
+i18n: goToFileLocation, openFolderLocation, copyPath, pathCopied.
+
+---
+
+#114
+Title: [Feature] Remember remote folders locally to speed up searches (search index, opt-in)
+Labels: enhancement, search, settings
+Version fixed: v1.7.8
+Description:
+Even with the parallel walk (#112), a recursive search on a remote
+server takes time: one LIST round-trip per folder. Remember locally what
+GlideFTP has already seen on each server, so a later search goes
+straight to the known locations - always checking on the server that the
+file/folder is still there (never show something only because it's in
+the local cache), updating the cache when a file moved, and keeping
+every location when several files share the same name.
+Off by default; a popup on the first launch on a device explains the
+option and offers to enable it; a "?" next to the option in Settings
+shows that explanation again; the cache can be cleared from Settings.
+When enabled, normal folder browsing also feeds the cache.
+The cache files must be protected: while GlideFTP runs (even without any
+server connection) other programs must not be able to touch or rename
+them, and a file modified outside GlideFTP must not be used.
+
+Cache location (one gzipped JSON file per server account):
+- Linux:   ~/.cache/GlideFTP/search-index/
+- Windows: %LOCALAPPDATA%\GlideFTP\search-index\
+
+Solution (closing comment):
+Implemented in v1.7.8.
+
+Design choice: rather than remembering past *queries*, GlideFTP
+remembers the content of every remote folder it lists (during searches
+and normal navigation). A search for any word - even never searched
+before - can then use what earlier walks saw (searching "bundle" lists
+~1600 folders and sees every file in them).
+
+internal/searchindex (new):
+- Per server account index: key = sha256(protocol|host|port|user), file
+  `<os.UserCacheDir()>/GlideFTP/search-index/<key>.json.gz` (Linux
+  ~/.cache/..., Windows %LOCALAPPDATA%\...). Content: folder path →
+  {listed time, entries [name, isDir, size, modTime]}. Loaded lazily,
+  written atomically (temp file + rename), flushed every 30s, after each
+  search and at shutdown.
+- `Put(dir, entries)` replaces a folder's content with a fresh listing
+  (removed / renamed / moved-away files disappear), `RemoveTree(dir)`
+  forgets a folder that no longer exists, `CandidateDirs(q, root)`
+  returns the folders under the search root where a matching name was
+  seen (several locations for duplicate names, naturally).
+  `Manager.Clear()` deletes everything, `SizeBytes()` for Settings.
+
+Protection of the cache files:
+- Integrity (Linux + Windows): each file stores an HMAC-SHA256 of its
+  content (`fileFormat{v, mac, dirs}`), keyed with a random per-device
+  key `index.key` in the same folder. A file edited outside GlideFTP,
+  written with another key or half-written by a crash fails the check on
+  load and is discarded (empty index, rebuilt by the next listings) -
+  never used.
+- Windows: every index file and the key are opened with share mode 0
+  (`CreateFile`, lock_windows.go - `os.OpenFile` always shares
+  read/write) and kept open for the whole session; all existing index
+  files are opened at startup, before any connection. Other programs then
+  can't read, modify, delete or rename them, nor rename their folder:
+  Explorer shows its own "file is open in GlideFTP" refusal. Since the
+  file can't be replaced while locked, it is rewritten in place
+  (seek + truncate + write + sync) instead of temp file + rename - a
+  crash mid-write is caught by the MAC.
+- Linux: not enforceable - file locks are advisory only and mandatory
+  locking was removed from the kernel (5.15); the file's owner can always
+  edit/rename/delete it (only `chattr +i` as root would prevent it).
+  There, the MAC makes such edits harmless. Forbidding renames "in any
+  circumstance" (GlideFTP closed) is impossible on both systems.
+- In any case the index never produces a result on its own (everything
+  is verified on the server), files are created 0600, and a renamed or
+  deleted file just means starting from an empty index.
+- `Clear()` closes the handles before deleting (Windows can't delete
+  open files); the next use creates a new key.
+
+Search (app_search.go): with the option on, the candidate folders are put
+at the front of the parallel walk's queue. Listing them IS the
+verification: the panel only shows what the server returns now; a file
+gone from the index's location simply isn't shown and the index is
+updated. The full walk then continues as before (already-listed folders
+are skipped via a `seen` set), so new files and moved files are found
+and recorded at their new location. Every listing refreshes the index;
+a folder answering 550 / "no such file" is removed from it. NAS system
+folders stay excluded. Normal navigation (`RemoteListDir`) feeds the
+index too.
+
+Settings: `searchIndexEnabled` (default false), `searchIndexAsked`
+(first-launch popup answered on this device). New "Recherche" section in
+Settings: "Mémoriser les dossiers pour accélérer la recherche" switch
+with a "?" button that re-opens the explanation popup - with the same
+"Activer" / "Non merci" choice as on first launch while the option is off
+("Activer" switches it on and saves immediately), with just "Fermer"
+while it is on - and the ↺ reset button; "Cache de recherche (size)" row with "Vider le cache"
+(disabled when empty). Bindings: `GetSearchIndexInfo()` {dir,
+sizeBytes}, `ClearSearchIndex()`.
+
+First launch (App.svelte): when `searchIndexAsked` is false, the
+SearchIndexModal explains what the option does, that results are always
+verified on the server, that normal browsing also feeds the cache, the
+privacy aspect (names, sizes and dates of remote files stored in clear on
+this computer - never passwords or file contents), the exact cache
+location, and that it can be turned off / the cache cleared in Settings
+> Recherche. "Activer" / "Non merci" both record the answer.
+i18n: searchSection, searchIndexEnabled, searchIndexHelp,
+searchIndexCache, searchIndexClear, searchIndexCleared,
+searchIndexIntro* (Title, What, Faster, Verified, Privacy, Where,
+Settings), searchIndexEnable, searchIndexDecline.
+
+---
+
+#115
+Title: [Feature] Single instance: launching GlideFTP again brings back the running window
+Labels: enhancement
+Version fixed: v1.7.8
+Description:
+Several GlideFTP instances could run at the same time, all writing the
+same settings and search index files. Only one instance should run per
+user session.
+
+Solution (closing comment):
+Implemented in v1.7.8 in main.go / app.go.
+
+Wails' built-in `options.SingleInstanceLock` (UniqueId
+"com.quirky1869.glideftp" - D-Bus on Linux, named mutex on Windows): a
+second launch exits immediately and the running instance's
+`onSecondInstanceLaunch` un-minimises and shows its window.
+
