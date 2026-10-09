@@ -3813,7 +3813,10 @@ Description:
 Settings > Interface has "Window width (px)" / "Window height (px)"
 fields for the size at startup, but there was no way to know the size
 of the current window - finding good values meant guessing. Show the
-size live while the window is being resized.
+size live while the window is being resized. The badge always has the
+accent-color border, but its accent glow must follow the user's choice
+in Settings > Interface > "Ombre d'accentuation du panneau de
+connexion", like the connect card.
 
 Solution (closing comment):
 Implemented in v1.7.8.
@@ -3821,9 +3824,15 @@ Implemented in v1.7.8.
 New component `frontend/src/components/WindowSizeOverlay.svelte`,
 mounted once in App.svelte next to NotifyModal. It listens to
 `<svelte:window on:resize>` and shows a centered badge "1400 × 900"
-(monospace, accent border + glow, `pointer-events: none`,
-z-index 4999 - just under NotifyModal's 5000), fading out 1.2s after
-the last resize event.
+(monospace, `pointer-events: none`, z-index 4999 - just under
+NotifyModal's 5000), fading out 1.2s after the last resize event.
+- Accent: the 2px accent border is always shown (gradient border in
+  gradient mode). The accent glow is conditional: `class:glow` bound to
+  `$settings.connectCardShadow`, the same setting as the connect card's
+  shadow box (live, no restart). Without it, only a neutral dark drop
+  shadow remains for legibility; with it, the accent glow (two-tone
+  color 1 / color 2 in gradient mode) is added. A first version always
+  showed the glow, even with the shadow setting off.
 - The size comes from Wails' `WindowGetSize()`, i.e. the same units as
   `options.Width/Height` in main.go (fed by the WindowWidth/WindowHeight
   settings) - not the webview's innerWidth/innerHeight, which excludes
@@ -3835,7 +3844,8 @@ the last resize event.
 - Resize events during the first 1.5s are ignored so the badge doesn't
   flash at startup (window creation / "Open maximized").
 
-Verified by the user in the running app (v1.7.8 dev build).
+Verified by the user in the running app (v1.7.8 dev build), including
+the glow following the accent shadow setting.
 
 ---
 

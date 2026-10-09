@@ -6,6 +6,7 @@
   // not the webview's innerWidth/innerHeight.
   import { onMount, onDestroy } from 'svelte';
   import { WindowGetSize } from '../../wailsjs/runtime/runtime.js';
+  import { settings } from '../stores/settings.js';
 
   const HIDE_DELAY_MS = 1200;
   // Startup (window creation, "Open maximized") fires resize events too -
@@ -48,7 +49,9 @@
 <svelte:window on:resize={onResize} />
 
 {#if size}
-  <div class="size-badge" class:visible aria-hidden="true">
+  <!-- Accent border always; accent glow only with Settings > "Ombre
+       d'accentuation" (connectCardShadow), like the connect card -->
+  <div class="size-badge" class:visible class:glow={$settings?.connectCardShadow} aria-hidden="true">
     {size.w} <span class="times">×</span> {size.h}
   </div>
 {/if}
@@ -65,7 +68,7 @@
   border-radius: 10px;
   border: 2px solid var(--accent);
   background: var(--bg-secondary);
-  box-shadow: 0 0 24px var(--accent-glow, rgba(0,0,0,0.3)), 0 8px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   color: var(--text-primary);
   font-family: monospace;
   font-size: 26px;
@@ -88,9 +91,15 @@
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+.size-badge.glow {
+  box-shadow: 0 0 24px var(--accent-glow, rgba(0,0,0,0.3)), 0 8px 32px rgba(0,0,0,0.35);
+}
+
 :global(html[data-accent-gradient]) .size-badge {
   border-color: transparent;
   background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box, var(--accent-gradient) border-box;
+}
+:global(html[data-accent-gradient]) .size-badge.glow {
   box-shadow: -10px 0 24px var(--accent-glow), 10px 0 24px var(--accent-glow-2), 0 8px 32px rgba(0,0,0,0.35);
 }
 </style>
