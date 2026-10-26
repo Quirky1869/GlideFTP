@@ -59,7 +59,7 @@ git push origin main
 git tag v1.7.7
 git push origin v1.7.7
 ```
-→ `release.yml` se lance : build Linux + Windows + AppImage Debian + `.deb` + `.rpm`, crée les archives, crée une **draft release** intitulée `V1.7.7` avec le texte de `v1.7.7.md` déjà en description.
+→ `release.yml` se lance : build Linux + Windows + AppImage Debian + `.deb` + `.rpm`, crée les archives (Windows = `.7z` + `.exe` seul, plus de tar), crée une **draft release** intitulée `V1.7.7` avec le texte de `v1.7.7.md` déjà en description.
 
 ### 3. Suivre la CI
 Onglet **Actions** du repo → attendre que le run passe au vert.

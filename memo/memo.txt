@@ -64,9 +64,9 @@ sudo pacman -S mingw-w64-gcc
 --- Archives de distribution ---
 
 # Créer les archives .tar.gz et .tar pour une release (après le build)
-./create-archive.sh 1.7.1                            # 8 archives (Linux+Windows+ArchAppImage+DebianAppImage × gz+tar)
+./create-archive.sh 1.7.1                            # Windows .7z + .exe + 6 archives Linux (Linux+ArchAppImage+DebianAppImage × gz+tar)
 ./create-archive.sh -p linux          1.7.1          # binaire Linux uniquement (inclut README.md)
-./create-archive.sh -p windows   -t gz 1.7.1         # Windows .tar.gz uniquement
+./create-archive.sh -p windows        1.7.1          # Windows uniquement : .7z (GlideFTP.exe dedans) + .exe seul - jamais de tar (necessite 7z : sudo pacman -S 7zip)
 ./create-archive.sh -p appimage       1.7.1          # les deux AppImages (Arch + Debian)
 ./create-archive.sh -p appimage-arch  1.7.1          # Arch AppImage uniquement
 ./create-archive.sh -p appimage-debian 1.7.1         # Debian AppImage uniquement

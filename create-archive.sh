@@ -15,33 +15,38 @@ Arguments:
 Options:
   -p, --platform    Platform to archive: windows | linux | appimage | appimage-arch | appimage-debian | all  (default: all)
   -t, --type        Archive type:        gz | tar | all                    (default: all)
+                    (Linux / AppImage archives only - Windows is always .7z + .exe)
   -h, --help        Show this help message and exit
 
-Archive types:
+Archive types (Linux / AppImage):
   gz   → compressed  (.tar.gz)
   tar  → uncompressed (.tar)
   all  → both gz and tar
 
+Windows (whatever --type is):
+  GlideFTP-Windows-vX.Y.Z.7z   → 7z archive containing GlideFTP.exe (requires 7z:
+                                 Arch: sudo pacman -S 7zip / Ubuntu: sudo apt install p7zip-full)
+  GlideFTP-Windows-vX.Y.Z.exe  → the executable itself, uploaded as-is to the release
+
 Output files (example with version 1.7.0):
-  GlideFTP-Windows-v1.7.0.tar.gz
-  GlideFTP-Linux-v1.7.0.tar.gz                     ← includes README.md (libwebkit2gtk install, EN+FR)
-  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz        ← includes README.md (keyring setup, EN+FR)
-  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz        ← Arch / modern distros (GLIBC 2.38+)
-  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar.gz      ← includes README.md (keyring setup, EN+FR); Ubuntu 22.04+ / Debian (GLIBC 2.35+)
-  GlideFTP-Windows-v1.7.0.tar
-  GlideFTP-Linux-v1.7.0.tar                         ← includes README.md (dependency notice)
+  GlideFTP-Windows-v1.7.0.7z
+  GlideFTP-Windows-v1.7.0.exe
+  GlideFTP-Linux-v1.7.0.tar.gz                  ← GlideFTP + glideftp.desktop + glideftp.png + README.md (EN+FR)
+  GlideFTP-Linux-Arch-AppImage-v1.7.0.tar.gz    ← AppImage + README.md (EN+FR) - Arch / modern distros (GLIBC 2.38+)
+  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar.gz  ← AppImage + README.md (EN+FR) - Ubuntu 22.04+ / Debian 12+ (GLIBC 2.35+)
+  GlideFTP-Linux-v1.7.0.tar                     ← same content as the .tar.gz, uncompressed
   GlideFTP-Linux-Arch-AppImage-v1.7.0.tar
-  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar         ← includes README.md (keyring setup, EN+FR)
+  GlideFTP-Linux-Debian-AppImage-v1.7.0.tar
+  (+ GlideFTP-Linux-v1.7.0.deb / .rpm copied from build/bin/linux/ with -p all, if built)
 
 Examples:
-  $SCRIPT_NAME 1.7.0                               # all 8 archives
-  $SCRIPT_NAME -p windows 1.7.0                   # Windows archives only (gz + tar)
-  $SCRIPT_NAME -p linux -t gz 1.7.0               # Linux binary .tar.gz only
+  $SCRIPT_NAME 1.7.0                              # Windows .7z + .exe and all 6 Linux archives
+  $SCRIPT_NAME -p windows 1.7.0                   # Windows .7z + .exe only
+  $SCRIPT_NAME -p linux -t gz 1.7.0               # Linux binary .tar.gz only (also updates packaging/PKGBUILD)
   $SCRIPT_NAME -p appimage -t gz 1.7.0            # both AppImage variants .tar.gz only
   $SCRIPT_NAME -p appimage-arch -t gz 1.7.0       # Arch AppImage .tar.gz only
   $SCRIPT_NAME -p appimage-debian -t tar 1.7.0    # Debian AppImage .tar only
-  $SCRIPT_NAME -p windows -t tar 1.7.0            # Windows .tar only
-  $SCRIPT_NAME --platform all --type gz 1.7.0
+  $SCRIPT_NAME --platform all --type gz 1.7.0     # Windows .7z + .exe and the 3 Linux .tar.gz
 EOF
 }
 
@@ -465,10 +470,39 @@ le Gestionnaire de sites. Dans ce cas, utilisez le type d'authentification
 EOF
 }
 
-make_windows_gz() {
-  local out="GlideFTP-Windows-v${VERSION}.tar.gz"
+# 7z binary: 7z (p7zip / 7zip), 7za or 7zz (official 7-Zip for Linux)
+_find_7z() {
+  local bin
+  for bin in 7z 7za 7zz; do
+    if command -v "$bin" >/dev/null 2>&1; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  echo "Error: 7z not found - needed for the Windows archive." >&2
+  echo "  Arch: sudo pacman -S 7zip   |   Ubuntu/Debian: sudo apt install p7zip-full" >&2
+  return 1
+}
+
+# Windows: .7z with GlideFTP.exe inside (no tar/tar.gz - native on Windows 11's
+# Explorer and 7-Zip) + the standalone .exe published as-is
+make_windows_7z() {
+  local src="build/bin/windows/GlideFTP-v${VERSION}.exe"
+  local out="GlideFTP-Windows-v${VERSION}.7z"
+  local sevenz staging root="$PWD"
+  sevenz="$(_find_7z)"
+  staging="$(mktemp -d)"
+  cp "$src" "$staging/GlideFTP.exe"
+  rm -f "$out"   # 7z "a" adds to an existing archive instead of replacing it
   echo "→ $out"
-  tar -czvf "$out" "./build/bin/windows/GlideFTP-v${VERSION}.exe"
+  (cd "$staging" && "$sevenz" a -t7z -mx=9 "$root/$out" GlideFTP.exe)
+  rm -rf "$staging"
+}
+
+copy_windows_exe() {
+  local out="GlideFTP-Windows-v${VERSION}.exe"
+  cp "build/bin/windows/GlideFTP-v${VERSION}.exe" "$out"
+  echo "→ $out"
 }
 
 make_linux_gz() {
@@ -482,12 +516,6 @@ make_linux_gz() {
   echo "→ $out"
   tar -czvf "$out" -C "$staging" GlideFTP glideftp.desktop glideftp.png README.md
   rm -rf "$staging"
-}
-
-make_windows_tar() {
-  local out="GlideFTP-Windows-v${VERSION}.tar"
-  echo "→ $out"
-  tar -cvf "$out" "./build/bin/windows/GlideFTP-v${VERSION}.exe"
 }
 
 make_linux_tar() {
@@ -611,7 +639,7 @@ echo "Platform: $PLATFORM  |  Type: $TYPE"
 echo "----------------------------------------------"
 
 [[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
-  [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_windows_gz
+  make_windows_7z && copy_windows_exe
 
 [[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_linux_gz && update_pkgbuild
@@ -621,9 +649,6 @@ echo "----------------------------------------------"
 
 [[ "$PLATFORM" == "appimage" || "$PLATFORM" == "appimage-debian" || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "gz"  || "$TYPE" == "all" ]] && make_appimage_debian_gz
-
-[[ "$PLATFORM" == "windows"  || "$PLATFORM" == "all" ]] && \
-  [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_windows_tar
 
 [[ "$PLATFORM" == "linux"    || "$PLATFORM" == "all" ]] && \
   [[ "$TYPE" == "tar" || "$TYPE" == "all" ]] && make_linux_tar

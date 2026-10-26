@@ -4621,3 +4621,36 @@ a trash button removes it (back to the default sound if it was selected).
 i18n: soundCustom, customSoundLoad, customSoundRemove, customSoundLoaded,
 customSoundLoadedLong, customSoundUnreadable, customSoundUnsupported,
 customSoundTooLarge, customSoundError.
+
+---
+
+#121
+Title: [Packaging] Windows release: .7z archive + standalone .exe instead of .tar / .tar.gz
+Labels: enhancement, packaging
+Version fixed: v1.7.9
+Description:
+The Windows build was published as GlideFTP-Windows-vX.Y.Z.tar.gz and .tar -
+formats that are awkward on Windows - and the tar even stored the exe under
+its build path (./build/bin/windows/GlideFTP-vX.Y.Z.exe). Publish the .exe
+directly plus a .7z archive, and drop tar/tar.gz for Windows everywhere
+(scripts and release workflow).
+
+Solution (closing comment):
+Implemented in v1.7.9 in create-archive.sh and .github/workflows/release.yml.
+
+create-archive.sh: make_windows_gz / make_windows_tar removed, replaced by
+`make_windows_7z` (stages the build as `GlideFTP.exe` in a mktemp dir, removes
+any previous archive since `7z a` appends, then `7z a -t7z -mx=9`
+GlideFTP-Windows-vX.Y.Z.7z) and `copy_windows_exe` (copies
+build/bin/windows/GlideFTP-vX.Y.Z.exe to GlideFTP-Windows-vX.Y.Z.exe at the
+root). Both always run for `-p windows` / `-p all`, whatever `-t` is (`-t`
+now only concerns Linux/AppImage archives). `_find_7z` accepts 7z, 7za or
+7zz and fails with install hints (Arch `7zip`, Ubuntu `p7zip-full`). Help
+text updated.
+
+release.yml: `p7zip-full` added to the apt dependencies; release files
+GlideFTP-Windows-vX.Y.Z.tar.gz / .tar replaced by GlideFTP-Windows-vX.Y.Z.7z
+and GlideFTP-Windows-vX.Y.Z.exe.
+
+Docs: README download tables (EN/FR), v1.7.9.md download tables, CLAUDE.md,
+memo/memo.txt, memo/workflow-aur.md.

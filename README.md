@@ -76,7 +76,8 @@
 
 | File | Platform | Notes |
 |---|---|---|
-| `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Requires WebView2 (built into Windows 10/11) |
+| `GlideFTP-Windows-vX.Y.Z.exe` | Windows | The executable itself, ready to run - requires WebView2 (built into Windows 10/11) |
+| `GlideFTP-Windows-vX.Y.Z.7z` | Windows | Same executable in a 7z archive (`GlideFTP.exe`) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Linux binary | Requires `libwebkit2gtk-4.1` - see below |
 | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Debian/Ubuntu** | **Recommended** - self-contained, Ubuntu 22.04+ / Debian 12+ |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | Linux AppImage - **Arch** | For Arch / modern Fedora |
@@ -223,16 +224,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 ```bash
 # Linux binary
-./build/bin/linux/GlideFTP
+./build/bin/linux/GlideFTP-vX.Y.Z
 
 # Linux AppImage - Debian/Ubuntu variant (recommended)
-./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./build/bin/linux/GlideFTP-Debian-x86_64-vX.Y.Z.AppImage
 
 # Linux AppImage - Arch variant
-./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build/bin/linux/GlideFTP-Arch-x86_64-vX.Y.Z.AppImage
 
 # Windows
-build\bin\windows\GlideFTP.exe
+build\bin\windows\GlideFTP-vX.Y.Z.exe
 ```
 
 ### Releases
@@ -304,7 +305,8 @@ Releases are available [here](https://github.com/Quirky1869/GlideFTP/releases)
 
 | Fichier | Plateforme | Notes |
 |---|---|---|
-| `GlideFTP-Windows-vX.Y.Z.tar.gz` / `.tar` | Windows | Nécessite WebView2 (intégré à Windows 10/11) |
+| `GlideFTP-Windows-vX.Y.Z.exe` | Windows | L'exécutable directement, prêt à lancer - nécessite WebView2 (intégré à Windows 10/11) |
+| `GlideFTP-Windows-vX.Y.Z.7z` | Windows | Le même exécutable dans une archive 7z (`GlideFTP.exe`) |
 | `GlideFTP-Linux-vX.Y.Z.tar.gz` / `.tar` | Binaire Linux | Nécessite `libwebkit2gtk-4.1` - voir ci-dessous |
 | `GlideFTP-Linux-Debian-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Debian/Ubuntu** | **Recommandé** - autonome, Ubuntu 22.04+ / Debian 12+ |
 | `GlideFTP-Linux-Arch-AppImage-vX.Y.Z.tar.gz` / `.tar` | AppImage Linux - **Arch** | Pour Arch / Fedora récente |
@@ -451,16 +453,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 ```bash
 # Binaire Linux
-./build/bin/linux/GlideFTP
+./build/bin/linux/GlideFTP-vX.Y.Z
 
 # AppImage Linux - variante Debian/Ubuntu (recommandée)
-./build/bin/linux/GlideFTP-Debian-x86_64.AppImage
+./build/bin/linux/GlideFTP-Debian-x86_64-vX.Y.Z.AppImage
 
 # AppImage Linux - variante Arch
-./build/bin/linux/GlideFTP-Arch-x86_64.AppImage
+./build/bin/linux/GlideFTP-Arch-x86_64-vX.Y.Z.AppImage
 
 # Windows
-build\bin\windows\GlideFTP.exe
+build\bin\windows\GlideFTP-vX.Y.Z.exe
 ```
 
 ### Releases

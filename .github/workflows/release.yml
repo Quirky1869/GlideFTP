@@ -64,7 +64,8 @@ jobs:
             gcc \
             pkg-config \
             mingw-w64 \
-            imagemagick
+            imagemagick \
+            p7zip-full
 
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -161,8 +162,8 @@ jobs:
           files: |
             GlideFTP-Linux-v${{ steps.ver.outputs.version }}.tar.gz
             GlideFTP-Linux-v${{ steps.ver.outputs.version }}.tar
-            GlideFTP-Windows-v${{ steps.ver.outputs.version }}.tar.gz
-            GlideFTP-Windows-v${{ steps.ver.outputs.version }}.tar
+            GlideFTP-Windows-v${{ steps.ver.outputs.version }}.7z
+            GlideFTP-Windows-v${{ steps.ver.outputs.version }}.exe
             GlideFTP-Linux-Debian-AppImage-v${{ steps.ver.outputs.version }}.tar.gz
             GlideFTP-Linux-Debian-AppImage-v${{ steps.ver.outputs.version }}.tar
             build/bin/linux/GlideFTP-Linux-v${{ steps.ver.outputs.version }}.deb
