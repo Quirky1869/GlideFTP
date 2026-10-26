@@ -341,6 +341,7 @@
   })();
 
   function toggleSort(key) {
+    if (resizingCol) return; // mouseup of a column resize also fires a click on the header
     if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
     else { sortKey = key; sortDir = 'asc'; }
   }
@@ -349,6 +350,85 @@
   // Size the Date column to the configured format, measured on a wide sample
   // date (longest month name, 2-digit everything) - 130px stays the minimum.
   $: dateColWidth = Math.max(130, Math.ceil(formatDateWith(new Date(2026, 8, 28, 23, 59, 59), dateFormat, $locale).length * 7.2) + 12);
+
+  // ── Resizable columns ─────────────────────────────────────────────────────
+  // Widths in px per panel side, null = default (Name fills the space, Size 80px,
+  // Date sized from the date format). Dragging the divider at a header cell's right
+  // edge resizes that column, double-clicking it fits the column to its content.
+
+  const COL_MIN = { name: 80, size: 45, date: 60 };
+  const colStorageKey = `glideftp_col_widths_${side}`;
+  let colW = loadColWidths();
+  let resizingCol = null;
+
+  function loadColWidths() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(colStorageKey) || 'null');
+      if (saved && typeof saved === 'object') return { name: saved.name ?? null, size: saved.size ?? null, date: saved.date ?? null };
+    } catch {}
+    return { name: null, size: null, date: null };
+  }
+
+  function setColWidth(col, w) {
+    colW = { ...colW, [col]: Math.max(COL_MIN[col], Math.round(w)) };
+    try { localStorage.setItem(colStorageKey, JSON.stringify(colW)); } catch {}
+  }
+
+  function startColResize(e, col) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const cell = e.currentTarget.parentElement;
+    const startX = e.clientX;
+    const startW = cell.getBoundingClientRect().width;
+    resizingCol = col;
+    document.body.style.cursor = 'col-resize';
+    const onMove = (ev) => setColWidth(col, startW + ev.clientX - startX);
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      setTimeout(() => { resizingCol = null; }, 0); // after the click that follows mouseup
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  let measureCtx;
+  const fontCache = new Map();
+  function textWidth(el, text) {
+    measureCtx ??= document.createElement('canvas').getContext('2d');
+    const key = el.className + (el.closest('.is-dir') ? ' dir' : '');
+    if (!fontCache.has(key)) fontCache.set(key, getComputedStyle(el).font);
+    measureCtx.font = fontCache.get(key);
+    return measureCtx.measureText(text).width;
+  }
+
+  // Fits a column to the widest value currently listed (header label included)
+  function autoFitColumn(col) {
+    if (!fileListEl) return;
+    fontCache.clear();
+    let max = 0;
+    const header = fileListEl.querySelector(`.file-list-header .col-${col}`);
+    if (header) max = textWidth(header, header.textContent.trim()) + 16; // + sort arrow
+    if (col === 'name') {
+      for (const nameCell of fileListEl.querySelectorAll('.file-row .col-name')) {
+        let w = 0;
+        for (const child of nameCell.children) {
+          if (child.tagName === 'INPUT') { w += child.getBoundingClientRect().width; continue; }
+          const cs = getComputedStyle(child);
+          w += textWidth(child, child.textContent.trim()) + parseFloat(cs.marginLeft) + parseFloat(cs.marginRight)
+            + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+        }
+        max = Math.max(max, w);
+      }
+    } else {
+      for (const cell of fileListEl.querySelectorAll(`.file-row .col-${col}`)) {
+        max = Math.max(max, textWidth(cell, cell.textContent.trim()));
+      }
+    }
+    setColWidth(col, Math.ceil(max) + 6);
+  }
 
   // dateFormat/$locale passed in so Svelte re-renders the column when they change
   function formatDate(dateStr, fmt, loc) {
@@ -371,6 +451,7 @@
       const ci = all.findIndex(e => e.path === entry.path);
       const [s, en_] = [Math.min(li, ci), Math.max(li, ci)];
       selected = all.slice(s, en_ + 1);
+      window.getSelection()?.removeAllRanges();
     } else {
       selected = [entry];
     }
@@ -387,6 +468,9 @@
 
   function handleListMouseDown(e) {
     if (e.button !== 0) return;
+    // Shift+click extends the native text selection from the last click
+    // (WebKit-GTK ignores user-select here) - block it, rows are selected by handleClick
+    if (e.shiftKey && !e.target.closest('input')) e.preventDefault();
     if (e.target.closest('.file-row')) return;
     if (e.target.closest('.file-list-header')) return;
 
@@ -1117,7 +1201,7 @@
 <div
   class="browser"
   class:drag-over={dragOver}
-  style="--date-col-w: {dateColWidth}px"
+  style="--date-col-w: {colW.date ?? dateColWidth}px; --size-col-w: {colW.size ?? 80}px;{colW.name ? ` --name-col-w: ${colW.name}px;` : ''}"
   bind:this={panelEl}
   tabindex="-1"
   on:keydown={handlePanelKeydown}
@@ -1251,6 +1335,7 @@
   {#if showSearchResults}
     <div
       class="file-list"
+      class:fixed-cols={colW.name}
       bind:this={fileListEl}
       on:mousedown={handleListMouseDown}
     >
@@ -1385,18 +1470,22 @@
   {:else}
     <div
       class="file-list"
+      class:fixed-cols={colW.name}
       bind:this={fileListEl}
       on:mousedown={handleListMouseDown}
     >
       <div class="file-list-header" on:contextmenu|stopPropagation>
         <span class="col-name col-sortable" on:click={() => toggleSort('name')}>
           {$t('name')}{#if sortKey === 'name'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+          <span class="col-resizer" on:mousedown={(e) => startColResize(e, 'name')} on:click|stopPropagation on:dblclick|stopPropagation={() => autoFitColumn('name')} title={$t('columnResizeHint')}></span>
         </span>
         <span class="col-size col-sortable" on:click={() => toggleSort('size')}>
           {$t('size')}{#if sortKey === 'size'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+          <span class="col-resizer" on:mousedown={(e) => startColResize(e, 'size')} on:click|stopPropagation on:dblclick|stopPropagation={() => autoFitColumn('size')} title={$t('columnResizeHint')}></span>
         </span>
         <span class="col-date col-sortable" on:click={() => toggleSort('date')}>
           {$t('date')}{#if sortKey === 'date'} <span class="sort-arr">{sortDir === 'asc' ? '↑' : '↓'}</span>{/if}
+          <span class="col-resizer" on:mousedown={(e) => startColResize(e, 'date')} on:click|stopPropagation on:dblclick|stopPropagation={() => autoFitColumn('date')} title={$t('columnResizeHint')}></span>
         </span>
       </div>
 
@@ -1566,13 +1655,25 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
       <div class="confirm-msg">{$t('confirmDeleteFile')}</div>
-      <div class="confirm-name">
-        {#if confirmDeleteEntries.length === 1}
-          {confirmDeleteEntries[0].name}
-        {:else}
-          {confirmDeleteEntries.length} {$t('items')}
-        {/if}
-      </div>
+      {#if confirmDeleteEntries.length === 1}
+        <div class="confirm-name">{confirmDeleteEntries[0].name}</div>
+      {:else}
+        <!-- Collapsed "N éléments" badge, click to list every selected entry -->
+        <details class="confirm-details">
+          <summary class="confirm-name" title={$t('deleteShowList')}>
+            <svg class="confirm-details-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
+            {confirmDeleteEntries.length} {$t('items')}
+          </summary>
+          <ul class="confirm-list">
+            {#each confirmDeleteEntries as entry (entry.path)}
+              <li class:is-dir={entry.isDir} title={entry.path}>
+                <span class="file-icon">{#if entry.isDir}📁{:else}📄{/if}</span>
+                <span class="confirm-list-name">{entry.name}</span>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
       <div class="confirm-actions">
         <button class="confirm-del-btn" on:click={() => doDeleteAll(confirmDeleteEntries)}>{$t('deleteConfirm')}</button>
         <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntries = null}>{$t('cancel')}</button>
@@ -1903,6 +2004,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -1927,8 +2029,40 @@
 .sort-arr { color: var(--accent); font-size: 10px; }
 
 .col-name { flex: 1; min-width: 0; }
-.col-size { width: 80px; text-align: right; flex-shrink: 0; }
+.col-size { width: var(--size-col-w, 80px); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .col-date { width: var(--date-col-w, 130px); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Name column given a width by the user: columns no longer fill the panel, the
+   list scrolls horizontally when they're wider than it */
+.file-list.fixed-cols { overflow-x: auto; }
+.fixed-cols .col-name { flex: 0 0 var(--name-col-w); }
+.fixed-cols .file-row,
+.fixed-cols .file-list-header { min-width: max-content; }
+
+.file-list-header .col-name,
+.file-list-header .col-size,
+.file-list-header .col-date { position: relative; overflow: visible; }
+.col-resizer {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  right: -8px;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 2;
+}
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--border);
+  transition: background 0.12s;
+}
+.col-resizer:hover::after { background: var(--accent); }
 
 .file-row .col-name { display: flex; align-items: center; }
 .file-list-header .col-name { display: flex; align-items: center; gap: 4px; }
@@ -1941,6 +2075,7 @@
   font-size: 13px;
   cursor: pointer;
   border-bottom: 1px solid var(--border-subtle);
+  -webkit-user-select: none;
   user-select: none;
   transition: background 0.08s;
 }
@@ -2033,6 +2168,48 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.confirm-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+}
+.confirm-details summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
+}
+.confirm-details summary::-webkit-details-marker { display: none; }
+.confirm-details summary:hover { color: var(--text-primary); }
+.confirm-details summary:focus-visible { outline: 1px solid var(--accent); }
+.confirm-details-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.15s; }
+.confirm-details[open] .confirm-details-chevron { transform: rotate(90deg); }
+.confirm-list {
+  list-style: none;
+  width: 320px;
+  max-width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 0;
+  text-align: left;
+}
+.confirm-list li {
+  display: flex;
+  align-items: flex-start;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.confirm-list li.is-dir { font-weight: 500; }
+.confirm-list-name { min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
 .confirm-actions { display: flex; gap: 8px; margin-top: 4px; }
 .confirm-del-btn {
   background: var(--danger); border: none; border-radius: 5px;

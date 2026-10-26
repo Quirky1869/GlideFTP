@@ -1,12 +1,12 @@
 <script>
   import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
-  import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex } from '../../wailsjs/go/main/App.js';
+  import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex, ChooseCustomSound, InstallCustomSound, RemoveCustomSound } from '../../wailsjs/go/main/App.js';
   import SearchIndexModal from './SearchIndexModal.svelte';
   import { formatBytes } from '../stores/transfers.js';
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
-  import { NOTIFICATION_SOUNDS, playNotificationSound } from '../utils/sound.js';
+  import { NOTIFICATION_SOUNDS, CUSTOM_SOUND_ID, MAX_SOUND_SECONDS, playNotificationSound, probeSound, setCustomSoundUrl } from '../utils/sound.js';
   import { notify } from '../stores/notify.js';
   import { WindowGetSize } from '../../wailsjs/runtime/runtime.js';
   import { DEFAULT_DATE_FORMAT, SYSTEM_DATE_FORMAT, DATE_FORMAT_PRESETS, DATE_FORMAT_TOKENS, normalizeDateFormat, formatDateWith } from '../utils/dateFormat.js';
@@ -89,6 +89,62 @@
     form = { ...form, [key]: next };
   }
 
+  // ── Custom notification sound ──
+  // Pick → check WebKit can decode it → copy to the config dir → select it and
+  // save immediately (like the color picker). Played for MAX_SOUND_SECONDS at most.
+  let loadingSound = false;
+
+  function soundErrorText(e) {
+    const msg = e?.toString() || '';
+    if (msg.includes('too_large')) return $t('customSoundTooLarge');
+    if (msg.includes('unsupported_format')) return $t('customSoundUnsupported');
+    return $t('customSoundError') + (msg ? '\n' + msg : '');
+  }
+
+  async function loadCustomSound() {
+    if (loadingSound) return;
+    loadingSound = true;
+    try {
+      const file = await ChooseCustomSound();
+      if (!file) return;
+      let duration;
+      try {
+        duration = await probeSound(file.dataUrl);
+      } catch {
+        notify($t('customSoundUnreadable'), 'error');
+        return;
+      }
+      const name = await InstallCustomSound(file.path);
+      setCustomSoundUrl(file.dataUrl);
+      form = { ...form, notificationSound: CUSTOM_SOUND_ID, customSoundName: name };
+      await saveSettings(form);
+      onSaved(form);
+      playNotificationSound(CUSTOM_SOUND_ID);
+      const long = isFinite(duration) && duration > MAX_SOUND_SECONDS;
+      notify($t(long ? 'customSoundLoadedLong' : 'customSoundLoaded').replace('{name}', name).replace('{n}', MAX_SOUND_SECONDS));
+    } catch (e) {
+      notify(soundErrorText(e), 'error');
+    } finally {
+      loadingSound = false;
+    }
+  }
+
+  async function removeCustomSound() {
+    try {
+      await RemoveCustomSound();
+      setCustomSoundUrl('');
+      form = {
+        ...form,
+        customSoundName: '',
+        notificationSound: form.notificationSound === CUSTOM_SOUND_ID ? DEFAULTS.notificationSound : form.notificationSound,
+      };
+      await saveSettings(form);
+      onSaved(form);
+    } catch (e) {
+      notify(soundErrorText(e), 'error');
+    }
+  }
+
   async function onColorApply({ color, gradient, color2 }) {
     form = { ...form, accentColor: color, accentGradient: gradient, accentColor2: color2 };
     showColorPicker = false;
@@ -119,6 +175,7 @@
     doubleClickNavigateUp: false,
     notificationSoundEnabled: false,
     notificationSound: 'chime',
+    customSoundName: '',
     searchIndexEnabled: false,
   };
 
@@ -309,6 +366,9 @@
               {#each sortedSounds as sound (sound.id)}
                 <option value={sound.id}>{$t(sound.label)}</option>
               {/each}
+              {#if form.customSoundName}
+                <option value={CUSTOM_SOUND_ID}>{$t('soundCustom')} : {form.customSoundName}</option>
+              {/if}
             </select>
             <button
               type="button"
@@ -322,6 +382,29 @@
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
               </svg>
             </button>
+            <button
+              type="button"
+              class="sound-test-btn"
+              title={$t('customSoundLoad').replace('{n}', MAX_SOUND_SECONDS)}
+              on:click={loadCustomSound}
+              disabled={loadingSound}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="16" r="3"/>
+              </svg>
+            </button>
+            {#if form.customSoundName}
+              <button
+                type="button"
+                class="sound-test-btn sound-remove-btn"
+                title={$t('customSoundRemove')}
+                on:click={removeCustomSound}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              </button>
+            {/if}
           </div>
         </div>
       {/if}
@@ -528,7 +611,7 @@
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.8</span>
+    <span class="version-badge">v1.7.9</span>
     <button class="io-icon-btn" on:click={exportSettings} title={$t('exportSettings')} aria-label={$t('exportSettings')}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </button>
@@ -873,7 +956,9 @@ input:focus { border-color: var(--accent); }
   cursor: pointer;
   transition: all 0.12s;
 }
-.sound-test-btn:hover { background: var(--bg-button-hover); color: var(--accent); }
+.sound-test-btn:hover:not(:disabled) { background: var(--bg-button-hover); color: var(--accent); }
+.sound-test-btn:disabled { opacity: 0.5; cursor: default; }
+.sound-remove-btn:hover:not(:disabled) { color: var(--danger); }
 .sound-test-btn svg { width: 15px; height: 15px; }
 
 /* ── Date format ── */

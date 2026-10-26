@@ -2,13 +2,24 @@
   import { t } from '../i18n/index.js';
   import { notification, closeNotify } from '../stores/notify.js';
   import { trapFocus } from '../utils/focusTrap.js';
+
+  function runAction() {
+    const action = $notification?.action;
+    closeNotify();
+    action?.run();
+  }
 </script>
 
 {#if $notification}
   <div class="notify-overlay" on:click|self={closeNotify}>
     <div class="notify-box" class:is-error={$notification.type === 'error'} use:trapFocus>
       <div class="notify-message">{$notification.message}</div>
-      <button class="notify-close" on:click={closeNotify} autofocus>{$t('close')}</button>
+      <div class="notify-actions">
+        {#if $notification.action}
+          <button class="notify-action" on:click={runAction}>{$notification.action.label}</button>
+        {/if}
+        <button class="notify-close" on:click={closeNotify} autofocus>{$t('close')}</button>
+      </div>
     </div>
   </div>
 {/if}
@@ -60,6 +71,24 @@
     cursor: pointer;
   }
   .notify-close:hover { background: var(--accent-hover-bg); }
+
+  .notify-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .notify-action {
+    background: var(--bg-button);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .notify-action:hover { background: var(--bg-button-hover); }
 
   /* ── Accent gradient mode ── */
   :global(html[data-accent-gradient]) .notify-box {

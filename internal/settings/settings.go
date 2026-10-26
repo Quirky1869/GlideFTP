@@ -32,6 +32,9 @@ type Settings struct {
 	DoubleClickNavigateUp          bool   `json:"doubleClickNavigateUp"`
 	NotificationSoundEnabled       bool   `json:"notificationSoundEnabled"`
 	NotificationSound              string `json:"notificationSound"`
+	// Original file name of the user-supplied sound (NotificationSound "custom"),
+	// the file itself lives in the config dir (see app_sound.go). "" = none.
+	CustomSoundName string `json:"customSoundName"`
 	// Remember listed remote folders to speed up searches (opt-in, see
 	// internal/searchindex). SearchIndexAsked: the first-launch explanation
 	// popup has been answered on this device.

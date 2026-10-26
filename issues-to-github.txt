@@ -4438,3 +4438,186 @@ Wails' built-in `options.SingleInstanceLock` (UniqueId
 second launch exits immediately and the running instance's
 `onSecondInstanceLaunch` un-minimises and shows its window.
 
+
+---
+
+#116
+Title: [UI] Shift+click range selection also highlights row text as a native text selection
+Labels: bug, ui
+Version fixed: v1.7.9
+Description:
+In the file panels, Shift+click to select a range of files/folders selected
+the rows correctly, but WebKit-GTK also extended the native text selection
+from the previous click, so the names, sizes and dates of the rows appeared
+highlighted like selected text (on top of the row selection background).
+
+Solution (closing comment):
+Fixed in v1.7.9 in FileBrowser.svelte.
+
+`handleListMouseDown` (mousedown on the file list) now calls
+`e.preventDefault()` when Shift is held (except inside an input, e.g. the
+inline rename field), which stops the browser from extending the text
+selection - row selection is still done by `handleClick`. The Shift branch
+of `handleClick` also clears any leftover selection
+(`window.getSelection().removeAllRanges()`), and `.file-list` / `.file-row`
+get `-webkit-user-select: none` next to `user-select: none`.
+
+---
+
+#117
+Title: [Feature] Save a site from the connection screen + show password eye toggle
+Labels: enhancement, ui
+Version fixed: v1.7.9
+Description:
+From the basic connection screen (ConnectionBar in the centered connect
+card), a typed server could only be used for a one-off connection - to keep
+it, the user had to re-type everything in "Gérer les sites". Add a save
+button (floppy disk icon, same look as the connect arrow button) to the left
+of "Protocole", always shown on the connect screen and disabled (like the
+connect button) until a host is typed, that saves the typed connection as a
+site. Also add an eye button in the password
+input to show the password while typing it.
+
+Solution (closing comment):
+Implemented in v1.7.9 in ConnectionBar.svelte.
+
+Save button: a `.btn-connect` (same accent button as connect) rendered first
+in `.conn-fields` whenever disconnected (`showSaveSite`, so never in the
+connected top bar), disabled - greyed like connect - while connecting or as
+long as the host is empty. `saveAsSite()` checks `GetSites()` for an existing
+site with the same host (case-insensitive) / port / protocol / user (→ error
+popup `siteAlreadySaved` naming it, no duplicate), then calls the existing
+`CreateSite` binding with the typed protocol/host/port/encryption/authType/
+user/password/sshKeyPath, `remoteDir: '/'`, name `user@host` (or just host).
+The password goes to the system keyring through CreateSite as usual; if
+`GetKeyringStatus()` reports `keyring_unavailable` the confirmation says the
+site was saved without its password. Feedback via the global `notify()`
+popup. i18n: saveToSites, siteSavedFromBar, siteSavedNoPassword,
+siteAlreadySaved, siteSaveError, openSites.
+
+Both popups (saved / already saved) carry an "Ouvrir les sites" button:
+`notify(message, type, action)` now takes an optional `{ label, run }`
+action rendered by NotifyModal as a secondary button next to "Fermer"
+(closes the popup, then runs it). ConnectionBar gets an `onOpenSites(siteId)`
+prop, wired in App.svelte to `openSiteManagerOn(id)`, which opens SiteManager
+with the new `initialSiteId` prop - the site is selected once the list is
+loaded (`siteManagerInitialId` resets whenever the modal closes).
+
+Host placeholder: "ftp.example.com" replaced by the shorter
+"site.com / 10.0.0.1" (domain + IP example) in ConnectionBar and in the
+SiteManager form.
+
+Password eye: the password input is wrapped in `.pwd-wrap` (fixed 160px
+input, eye button absolutely positioned inside on the right) and uses the
+two-input `{#if showPwd}` text/password pattern (WebKit-GTK pattern #3). The
+eye only shows while a password is typed and the fields are editable
+(`fieldsLocked` = connected outside quick connect, or connecting) - never on
+the fake dots shown when connected; `showPwd` resets when the field is
+emptied or locked. i18n: showPassword, hidePassword.
+
+---
+
+#118
+Title: [Feature] Resizable file list columns (Name / Size / Date) + double-click to fit content
+Labels: enhancement, ui
+Version fixed: v1.7.9
+Description:
+The Name, Size and Date columns of the file panels had fixed widths (Name
+filling the space, Size 80px, Date sized from the date format) and could not
+be resized - long names were cut with an ellipsis with no way to widen the
+column. Columns should be resizable by dragging, double-clicking should fit
+a column to the longest value listed, on both the local and remote panels.
+
+Solution (closing comment):
+Implemented in v1.7.9 in FileBrowser.svelte.
+
+Each list-view header cell (Name/Size/Date) gets a `.col-resizer` handle on
+its right edge (8px hit area over the gap, thin `--border` line turning
+`--accent` on hover, tooltip `columnResizeHint`). `startColResize` drags
+with window mousemove/mouseup listeners and `col-resize` cursor; the click
+that follows mouseup is ignored by `toggleSort` (`resizingCol` flag reset
+in a setTimeout) so a resize never re-sorts. Double-click on the handle =
+`autoFitColumn(col)`: measures every rendered cell's text with a canvas
+`measureText` using the cell's computed font (bold folders included), plus
+icon/margins for Name and the header label + sort arrow, and sets that
+width. Minimums: Name 80, Size 45, Date 60.
+
+Widths live in `colW = {name, size, date}` (null = default) per panel,
+persisted in localStorage `glideftp_col_widths_local` /
+`glideftp_col_widths_remote`, applied through CSS vars on `.browser`
+(`--size-col-w`, `--date-col-w` falling back to the date-format-based width,
+`--name-col-w`). As long as Name has no width it keeps filling the space
+(resizing Size/Date shrinks it); once Name is sized the `.file-list` gets
+`fixed-cols`: Name becomes `flex: 0 0 var(--name-col-w)`, rows/header
+`min-width: max-content` and the list scrolls horizontally when wider than
+the panel. Size now ellipsizes like Date. Applies to the normal list and the
+search results list; tree view is unchanged (no columns).
+
+---
+
+#119
+Title: [UX] Multi-delete confirmation: expandable list of the selected entries
+Labels: enhancement, ui
+Version fixed: v1.7.9
+Description:
+Deleting several files/folders showed a confirmation with only "N éléments" -
+no way to check which entries were actually selected before confirming.
+Keep the same presentation but make that badge expandable (like a
+<details> element) to list every selected file/folder.
+
+Solution (closing comment):
+Implemented in v1.7.9 in FileBrowser.svelte (delete confirmation popup).
+
+Single entry: unchanged (`.confirm-name` with the name). Several entries: a
+native `<details class="confirm-details">` whose `<summary>` is the same
+`.confirm-name` "N éléments" badge plus a chevron rotating 90° when open
+(default marker hidden via `list-style: none` / `::-webkit-details-marker`,
+tooltip `deleteShowList`). Opening it shows `.confirm-list`: one row per
+selected entry (📁/📄 icon, long names wrapped onto the next lines -
+`overflow-wrap: anywhere`, icon kept on the first line -, full path in the tooltip,
+folders in 500 weight), 320px wide, scrolling past 220px. Closed by default;
+confirm/cancel buttons and `doDeleteAll` unchanged.
+
+---
+
+#120
+Title: [Feature] Custom notification sound for the end of transfers (5 seconds max)
+Labels: enhancement
+Version fixed: v1.7.9
+Description:
+The end-of-transfer notification sound could only be one of the 13 built-in
+sounds. Let the user load their own audio file, and make sure it never plays
+for more than 5 seconds.
+
+Solution (closing comment):
+Implemented in v1.7.9 in app_sound.go, internal/settings/settings.go,
+frontend/src/utils/sound.js and SettingsPanel.svelte.
+
+Backend (app_sound.go): `ChooseCustomSound()` opens an audio file picker
+(mp3/wav/ogg/oga/opus/flac/m4a/aac/webm), rejects other extensions
+(`unsupported_format`) and files over 10 MB (`too_large`), and returns
+`{path, name, dataUrl}` without installing anything. `InstallCustomSound(path)`
+copies it to `<UserConfigDir>/GlideFTP/custom-sound.<ext>` (replacing any
+previous one) and returns the original file name. `GetCustomSound()` returns
+the installed file as a `data:` URI ("" if none), `RemoveCustomSound()`
+deletes it. data: URIs because WebKitGTK's <audio> can't load the wails://
+scheme (same reason as the built-in sounds). New setting `customSoundName`
+(original file name, "" = none); `notificationSound` takes the id `custom`.
+
+Frontend: `sound.js` resolves the `custom` id by fetching `GetCustomSound()`
+once (cached, `setCustomSoundUrl()` refreshes it; falls back to the first
+built-in sound when none is installed). `playNotificationSound` now caps
+every sound at `MAX_SOUND_SECONDS` = 5: volume fades out over the last
+400 ms then the audio is paused; a new play stops the previous one.
+`probeSound(url)` checks the file decodes (loadedmetadata vs error, 8 s
+timeout) and returns its duration.
+
+Settings > Notifications: music-note button next to the test button →
+pick → `probeSound` (unreadable = error popup) → `InstallCustomSound` →
+selects `custom`, saves settings immediately, plays it, popup "Son x chargé"
+(+ "seules les 5 premières secondes seront jouées" when longer). The sound
+<select> gets a "Personnalisé : <name>" option while a custom sound exists;
+a trash button removes it (back to the default sound if it was selected).
+i18n: soundCustom, customSoundLoad, customSoundRemove, customSoundLoaded,
+customSoundLoadedLong, customSoundUnreadable, customSoundUnsupported,
+customSoundTooLarge, customSoundError.

@@ -5,8 +5,11 @@
   import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, connections, activeConnectionId, addConnectionAdHoc, closeTab } from '../stores/connection.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
+  import { notify } from '../stores/notify.js';
+  import { GetSites, CreateSite, GetKeyringStatus } from '../../wailsjs/go/main/App.js';
 
   export let onMultiDisconnect = null;
+  export let onOpenSites = null; // (siteId) => opens "Gérer les sites" on that site
 
   let host = '';
   let user = '';
@@ -26,9 +29,15 @@
   let hostError = false;
   let connBarRef;
   let hostInputRef;
+  let showPwd = false;
+  let savingSite = false;
 
   $: isConnected = $connectionStatus === 'connected';
   $: isConnecting = $connectionStatus === 'connecting';
+  $: fieldsLocked = (isConnected && !quickConnectMode) || isConnecting;
+  // Save button: always on the disconnected connect screen, disabled (like connect) until a host is typed
+  $: showSaveSite = !isConnected;
+  $: if (fieldsLocked || !password) showPwd = false;
 
   $: if (!isConnected && protocol === 'sftp' && port === 21) port = 22;
   $: if (!isConnected && protocol === 'ftp' && port === 22) port = 21;
@@ -153,6 +162,44 @@
     }
   }
 
+  function openSitesAction(siteId) {
+    return onOpenSites ? { label: $t('openSites'), run: () => onOpenSites(siteId) } : null;
+  }
+
+  // Saves the typed connection as a new site in "Gérer les sites" (same fields as the
+  // site form; the password goes to the keyring via CreateSite, never to sites.json)
+  async function saveAsSite() {
+    if (savingSite) return;
+    if (!host.trim()) {
+      hostError = true;
+      setTimeout(() => { hostError = false; }, 1300);
+      return;
+    }
+    savingSite = true;
+    try {
+      const h = host.trim();
+      const u = user.trim();
+      const p = Number(port) || (protocol === 'sftp' ? 22 : 21);
+      const existing = (await GetSites() || []).find(s =>
+        s.host.toLowerCase() === h.toLowerCase() && s.port === p && s.protocol === protocol && s.user === u);
+      if (existing) {
+        notify($t('siteAlreadySaved').replace('{name}', existing.name), 'error', openSitesAction(existing.id));
+        return;
+      }
+      const name = u ? `${u}@${h}` : h;
+      const created = await CreateSite({
+        name, protocol, host: h, port: p, encryption, authType, user: u, password,
+        sshKeyPath, remoteDir: '/', note: '',
+      });
+      const keyringMissing = password && (await GetKeyringStatus()) === 'keyring_unavailable';
+      notify($t(keyringMissing ? 'siteSavedNoPassword' : 'siteSavedFromBar').replace('{name}', name), 'success', openSitesAction(created.id));
+    } catch (e) {
+      notify($t('siteSaveError') + '\n' + (e?.toString() || ''), 'error');
+    } finally {
+      savingSite = false;
+    }
+  }
+
   function stepPort(delta) {
     let next = (Number(port) || 21) + delta;
     if (protocol === 'ftp' && next === 22) next += delta > 0 ? 1 : -1;
@@ -172,6 +219,17 @@
 
 <div class="conn-bar" bind:this={connBarRef}>
   <div class="conn-fields">
+    {#if showSaveSite}
+      <button
+        class="btn-connect"
+        on:click={saveAsSite}
+        disabled={savingSite || isConnecting || !host.trim()}
+        title={$t('saveToSites')}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      </button>
+    {/if}
+
     <div class="field-group">
       <label>{$t('protocol')}</label>
       <select bind:value={protocol} disabled={(isConnected && !quickConnectMode) || isConnecting}>
@@ -186,7 +244,7 @@
         type="text"
         bind:value={host}
         bind:this={hostInputRef}
-        placeholder="ftp.example.com"
+        placeholder="site.com / 10.0.0.1"
         disabled={(isConnected && !quickConnectMode) || isConnecting}
         class:host-error={hostError}
         on:keydown={handleKeydown}
@@ -206,13 +264,40 @@
 
     <div class="field-group">
       <label>{$t('password')}</label>
-      <input
-        type="password"
-        bind:value={password}
-        placeholder="••••••••"
-        disabled={(isConnected && !quickConnectMode) || isConnecting}
-        on:keydown={handleKeydown}
-      />
+      <div class="pwd-wrap" class:disabled={fieldsLocked}>
+        {#if showPwd}
+          <input
+            type="text"
+            bind:value={password}
+            placeholder="••••••••"
+            disabled={fieldsLocked}
+            on:keydown={handleKeydown}
+          />
+        {:else}
+          <input
+            type="password"
+            bind:value={password}
+            placeholder="••••••••"
+            disabled={fieldsLocked}
+            on:keydown={handleKeydown}
+          />
+        {/if}
+        {#if password && !fieldsLocked}
+          <button
+            type="button"
+            class="eye-btn"
+            on:click={() => showPwd = !showPwd}
+            tabindex="-1"
+            title={showPwd ? $t('hidePassword') : $t('showPassword')}
+          >
+            {#if showPwd}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            {:else}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            {/if}
+          </button>
+        {/if}
+      </div>
     </div>
 
     <div class="field-group port-group">
@@ -361,6 +446,33 @@ input:disabled, select:disabled {
   83.33% { border-color: var(--border); }
   100%   { border-color: var(--border); }
 }
+
+.pwd-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwd-wrap input {
+  width: 160px;
+  padding-right: 30px;
+}
+.eye-btn {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 28px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.eye-btn:hover { color: var(--text-primary); }
+.eye-btn svg { width: 15px; height: 15px; }
 
 .port-stepper {
   display: flex;

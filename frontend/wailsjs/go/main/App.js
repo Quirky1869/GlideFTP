@@ -30,6 +30,10 @@ export function ChooseAppAndOpen(arg1) {
   return window['go']['main']['App']['ChooseAppAndOpen'](arg1);
 }
 
+export function ChooseCustomSound() {
+  return window['go']['main']['App']['ChooseCustomSound']();
+}
+
 export function ClearSearchIndex() {
   return window['go']['main']['App']['ClearSearchIndex']();
 }
@@ -114,6 +118,10 @@ export function GetConnections() {
   return window['go']['main']['App']['GetConnections']();
 }
 
+export function GetCustomSound() {
+  return window['go']['main']['App']['GetCustomSound']();
+}
+
 export function GetKeyringStatus() {
   return window['go']['main']['App']['GetKeyringStatus']();
 }
@@ -156,6 +164,10 @@ export function IgnoreOpenedFileChange(arg1) {
 
 export function ImportSettings() {
   return window['go']['main']['App']['ImportSettings']();
+}
+
+export function InstallCustomSound(arg1) {
+  return window['go']['main']['App']['InstallCustomSound'](arg1);
 }
 
 export function LocalCopy(arg1, arg2) {
@@ -240,6 +252,10 @@ export function RemoteRename(arg1, arg2) {
 
 export function RemoteSearch(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['RemoteSearch'](arg1, arg2, arg3, arg4);
+}
+
+export function RemoveCustomSound() {
+  return window['go']['main']['App']['RemoveCustomSound']();
 }
 
 export function RemoveTransfer(arg1) {

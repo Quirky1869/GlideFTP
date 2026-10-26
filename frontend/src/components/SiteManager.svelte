@@ -8,6 +8,7 @@
   import { notify } from '../stores/notify.js';
 
   export let onClose = () => {};
+  export let initialSiteId = null; // site selected on open (e.g. just saved from the connection screen)
 
   let sites = [];
   let selectedSite = null;
@@ -182,7 +183,10 @@
     sites = await GetSites();
   }
 
-  loadSites();
+  loadSites().then(() => {
+    const s = initialSiteId && sites.find(x => x.id === initialSiteId);
+    if (s) selectSite(s);
+  });
 
   function setProtocol(p) {
     let authType = form.authType;
@@ -697,7 +701,7 @@
             <div class="form-row-2">
               <div class="form-row">
                 <label>{$t('host_label')}</label>
-                <input type="text" bind:value={form.host} placeholder="ftp.example.com" on:contextmenu={(e) => handleCtxMenu(e, 'host')} />
+                <input type="text" bind:value={form.host} placeholder="site.com / 10.0.0.1" on:contextmenu={(e) => handleCtxMenu(e, 'host')} />
               </div>
               <div class="form-row" style="width: 100px">
                 <label>{$t('port')}</label>

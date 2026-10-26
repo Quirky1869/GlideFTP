@@ -31,6 +31,14 @@
 
   let showSettings = false;
   let showSiteManager = false;
+  let siteManagerInitialId = null;
+  $: if (!showSiteManager) siteManagerInitialId = null;
+
+  function openSiteManagerOn(siteId) {
+    siteManagerInitialId = siteId;
+    showSiteManager = true;
+    showSettings = false;
+  }
   let showDisconnectConfirm = false;
   let lostNotif = null; // { host } when a connection is dropped by the server
   let lastDefaultLocalDir = ''; // tracks the setting so a change can be applied live
@@ -211,7 +219,7 @@
           <h1 class="connect-title">GlideFTP</h1>
           <p class="connect-subtitle">{$t('connectFirst')}</p>
           <div class="connect-bar-wrap">
-            <ConnectionBar />
+            <ConnectionBar onOpenSites={openSiteManagerOn} />
           </div>
           <p class="connect-sites-hint">
             <button class="link-btn" on:click={() => showSiteManager = true}>{$t('manageSites')}</button>
@@ -283,7 +291,7 @@
   {/if}
 
   {#if showSiteManager}
-    <SiteManager onClose={() => showSiteManager = false} />
+    <SiteManager initialSiteId={siteManagerInitialId} onClose={() => showSiteManager = false} />
   {/if}
 
   <NotifyModal />

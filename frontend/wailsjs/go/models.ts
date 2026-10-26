@@ -144,6 +144,22 @@ export namespace fs {
 
 export namespace main {
 	
+	export class CustomSoundFile {
+	    path: string;
+	    name: string;
+	    dataUrl: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CustomSoundFile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.dataUrl = source["dataUrl"];
+	    }
+	}
 	export class ImportFileInfo {
 	    path: string;
 	    needsPassphrase: boolean;
@@ -250,6 +266,7 @@ export namespace settings {
 	    doubleClickNavigateUp: boolean;
 	    notificationSoundEnabled: boolean;
 	    notificationSound: string;
+	    customSoundName: string;
 	    searchIndexEnabled: boolean;
 	    searchIndexAsked: boolean;
 	
@@ -283,6 +300,7 @@ export namespace settings {
 	        this.doubleClickNavigateUp = source["doubleClickNavigateUp"];
 	        this.notificationSoundEnabled = source["notificationSoundEnabled"];
 	        this.notificationSound = source["notificationSound"];
+	        this.customSoundName = source["customSoundName"];
 	        this.searchIndexEnabled = source["searchIndexEnabled"];
 	        this.searchIndexAsked = source["searchIndexAsked"];
 	    }
