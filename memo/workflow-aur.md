@@ -33,7 +33,7 @@ ssh aur@aur.archlinux.org
 
 ### 5. Cloner le dépôt du paquet (emplacement permanent, pas `/tmp`)
 ```bash
-git clone ssh://aur@aur.archlinux.org/glideftp-bin.git /home/$USER/les-git-clones/AUR/glideftp-bin
+git clone ssh://aur@aur.archlinux.org/glideftp-bin.git /home/$USER/les-git-clones/aur/glideftp-bin
 ```
 → premier `git push` dans ce dossier = création réelle du paquet sur l'AUR.  
 Ce dépôt ne contient **que** `PKGBUILD` et `.SRCINFO` - jamais le binaire, le `.desktop` ou l'icône (déjà dans l'archive `.tar.gz` téléchargée depuis GitHub par le `PKGBUILD` lui-même).  
@@ -79,6 +79,23 @@ cd /home/$USER/les-git-clones/GlideFTP
 - Vérifier que le texte correspond bien à `v1.7.7.md` et que le titre est `V1.7.7`
 - Cliquer **Publish release** (indispensable : tant que c'est en draft, les liens de téléchargement renvoient 404, l'AUR ne pourra rien récupérer)
 
+### 6 à 9 en une commande : `./aur.sh`
+Une fois la release **publiée** (étape 5), le script fait tout ce qui suit (étapes 6 à 9) :
+```bash
+./aur.sh 1.7.7            # hash réel, PKGBUILD, clone/pull AUR, .SRCINFO, diff, confirmation, commit + push AUR
+./aur.sh --test 1.7.7     # pareil + installe le paquet en local (makepkg -si) avant de publier
+./aur.sh -r 2 1.7.7       # republier la même version avec pkgrel=2 (correction du PKGBUILD seul)
+./aur.sh -y 1.7.7         # sans demande de confirmation
+```
+- Il télécharge `GlideFTP-Linux-v1.7.7.tar.gz` depuis la release publiée, vérifie qu'elle contient `GlideFTP`, `glideftp.desktop` et `glideftp.png`, et calcule son sha256.
+- Il met à jour `packaging/PKGBUILD` (`pkgver`, `sha256sums_x86_64`, `pkgrel` remis à 1 pour une nouvelle version).
+- Il clone `ssh://aur@aur.archlinux.org/glideftp-bin.git` dans `~/les-git-clones/aur/glideftp-bin` s'il n'existe pas (sinon `git pull`), refuse un dossier qui n'est pas un vrai clone, copie le `PKGBUILD` et régénère `.SRCINFO`.
+- Il affiche le diff et demande confirmation avant le commit `Release v1.7.7` et le push sur l'AUR. Si l'AUR est déjà à jour, il s'arrête sans rien faire.
+- Il ne committe **pas** `packaging/PKGBUILD` dans le dépôt GlideFTP : il affiche les commandes git à lancer soi-même.
+- Autre emplacement du clone AUR : `AUR_DIR=/chemin ./aur.sh 1.7.7`.
+
+Les étapes 6 à 9 ci-dessous restent la version manuelle.
+
 ### 6. Récupérer le hash réel du fichier publié
 Ne pas se fier au sha256 calculé en local par `create-archive.sh` pendant les tests - le binaire buildé par la CI n'est pas forcément identique bit à bit à un build local. Toujours vérifier sur le fichier **réellement en ligne** :
 ```bash
@@ -112,8 +129,8 @@ Désinstaller ensuite : `sudo pacman -R glideftp-bin`.
 
 ### 9. Publier sur l'AUR
 ```bash
-cp /home/$USER/les-git-clones/GlideFTP/packaging/PKGBUILD /home/$USER/les-git-clones/AUR/glideftp-bin/
-cd /home/$USER/les-git-clones/AUR/glideftp-bin
+cp /home/$USER/les-git-clones/GlideFTP/packaging/PKGBUILD /home/$USER/les-git-clones/aur/glideftp-bin/
+cd /home/$USER/les-git-clones/aur/glideftp-bin
 makepkg --printsrcinfo > .SRCINFO
 git add PKGBUILD .SRCINFO
 git commit -m "Release v1.7.7"
@@ -121,7 +138,7 @@ git push
 ```
 Note : `.SRCINFO` n'est pas un fichier à copier depuis le projet - il n'existe nulle part ailleurs. `makepkg --printsrcinfo` le **génère** à partir du `PKGBUILD` qui vient d'être copié dans ce dossier ; il doit toujours être régénéré à cette étape, jamais recopié d'une ancienne version.
 
-⚠️ Si `git commit`/`git add` fonctionnent mais que `git push` échoue (ou plus simplement si `git status` dans ce dossier répond "not a git repository") : le dossier `/home/$USER/les-git-clones/AUR/glideftp-bin` n'est plus un vrai clone du dépôt AUR (par exemple parce qu'il a été recréé à la main). Il faut le re-cloner (étape A.5) et remettre `PKGBUILD`/`.SRCINFO` dedans avant de committer.
+⚠️ Si `git commit`/`git add` fonctionnent mais que `git push` échoue (ou plus simplement si `git status` dans ce dossier répond "not a git repository") : le dossier `/home/$USER/les-git-clones/aur/glideftp-bin` n'est plus un vrai clone du dépôt AUR (par exemple parce qu'il a été recréé à la main). Il faut le re-cloner (étape A.5) et remettre `PKGBUILD`/`.SRCINFO` dedans avant de committer.
 
 C'est tout - le paquet `glideftp-bin` est mis à jour sur l'AUR, `yay -S glideftp-bin` / `yay -Syu` récupérera la nouvelle version.
 
@@ -144,14 +161,7 @@ git tag v1.7.7 && git push origin v1.7.7
 ./create-archive.sh -p appimage-arch 1.7.7
 # → uploader le .tar.gz sur la draft release + Publish release
 
-# 4. hash réel + PKGBUILD
-curl -L -o /tmp/g.tar.gz https://github.com/Quirky1869/GlideFTP/releases/download/v1.7.7/GlideFTP-Linux-v1.7.7.tar.gz
-sha256sum /tmp/g.tar.gz
-# → corriger packaging/PKGBUILD si besoin, commit + push
-
-# 5. AUR
-cp packaging/PKGBUILD /home/$USER/les-git-clones/AUR/glideftp-bin/
-cd /home/$USER/les-git-clones/AUR/glideftp-bin
-makepkg --printsrcinfo > .SRCINFO
-git add PKGBUILD .SRCINFO && git commit -m "Release v1.7.7" && git push
+# 4. hash réel + PKGBUILD + AUR (clone, .SRCINFO, commit + push après confirmation)
+./aur.sh 1.7.7
+# → puis committer packaging/PKGBUILD dans GlideFTP (le script affiche les commandes)
 ```
