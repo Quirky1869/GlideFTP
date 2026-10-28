@@ -152,14 +152,14 @@ export default {
   recentGradients: 'Dégradés récents',
   transfers: 'Transferts',
   maxConcurrent: 'Transferts simultanés maximum',
+  maxConcurrentHint: 'Nombre de fichiers envoyés ou reçus en même temps (1 à 10). Les autres attendent leur tour dans la "File d\'attente".\nEn FTP, chaque transfert ouvre sa propre connexion au serveur : certains serveurs limitent le nombre de connexions par utilisateur, baissez cette valeur si des transferts échouent.\nLe changement s\'applique immédiatement.',
   transferSpeedLimit: 'Limite de vitesse (Ko/s, 0 = illimité)',
   avgSuffix: 'moy.',
   defaultLocalDir: 'Répertoire local par défaut',
   connection: 'Connexion',
   defaultPort: 'Port FTP par défaut',
   timeout: 'Délai d\'opération (secondes)',
-  passiveMode: 'Mode passif (PASV)',
-  autoReconnect: 'Reconnexion automatique',
+  timeoutHint: 'Temps d\'attente maximum d\'une réponse du serveur, à la connexion et à l\'ouverture d\'un dossier. Passé ce délai, l\'opération est abandonnée.\nCe n\'est pas une déconnexion après inactivité : une connexion ouverte est maintenue tant que l\'application tourne.',
   notifications: 'Notifications',
   notificationSoundEnabled: 'Jouer un son quand un transfert est terminé',
   notificationSound: 'Son de notification',
@@ -220,6 +220,7 @@ export default {
   dateTokPercent: 'Caractère % littéral',
   windowWidth: 'Largeur de fenêtre (px)',
   windowHeight: 'Hauteur de fenêtre (px)',
+  showWindowSizeBadge: 'Afficher la taille pendant le redimensionnement',
   windowSizeCurrent: 'Taille actuelle de la fenêtre',
   useCurrentWindowSize: 'Utiliser la taille actuelle',
   startMaximized: 'Ouvrir maximisé',
@@ -276,6 +277,7 @@ export default {
 
   // Multi-connection
   maxConnections: 'Connexions simultanées max',
+  maxConnectionsHint: 'Nombre de serveurs que vous pouvez garder ouverts en même temps, chacun dans son onglet (1 à 5).\nÀ ne pas confondre avec "Transferts simultanés maximum", qui règle combien de fichiers sont envoyés ou reçus en même temps.',
   keepOrReplaceTitle: 'Connexion active',
   keepOrReplaceMsg: 'Une connexion est déjà active. Que souhaitez-vous faire ?',
   keepConnection: 'Garder et ouvrir une nouvelle',
@@ -296,6 +298,7 @@ export default {
   // Delete confirmation
   confirmDeleteFile: 'Supprimer cet élément ?',
   deleteConfirm: 'Supprimer',
+  deletingProgress: 'Suppression {done}/{total}...',
   items: 'éléments',
 
   // Errors

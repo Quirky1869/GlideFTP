@@ -150,12 +150,12 @@ If you are unsure which one to pick, use the **Debian/Ubuntu** variant - it runs
 
 ```bash
 # Debian/Ubuntu variant (recommended)
-chmod +x GlideFTP-Debian-x86_64.AppImage
-./GlideFTP-Debian-x86_64.AppImage
+chmod +x GlideFTP-Debian-x86_64-v1.7.9.AppImage
+./GlideFTP-Debian-x86_64-v1.7.9.AppImage
 
 # Arch variant
-chmod +x GlideFTP-Arch-x86_64.AppImage
-./GlideFTP-Arch-x86_64.AppImage
+chmod +x GlideFTP-Arch-x86_64-v1.7.9.AppImage
+./GlideFTP-Arch-x86_64-v1.7.9.AppImage
 ```
 
 # Build from source
@@ -194,17 +194,21 @@ cd GlideFTP
 **Using the build script (recommended):**  
 
 ```bash
-./make.sh                    # all: Linux binary + Windows exe + AppImages + .deb + .rpm
-./make.sh linux              # Linux binary only    → build/bin/linux/GlideFTP
-./make.sh windows            # Windows exe only     → build/bin/windows/GlideFTP.exe
-./make.sh appimage-arch      # Arch AppImage        → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian    # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
-./make.sh deb 1.7.6          # .deb package         → build/bin/linux/GlideFTP-Linux-v1.7.6.deb
-./make.sh rpm 1.7.6          # .rpm package         → build/bin/linux/GlideFTP-Linux-v1.7.6.rpm
-./make.sh -h                 # show all targets and options
+./make.sh all 1.7.9                 # all: Linux binary + Windows exe + AppImages + .deb + .rpm
+./make.sh linux 1.7.9               # Linux binary only      → build/bin/linux/GlideFTP-v1.7.9
+./make.sh windows 1.7.9             # Windows exe only       → build/bin/windows/GlideFTP-v1.7.9.exe
+./make.sh appimage 1.7.9            # Arch + Debian AppImages (both lines below)
+./make.sh appimage-arch 1.7.9       # Arch AppImage          → build/bin/linux/GlideFTP-Arch-x86_64-v1.7.9.AppImage
+./make.sh appimage-debian 1.7.9     # Debian/Ubuntu AppImage → build/bin/linux/GlideFTP-Debian-x86_64-v1.7.9.AppImage
+./make.sh deb 1.7.9                 # .deb package           → build/bin/linux/GlideFTP-Linux-v1.7.9.deb
+./make.sh rpm 1.7.9                 # .rpm package           → build/bin/linux/GlideFTP-Linux-v1.7.9.rpm
+./make.sh packages 1.7.9            # .deb + .rpm
+echo '1.7.9' > VERSION && ./make.sh # VERSION file: no version argument needed (no target = all)
+./make.sh -h                        # show all targets and options
 ```
 
-> `appimage` requires `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
+> The version is required for every target (it is part of every output file name), unless a `VERSION` file exists.  
+> `appimage` / `appimage-arch` require `curl`/`wget` (downloads `linuxdeploy` on first run, cached in `tools/`) and `imagemagick`.  
 > `appimage-debian`, `deb`, and `rpm` require **Docker** or **Podman**.
 
 **Manual commands:**  
@@ -224,16 +228,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 ```bash
 # Linux binary
-./build/bin/linux/GlideFTP-vX.Y.Z
+./build/bin/linux/GlideFTP-v1.7.9
 
 # Linux AppImage - Debian/Ubuntu variant (recommended)
-./build/bin/linux/GlideFTP-Debian-x86_64-vX.Y.Z.AppImage
+./build/bin/linux/GlideFTP-Debian-x86_64-v1.7.9.AppImage
 
 # Linux AppImage - Arch variant
-./build/bin/linux/GlideFTP-Arch-x86_64-vX.Y.Z.AppImage
+./build/bin/linux/GlideFTP-Arch-x86_64-v1.7.9.AppImage
 
 # Windows
-build\bin\windows\GlideFTP-vX.Y.Z.exe
+build\bin\windows\GlideFTP-v1.7.9.exe
 ```
 
 ### Releases
@@ -379,12 +383,12 @@ En cas de doute, choisissez la variante **Debian/Ubuntu** - elle est compatible 
 
 ```bash
 # Variante Debian/Ubuntu (recommandée)
-chmod +x GlideFTP-Debian-x86_64.AppImage
-./GlideFTP-Debian-x86_64.AppImage
+chmod +x GlideFTP-Debian-x86_64-v1.7.9.AppImage
+./GlideFTP-Debian-x86_64-v1.7.9.AppImage
 
 # Variante Arch
-chmod +x GlideFTP-Arch-x86_64.AppImage
-./GlideFTP-Arch-x86_64.AppImage
+chmod +x GlideFTP-Arch-x86_64-v1.7.9.AppImage
+./GlideFTP-Arch-x86_64-v1.7.9.AppImage
 ```
 
 # Compiler depuis les sources
@@ -423,17 +427,21 @@ cd GlideFTP
 **Via le script de build (recommandé) :**  
 
 ```bash
-./make.sh                    # tout : binaire Linux + exe Windows + AppImages + .deb + .rpm
-./make.sh linux              # Linux seulement       → build/bin/linux/GlideFTP
-./make.sh windows            # Windows seulement     → build/bin/windows/GlideFTP.exe
-./make.sh appimage-arch      # AppImage Arch         → build/bin/linux/GlideFTP-Arch-x86_64.AppImage
-./make.sh appimage-debian    # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64.AppImage
-./make.sh deb 1.7.6          # paquet .deb           → build/bin/linux/GlideFTP-Linux-v1.7.6.deb
-./make.sh rpm 1.7.6          # paquet .rpm           → build/bin/linux/GlideFTP-Linux-v1.7.6.rpm
-./make.sh -h                 # afficher toutes les cibles et options
+./make.sh all 1.7.9                 # tout : binaire Linux + exe Windows + AppImages + .deb + .rpm
+./make.sh linux 1.7.9               # Linux seulement        → build/bin/linux/GlideFTP-v1.7.9
+./make.sh windows 1.7.9             # Windows seulement      → build/bin/windows/GlideFTP-v1.7.9.exe
+./make.sh appimage 1.7.9            # AppImages Arch + Debian (les deux lignes suivantes)
+./make.sh appimage-arch 1.7.9       # AppImage Arch          → build/bin/linux/GlideFTP-Arch-x86_64-v1.7.9.AppImage
+./make.sh appimage-debian 1.7.9     # AppImage Debian/Ubuntu → build/bin/linux/GlideFTP-Debian-x86_64-v1.7.9.AppImage
+./make.sh deb 1.7.9                 # paquet .deb            → build/bin/linux/GlideFTP-Linux-v1.7.9.deb
+./make.sh rpm 1.7.9                 # paquet .rpm            → build/bin/linux/GlideFTP-Linux-v1.7.9.rpm
+./make.sh packages 1.7.9            # .deb + .rpm
+echo '1.7.9' > VERSION && ./make.sh # fichier VERSION : plus besoin de passer la version (sans cible = tout)
+./make.sh -h                        # afficher toutes les cibles et options
 ```
 
-> `appimage` nécessite `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  
+> La version est obligatoire pour toutes les cibles (elle fait partie de chaque nom de fichier produit), sauf si un fichier `VERSION` existe.  
+> `appimage` / `appimage-arch` nécessitent `curl`/`wget` (télécharge `linuxdeploy` au premier run, mis en cache dans `tools/`) et `imagemagick`.  
 > `appimage-debian`, `deb` et `rpm` nécessitent **Docker** ou **Podman**.
 
 **Commandes manuelles :**  
@@ -453,16 +461,16 @@ CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows wails build -platform windo
 
 ```bash
 # Binaire Linux
-./build/bin/linux/GlideFTP-vX.Y.Z
+./build/bin/linux/GlideFTP-v1.7.9
 
 # AppImage Linux - variante Debian/Ubuntu (recommandée)
-./build/bin/linux/GlideFTP-Debian-x86_64-vX.Y.Z.AppImage
+./build/bin/linux/GlideFTP-Debian-x86_64-v1.7.9.AppImage
 
 # AppImage Linux - variante Arch
-./build/bin/linux/GlideFTP-Arch-x86_64-vX.Y.Z.AppImage
+./build/bin/linux/GlideFTP-Arch-x86_64-v1.7.9.AppImage
 
 # Windows
-build\bin\windows\GlideFTP-vX.Y.Z.exe
+build\bin\windows\GlideFTP-v1.7.9.exe
 ```
 
 ### Releases

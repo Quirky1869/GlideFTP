@@ -473,7 +473,6 @@ func (a *App) buildSiteConfig(site sites.Site, password string) connection.Confi
 		AuthType:   connection.AuthType(site.AuthType),
 		SSHKeyPath: site.SSHKeyPath,
 		TimeoutSec: a.appSettings.ConnectionTimeoutSec,
-		Passive:    a.appSettings.PassiveMode,
 	}
 }
 
@@ -515,7 +514,6 @@ const testConnectionTimeoutSec = 10
 // doesn't cover a server that accepts the TCP connection but then hangs during login.
 func (a *App) TestConnection(cfg connection.Config) error {
 	cfg.TimeoutSec = testConnectionTimeoutSec
-	cfg.Passive = a.appSettings.PassiveMode
 
 	var client connection.Client
 	if cfg.Protocol == connection.ProtocolSFTP {

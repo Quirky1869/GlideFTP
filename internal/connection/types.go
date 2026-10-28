@@ -33,7 +33,6 @@ type Config struct {
 	AuthType   AuthType       `json:"authType"`
 	SSHKeyPath string         `json:"sshKeyPath"`
 	TimeoutSec int            `json:"timeoutSec"`
-	Passive    bool           `json:"passive"`
 }
 
 // ConnInfo is the public representation of an active connection, returned to the frontend.

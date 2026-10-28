@@ -15,8 +15,6 @@ type Settings struct {
 	DefaultPort                    int    `json:"defaultPort"`
 	ConnectionTimeoutSec           int    `json:"connectionTimeoutSec"`
 	ShowHiddenFiles                bool   `json:"showHiddenFiles"`
-	PassiveMode                    bool   `json:"passiveMode"`
-	AutoReconnect                  bool   `json:"autoReconnect"`
 	ConfirmOnDelete                bool   `json:"confirmOnDelete"`
 	DateFormat                     string `json:"dateFormat"`
 	MaxTransferSpeedKBps           int    `json:"maxTransferSpeedKBps"`
@@ -28,6 +26,7 @@ type Settings struct {
 	WindowWidth                    int    `json:"windowWidth"`
 	WindowHeight                   int    `json:"windowHeight"`
 	StartMaximized                 bool   `json:"startMaximized"`
+	ShowWindowSizeBadge            bool   `json:"showWindowSizeBadge"` // "W × H" badge while resizing (WindowSizeOverlay)
 	CloseSiteManagerOnClickOutside bool   `json:"closeSiteManagerOnClickOutside"`
 	DoubleClickNavigateUp          bool   `json:"doubleClickNavigateUp"`
 	NotificationSoundEnabled       bool   `json:"notificationSoundEnabled"`
@@ -52,8 +51,6 @@ func Default() *Settings {
 		DefaultPort:                    21,
 		ConnectionTimeoutSec:           60,
 		ShowHiddenFiles:                false,
-		PassiveMode:                    true,
-		AutoReconnect:                  false,
 		ConfirmOnDelete:                true,
 		DateFormat:                     "%yyyy-%MM-%dd %hh:%mm",
 		MaxTransferSpeedKBps:           0,
@@ -65,6 +62,7 @@ func Default() *Settings {
 		WindowWidth:                    1400,
 		WindowHeight:                   900,
 		StartMaximized:                 false,
+		ShowWindowSizeBadge:            true,
 		CloseSiteManagerOnClickOutside: true,
 		DoubleClickNavigateUp:          false,
 		NotificationSoundEnabled:       false,

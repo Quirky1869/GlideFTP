@@ -33,8 +33,27 @@ func (c *FTPClient) dial() (*goftp.ServerConn, error) {
 		timeout = 30 * time.Second
 	}
 
+	// The first connection dialed is the control connection: it gets an
+	// inactivity deadline (idleTimeoutConn) so a server or NAT that silently
+	// stops answering can't block a command forever - before that, a stalled
+	// DELE/LIST/NOOP held c.mu indefinitely and every later operation queued
+	// behind it. Later dials are data connections, left as the library opens
+	// them without a dial func (plain TCP: no TLS config is ever passed).
+	dialer := &net.Dialer{Timeout: timeout}
+	controlDialed := false
 	opts := []goftp.DialOption{
 		goftp.DialWithTimeout(timeout),
+		goftp.DialWithDialFunc(func(network, address string) (net.Conn, error) {
+			conn, err := dialer.Dial(network, address)
+			if err != nil {
+				return nil, err
+			}
+			if !controlDialed {
+				controlDialed = true
+				return &idleTimeoutConn{Conn: conn, timeout: timeout}, nil
+			}
+			return conn, nil
+		}),
 	}
 
 	if c.cfg.Encryption == EncryptionTLS || c.cfg.Encryption == EncryptionFTPES {
@@ -62,6 +81,30 @@ func (c *FTPClient) dial() (*goftp.ServerConn, error) {
 	return conn, nil
 }
 
+// idleTimeoutConn fails a Read or Write that makes no progress for `timeout`
+// (the "Operation timeout" setting). The deadline is renewed on every call,
+// so it bounds a single wait for the server, not a whole operation: a long
+// recursive delete keeps going as long as each reply arrives in time, and an
+// idle connection between commands never times out (nothing is reading).
+type idleTimeoutConn struct {
+	net.Conn
+	timeout time.Duration
+}
+
+func (c *idleTimeoutConn) Read(b []byte) (int, error) {
+	c.Conn.SetReadDeadline(time.Now().Add(c.timeout))
+	return c.Conn.Read(b)
+}
+
+func (c *idleTimeoutConn) Write(b []byte) (int, error) {
+	c.Conn.SetWriteDeadline(time.Now().Add(c.timeout))
+	return c.Conn.Write(b)
+}
+
+// BoundedIO marks FTPClient as never blocking forever on the network (see
+// idleTimeoutConn), so Manager.ListDir doesn't need its watchdog for it.
+func (c *FTPClient) BoundedIO() bool { return true }
+
 func (c *FTPClient) Connect() error {
 	conn, err := c.dial()
 	if err != nil {
@@ -83,7 +126,10 @@ func isConnLost(err error) bool {
 	}
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
 		errors.Is(err, net.ErrClosed) || errors.Is(err, syscall.EPIPE) ||
-		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) {
+		errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNABORTED) ||
+		// idleTimeoutConn: the server stopped answering mid-command, the
+		// textproto stream is out of sync - only a new connection is usable
+		errors.Is(err, os.ErrDeadlineExceeded) {
 		return true
 	}
 	var tpErr *textproto.Error

@@ -31,7 +31,8 @@
 
   // Resize events fire many times per second: one WindowGetSize call per frame max.
   function onResize() {
-    if (!ready || pending) return;
+    // Settings > "Afficher la taille pendant le redimensionnement" (default on)
+    if (!ready || pending || $settings?.showWindowSizeBadge === false) return;
     pending = true;
     requestAnimationFrame(async () => {
       try {

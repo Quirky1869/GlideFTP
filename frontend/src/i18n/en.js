@@ -152,14 +152,14 @@ export default {
   recentGradients: 'Recent gradients',
   transfers: 'Transfers',
   maxConcurrent: 'Max concurrent transfers',
+  maxConcurrentHint: 'How many files are sent or received at the same time (1 to 10). The others wait their turn in the "Queue" tab.\nIn FTP, each transfer opens its own connection to the server: some servers limit the number of connections per user, lower this value if transfers fail.\nThe change applies immediately.',
   transferSpeedLimit: 'Speed limit (KB/s, 0 = unlimited)',
   avgSuffix: 'avg.',
   defaultLocalDir: 'Default local directory',
   connection: 'Connection',
   defaultPort: 'Default FTP port',
   timeout: 'Operation timeout (seconds)',
-  passiveMode: 'Passive mode (PASV)',
-  autoReconnect: 'Auto-reconnect',
+  timeoutHint: 'Maximum time to wait for the server to answer, when connecting and when opening a folder. Past this delay the operation is aborted.\nThis is not an idle disconnect: an open connection is kept alive as long as the app is running.',
   notifications: 'Notifications',
   notificationSoundEnabled: 'Play a sound when a transfer finishes',
   notificationSound: 'Notification sound',
@@ -220,6 +220,7 @@ export default {
   dateTokPercent: 'Literal % character',
   windowWidth: 'Window width (px)',
   windowHeight: 'Window height (px)',
+  showWindowSizeBadge: 'Show size while resizing',
   windowSizeCurrent: 'Current window size',
   useCurrentWindowSize: 'Use current size',
   startMaximized: 'Open maximized',
@@ -276,6 +277,7 @@ export default {
 
   // Multi-connection
   maxConnections: 'Max simultaneous connections',
+  maxConnectionsHint: 'How many servers you can keep open at the same time, each in its own tab (1 to 5).\nNot to be confused with "Max concurrent transfers", which sets how many files are sent or received at the same time.',
   keepOrReplaceTitle: 'Active connection',
   keepOrReplaceMsg: 'A connection is already active. What do you want to do?',
   keepConnection: 'Keep and open new',
@@ -296,6 +298,7 @@ export default {
   // Delete confirmation
   confirmDeleteFile: 'Delete this item?',
   deleteConfirm: 'Delete',
+  deletingProgress: 'Deleting {done}/{total}...',
   items: 'items',
 
   // Errors

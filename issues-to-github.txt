@@ -4575,8 +4575,20 @@ native `<details class="confirm-details">` whose `<summary>` is the same
 tooltip `deleteShowList`). Opening it shows `.confirm-list`: one row per
 selected entry (📁/📄 icon, long names wrapped onto the next lines -
 `overflow-wrap: anywhere`, icon kept on the first line -, full path in the tooltip,
-folders in 500 weight), 320px wide, scrolling past 220px. Closed by default;
-confirm/cancel buttons and `doDeleteAll` unchanged.
+folders in 500 weight), 320px wide, scrolling past 220px. Closed by default.
+
+Progress and keyboard (follow-up): the popup used to stay open with no
+feedback until every delete and the refresh were done, so a slow server
+looked like "nothing happens", and a second click on Supprimer started a
+second `doDeleteAll` in parallel. Now `deleting = { done, total }` disables
+both buttons, shows a spinner + "Suppression 1/2..." (`deletingProgress`) on
+Supprimer, and ignores backdrop clicks / Escape until the deletes are done;
+the popup closes right after the last delete, before the refresh; `selected`
+is cleared; failures show "name : error" in the panel's error bar. The panel
+behind used to keep the keyboard focus (Enter/Delete/arrows still acted on
+it): Supprimer now gets the focus when the popup opens (`focusOnOpen`, one
+rAF) - Enter confirms, Escape cancels - `handlePanelKeydown` ignores keys
+while the popup is open, and the panel gets the focus back on close.
 
 ---
 
@@ -4654,3 +4666,119 @@ and GlideFTP-Windows-vX.Y.Z.exe.
 
 Docs: README download tables (EN/FR), v1.7.9.md download tables, CLAUDE.md,
 memo/memo.txt, memo/workflow-aur.md.
+
+---
+
+#122
+Title: [Feature] Setting to hide the window size badge shown while resizing
+Labels: enhancement
+Version fixed: v1.7.9
+Description:
+Resizing the window always shows the "W × H" badge in the middle of the
+window (WindowSizeOverlay, v1.7.8 #106). Add a switch in Settings >
+Interface, between "Window height (px)" and "Current window size", to turn
+it off. On by default, so nothing changes for existing users.
+
+Solution (closing comment):
+Implemented in v1.7.9 in internal/settings/settings.go, SettingsPanel.svelte
+and WindowSizeOverlay.svelte.
+
+New setting `showWindowSizeBadge` (Go `ShowWindowSizeBadge`, default true;
+settings.Load() unmarshals onto Default(), so older settings.json files
+without the key keep the badge). SettingsPanel: `sw` switch row "Afficher la
+taille pendant le redimensionnement" with the usual conditional ↺ reset
+button; unlike the width/height rows it is not greyed out by "Ouvrir
+maximisé" (resizing a maximized window still shows the badge).
+WindowSizeOverlay's onResize() returns early when the setting is false.
+Wails bindings regenerated (models.ts). i18n: showWindowSizeBadge.
+
+---
+
+#123
+Title: [Feature] "?" hints in Settings (connection + transfers) + remove the passive mode / auto-reconnect switches that did nothing
+Labels: enhancement
+Version fixed: v1.7.9
+Description:
+Some settings had no explanation: "Operation timeout" is easily read as an
+idle-disconnect delay, "Max simultaneous connections" as a transfer setting,
+and "Max concurrent transfers" doesn't say that each FTP transfer opens its
+own server connection. Add a "?" next to them that explains the setting on
+hover.
+
+While writing the hints, two switches of the same section turned out to have
+no effect: "Passive mode (PASV)" (jlaffaye/ftp only supports passive mode,
+the value was copied into connection.Config.Passive but never read) and
+"Auto-reconnect" (never read anywhere; the FTP control connection already
+always reconnects on its own since v1.7.8 #112). Remove them rather than
+document switches that do nothing.
+
+Solution (closing comment):
+Implemented in v1.7.9 in SettingsPanel.svelte, i18n, internal/settings,
+internal/connection/types.go, app.go and SiteManager.svelte.
+
+Hints: a "?" button (`.help-btn.hint-btn`, cursor: help) inside the label
+of "Transferts simultanés maximum", "Délai d'opération" and "Connexions
+simultanées max"; mouseenter/focus →
+`openHint(e, key)`, mouseleave/blur → `closeHint()`. One shared `hint` state
+renders a themed `position: fixed` tooltip (`.hint-tip`, accent border,
+max 320px, above the button in the lower half of the screen, below
+otherwise; `white-space: pre-line` for the paragraph break). The labels use
+`on:click|self|preventDefault` like the Recherche "?" so clicking the text
+doesn't trigger the buttons inside. i18n: maxConcurrentHint, timeoutHint,
+maxConnectionsHint.
+
+Removed: the two switch rows, `PassiveMode` / `AutoReconnect` settings (Go +
+frontend DEFAULTS; old settings.json keys are simply ignored on load),
+`connection.Config.Passive` and its assignments in app.go / SiteManager's
+TestConnection call, i18n passiveMode / autoReconnect. Wails bindings
+regenerated (models.ts).
+
+---
+
+#124
+Title: [Bug] FTP: an operation could hang forever, then the connection was dropped
+Labels: bug
+Version fixed: v1.7.9
+Description:
+Deleting files on an FTP server sometimes did nothing at all (the delete
+confirmation stayed open), and sometimes the server got disconnected a bit
+later. Same root cause as any other "frozen" FTP operation.
+
+The control connection had no read/write deadline (jlaffaye/ftp only
+applies the timeout to the dial). When the server or a NAT/router in
+between silently stopped answering, a command (DELE, LIST, the keepalive
+NOOP...) blocked forever while holding FTPClient.mu, so every following
+control operation queued behind it forever. The next folder listing then
+hit Manager.ListDir's watchdog, which after "Operation timeout" seconds
+removed the connection from the manager - without telling the frontend,
+so the tab stayed open on a connection that no longer existed. That
+watchdog also counted the time a listing waited for the control connection
+while another operation (a long recursive folder delete) legitimately used
+it, so it could drop a perfectly healthy connection.
+
+Solution (closing comment):
+Fixed in v1.7.9 in internal/connection/ftp.go and manager.go.
+
+ftp.go: dial() passes a DialWithDialFunc; the first connection it dials (the
+control connection) is wrapped in `idleTimeoutConn`, which sets a
+read/write deadline of "Operation timeout" before every Read/Write. It
+bounds each wait for the server, not a whole operation (a long recursive
+delete keeps going while replies keep coming) and never fires on an idle
+connection (nothing is reading between commands). Later dials (data
+connections) stay plain TCP, as the library opens them without a dial func.
+`os.ErrDeadlineExceeded` counts as `isConnLost`, so `control()` reconnects
+and retries once, and the keepalive reconnects - the mutex is always
+released.
+
+manager.go: clients implementing `boundedIO` (FTPClient) skip ListDir's
+watchdog, so a listing that waits behind a long operation is no longer
+mistaken for a dead connection. SFTP keeps the watchdog.
+
+Checked with a fake FTP server that never answers DELE/NOOP on the first
+connection: Delete now succeeds after ~1s (timeout 1s, reconnect + retry)
+and Keepalive releases the lock - before the fix the same test hung until
+killed; LIST through a data connection and a connection idle longer than the
+timeout still work.
+
+Also fixed the delete confirmation itself (progress, double click, focus) -
+see #119.

@@ -206,10 +206,13 @@
 
   let confirmDeleteEntries = null; // array when confirmation pending
   let deleteError = '';
+  // { done, total } while doDeleteAll runs: the dialog shows the progress and
+  // ignores clicks/keys, so a slow server can't start a second run in parallel
+  let deleting = null;
 
   function handleDelete(entries) {
     closeContext();
-    if (!entries || entries.length === 0) return;
+    if (deleting || !entries || entries.length === 0) return;
     if ($settings?.confirmOnDelete) {
       confirmDeleteEntries = entries;
     } else {
@@ -217,31 +220,52 @@
     }
   }
 
+  function cancelDelete() {
+    if (deleting) return;
+    confirmDeleteEntries = null;
+    panelEl?.focus({ preventScroll: true }); // the focused dialog button is gone
+  }
+
+  // Focus "Supprimer" when the dialog opens: keys go to the dialog (Enter
+  // confirms, Escape cancels) instead of the panel behind it, which kept the
+  // focus before and still reacted to Enter/Delete/arrows.
+  function focusOnOpen(node) {
+    requestAnimationFrame(() => node.focus());
+  }
+
   async function doDeleteAll(entries) {
+    if (deleting) return;
+    deleting = { done: 0, total: entries.length };
     deleteError = '';
     let lastError = null;
-    for (const entry of entries) {
-      try {
-        await onDelete(entry.path);
-      } catch (e) {
-        lastError = e?.message || e?.toString() || 'Delete failed';
+    try {
+      for (const entry of entries) {
+        try {
+          await onDelete(entry.path);
+        } catch (e) {
+          lastError = `${entry.name} : ${e?.message || e?.toString() || 'Delete failed'}`;
+        }
+        deleting = { ...deleting, done: deleting.done + 1 };
       }
+    } finally {
+      // Close as soon as the deletes are done, before the (possibly slow) refresh
+      confirmDeleteEntries = null;
+      deleting = null;
+      panelEl?.focus({ preventScroll: true });
     }
+    selected = [];
     if (lastError) {
       deleteError = lastError;
       setTimeout(() => { deleteError = ''; }, 4000);
     }
     if (showSearchResults) {
-      selected = [];
       await refreshAfterSearchMutation();
     } else if (treeMode) {
       treeRemoveEntries(entries);
       treeSelected = null;
-      selected = [];
     } else {
       await onRefresh();
     }
-    confirmDeleteEntries = null;
   }
 
   // ── Editable path bar ─────────────────────────────────────────────────────
@@ -765,7 +789,7 @@
   }
 
   function handlePanelKeydown(e) {
-    if (renamingEntry || editingPath) return;
+    if (renamingEntry || editingPath || confirmDeleteEntries) return;
 
     if (e.ctrlKey && e.key === 'c' && selected.length > 0) {
       e.preventDefault();
@@ -1649,8 +1673,8 @@
 
 <!-- Delete confirmation dialog -->
 {#if confirmDeleteEntries}
-  <div class="confirm-overlay" on:click|self={() => confirmDeleteEntries = null}>
-    <div class="confirm-box" on:click|stopPropagation use:trapFocus>
+  <div class="confirm-overlay" on:click|self={cancelDelete}>
+    <div class="confirm-box" on:click|stopPropagation on:keydown|stopPropagation={(e) => { if (e.key === 'Escape') cancelDelete(); }} use:trapFocus>
       <div class="confirm-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </div>
@@ -1675,8 +1699,15 @@
         </details>
       {/if}
       <div class="confirm-actions">
-        <button class="confirm-del-btn" on:click={() => doDeleteAll(confirmDeleteEntries)}>{$t('deleteConfirm')}</button>
-        <button class="confirm-cancel-btn" on:click={() => confirmDeleteEntries = null}>{$t('cancel')}</button>
+        <button class="confirm-del-btn" disabled={!!deleting} use:focusOnOpen on:click={() => doDeleteAll(confirmDeleteEntries)}>
+          {#if deleting}
+            <span class="del-spinner"></span>
+            {$t('deletingProgress').replace('{done}', deleting.done).replace('{total}', deleting.total)}
+          {:else}
+            {$t('deleteConfirm')}
+          {/if}
+        </button>
+        <button class="confirm-cancel-btn" disabled={!!deleting} on:click={cancelDelete}>{$t('cancel')}</button>
       </div>
     </div>
   </div>
@@ -2214,13 +2245,22 @@
 .confirm-del-btn {
   background: var(--danger); border: none; border-radius: 5px;
   color: white; padding: 7px 18px; font-size: 13px; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; gap: 7px;
 }
-.confirm-del-btn:hover { background: var(--danger-hover); }
+.confirm-del-btn:hover:not(:disabled) { background: var(--danger-hover); }
+.confirm-del-btn:disabled { cursor: default; opacity: 0.85; }
+.confirm-cancel-btn:disabled { cursor: default; opacity: 0.5; }
+.del-spinner {
+  width: 12px; height: 12px; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%;
+  animation: del-spin 0.75s linear infinite;
+}
+@keyframes del-spin { to { transform: rotate(360deg); } }
 .confirm-cancel-btn {
   background: var(--bg-button); border: 1px solid var(--border); border-radius: 5px;
   color: var(--text-secondary); padding: 7px 18px; font-size: 13px; cursor: pointer;
 }
-.confirm-cancel-btn:hover { background: var(--bg-button-hover); }
+.confirm-cancel-btn:hover:not(:disabled) { background: var(--bg-button-hover); }
 
 /* ── Refresh animation ── */
 .icon-btn.spinning svg {

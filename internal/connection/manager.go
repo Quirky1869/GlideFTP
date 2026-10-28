@@ -379,6 +379,10 @@ func (m *Manager) GetActiveHost() string {
 	return ""
 }
 
+// boundedIO is implemented by clients whose network calls can't block
+// forever (FTPClient: inactivity deadline on the control connection).
+type boundedIO interface{ BoundedIO() bool }
+
 func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	m.mu.Lock()
 	active := m.getActive()
@@ -396,6 +400,13 @@ func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 	}
 	if timeout <= 0 {
 		timeout = 30
+	}
+	// FTP times out on its own when the server stops answering (and then
+	// reconnects). The watchdog below would also count the time spent
+	// waiting for the control connection while another operation (a long
+	// recursive delete...) legitimately uses it, and drop a healthy connection.
+	if b, ok := client.(boundedIO); ok && b.BoundedIO() {
+		return client.ListDir(path)
 	}
 
 	type res struct {

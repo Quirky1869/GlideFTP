@@ -77,7 +77,6 @@
         authType: form.authType,
         sshKeyPath: form.sshKeyPath,
         timeoutSec: 0,
-        passive: false,
       });
       testState = 'success';
     } catch (err) {

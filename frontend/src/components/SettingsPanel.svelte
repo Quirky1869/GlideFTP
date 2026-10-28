@@ -41,6 +41,9 @@
   let showDateTip = false;
   let dateTipPos = { x: 0, y: 0, above: true };
   let now = new Date();
+  // "?" hints next to some labels: themed tooltip on hover/focus, position:
+  // fixed like the date tip so .panel-body's overflow can't clip it.
+  let hint = null; // { text, x, y, above }
 
   function syncDateAdvanced() {
     dateAdvanced = !DATE_FORMAT_PRESETS.includes(form.dateFormat);
@@ -66,6 +69,13 @@
     now = new Date();
     showDateTip = true;
   }
+
+  function openHint(e, key) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const above = r.top > window.innerHeight / 2;
+    hint = { text: $t(key), x: r.left, y: above ? r.top - 8 : r.bottom + 8, above };
+  }
+  function closeHint() { hint = null; }
 
   async function save() {
     await saveSettings(form);
@@ -161,8 +171,6 @@
     defaultPort: 21,
     connectionTimeoutSec: 60,
     showHiddenFiles: false,
-    passiveMode: true,
-    autoReconnect: false,
     confirmOnDelete: true,
     dateFormat: DEFAULT_DATE_FORMAT,
     maxTransferSpeedKBps: 0,
@@ -171,6 +179,7 @@
     windowWidth: 1400,
     windowHeight: 900,
     startMaximized: false,
+    showWindowSizeBadge: true,
     closeSiteManagerOnClickOutside: true,
     doubleClickNavigateUp: false,
     notificationSoundEnabled: false,
@@ -319,7 +328,7 @@
     <section>
       <h3>{$t('transfers')}</h3>
       <div class="setting-row">
-        <label>{$t('maxConcurrent')} <button class="reset-btn" hidden={form.maxConcurrentTransfers === DEFAULTS.maxConcurrentTransfers} on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
+        <label on:click|self|preventDefault>{$t('maxConcurrent')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConcurrentHint')} on:mouseenter={(e) => openHint(e, 'maxConcurrentHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConcurrentHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConcurrentTransfers === DEFAULTS.maxConcurrentTransfers} on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('maxConcurrentTransfers', -1, 1, 10)}>−</button>
           <input type="number" bind:value={form.maxConcurrentTransfers} min="1" max="10" />
@@ -424,7 +433,8 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('timeout')} <button class="reset-btn" hidden={form.connectionTimeoutSec === DEFAULTS.connectionTimeoutSec} on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
+        <!-- |self|preventDefault: clicking the text must not "click" the buttons inside -->
+        <label on:click|self|preventDefault>{$t('timeout')} <button type="button" class="help-btn hint-btn" aria-label={$t('timeoutHint')} on:mouseenter={(e) => openHint(e, 'timeoutHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'timeoutHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.connectionTimeoutSec === DEFAULTS.connectionTimeoutSec} on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('connectionTimeoutSec', -5, 5, 300)}>−</button>
           <input type="number" bind:value={form.connectionTimeoutSec} min="5" max="300" />
@@ -432,27 +442,7 @@
         </div>
       </div>
       <div class="setting-row">
-        <label>{$t('passiveMode')} <button class="reset-btn" hidden={form.passiveMode === DEFAULTS.passiveMode} on:click|stopPropagation={() => resetSetting('passiveMode')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.passiveMode}
-          on:click={() => toggle('passiveMode')}
-          aria-pressed={form.passiveMode}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('autoReconnect')} <button class="reset-btn" hidden={form.autoReconnect === DEFAULTS.autoReconnect} on:click|stopPropagation={() => resetSetting('autoReconnect')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.autoReconnect}
-          on:click={() => toggle('autoReconnect')}
-          aria-pressed={form.autoReconnect}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('maxConnections')} <button class="reset-btn" hidden={form.maxConnections === DEFAULTS.maxConnections} on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
+        <label on:click|self|preventDefault>{$t('maxConnections')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConnectionsHint')} on:mouseenter={(e) => openHint(e, 'maxConnectionsHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConnectionsHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConnections === DEFAULTS.maxConnections} on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
         <div class="num-input">
           <button class="num-btn" on:click={() => step('maxConnections', -1, 1, 5)}>−</button>
           <input type="number" bind:value={form.maxConnections} min="1" max="5" />
@@ -573,6 +563,16 @@
           <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', 50, 600, 2160)}>+</button>
         </div>
       </div>
+      <div class="setting-row">
+        <label>{$t('showWindowSizeBadge')} <button class="reset-btn" hidden={form.showWindowSizeBadge === DEFAULTS.showWindowSizeBadge} on:click|stopPropagation={() => resetSetting('showWindowSizeBadge')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.showWindowSizeBadge}
+          on:click={() => toggle('showWindowSizeBadge')}
+          aria-pressed={form.showWindowSizeBadge}
+        ><span class="sw-knob"></span></button>
+      </div>
       <div class="setting-row" class:row-disabled={form.startMaximized}>
         <label>{$t('windowSizeCurrent')}</label>
         <div class="current-size-row">
@@ -643,6 +643,10 @@
       <code>%dd/%MM/%yyyy %hh:%mm</code> → {formatDateWith(now, '%dd/%MM/%yyyy %hh:%mm', $locale)}
     </div>
   </div>
+{/if}
+
+{#if hint}
+  <div class="hint-tip" class:above={hint.above} style="left: {hint.x}px; top: {hint.y}px">{hint.text}</div>
 {/if}
 
 {#if showSearchIndexHelp}
@@ -921,6 +925,23 @@ input:focus { border-color: var(--accent); }
   vertical-align: middle;
 }
 .help-btn:hover, .help-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+.hint-btn { cursor: help; }
+.hint-tip {
+  position: fixed;
+  z-index: 600;
+  max-width: 320px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-line;
+  pointer-events: none;
+}
+.hint-tip.above { transform: translateY(-100%); }
 .cache-size { color: var(--text-muted); font-size: 12px; }
 .browse-btn:disabled { opacity: 0.5; cursor: default; }
 

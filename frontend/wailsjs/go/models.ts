@@ -10,7 +10,6 @@ export namespace connection {
 	    authType: string;
 	    sshKeyPath: string;
 	    timeoutSec: number;
-	    passive: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Config(source);
@@ -27,7 +26,6 @@ export namespace connection {
 	        this.authType = source["authType"];
 	        this.sshKeyPath = source["sshKeyPath"];
 	        this.timeoutSec = source["timeoutSec"];
-	        this.passive = source["passive"];
 	    }
 	}
 	export class ConnInfo {
@@ -249,8 +247,6 @@ export namespace settings {
 	    defaultPort: number;
 	    connectionTimeoutSec: number;
 	    showHiddenFiles: boolean;
-	    passiveMode: boolean;
-	    autoReconnect: boolean;
 	    confirmOnDelete: boolean;
 	    dateFormat: string;
 	    maxTransferSpeedKBps: number;
@@ -262,6 +258,7 @@ export namespace settings {
 	    windowWidth: number;
 	    windowHeight: number;
 	    startMaximized: boolean;
+	    showWindowSizeBadge: boolean;
 	    closeSiteManagerOnClickOutside: boolean;
 	    doubleClickNavigateUp: boolean;
 	    notificationSoundEnabled: boolean;
@@ -283,8 +280,6 @@ export namespace settings {
 	        this.defaultPort = source["defaultPort"];
 	        this.connectionTimeoutSec = source["connectionTimeoutSec"];
 	        this.showHiddenFiles = source["showHiddenFiles"];
-	        this.passiveMode = source["passiveMode"];
-	        this.autoReconnect = source["autoReconnect"];
 	        this.confirmOnDelete = source["confirmOnDelete"];
 	        this.dateFormat = source["dateFormat"];
 	        this.maxTransferSpeedKBps = source["maxTransferSpeedKBps"];
@@ -296,6 +291,7 @@ export namespace settings {
 	        this.windowWidth = source["windowWidth"];
 	        this.windowHeight = source["windowHeight"];
 	        this.startMaximized = source["startMaximized"];
+	        this.showWindowSizeBadge = source["showWindowSizeBadge"];
 	        this.closeSiteManagerOnClickOutside = source["closeSiteManagerOnClickOutside"];
 	        this.doubleClickNavigateUp = source["doubleClickNavigateUp"];
 	        this.notificationSoundEnabled = source["notificationSoundEnabled"];

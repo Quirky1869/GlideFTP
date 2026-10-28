@@ -259,13 +259,13 @@ Before running GlideFTP, install the WebKit2GTK library required by the applicat
 
 Then make the binary executable and run it:
 
-  chmod +x GlideFTP-Arch-x86_64.AppImage
-  ./GlideFTP-Arch-x86_64.AppImage
+  chmod +x GlideFTP-Arch-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Arch-x86_64-v@VERSION@.AppImage
 
 ## Running the AppImage
 
-  chmod +x GlideFTP-Arch-x86_64.AppImage
-  ./GlideFTP-Arch-x86_64.AppImage
+  chmod +x GlideFTP-Arch-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Arch-x86_64-v@VERSION@.AppImage
 
 ## Password Storage - Keyring
 
@@ -313,13 +313,13 @@ Avant de lancer GlideFTP, installez la bibliotheque WebKit2GTK requise :
 
 Rendez ensuite le binaire executable et lancez-le :
 
-  chmod +x GlideFTP-Arch-x86_64.AppImage
-  ./GlideFTP-Arch-x86_64.AppImage
+  chmod +x GlideFTP-Arch-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Arch-x86_64-v@VERSION@.AppImage
 
 ## Lancer l'AppImage
 
-  chmod +x GlideFTP-Arch-x86_64.AppImage
-  ./GlideFTP-Arch-x86_64.AppImage
+  chmod +x GlideFTP-Arch-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Arch-x86_64-v@VERSION@.AppImage
 
 ## Stockage des mots de passe - Keyring
 
@@ -354,6 +354,8 @@ Si aucun keyring n'est disponible, GlideFTP affiche une banniere d'avertissement
 le Gestionnaire de sites. Dans ce cas, utilisez le type d'authentification
 "Demander le mot de passe" afin que le mot de passe soit saisi a la connexion.
 EOF
+  # The AppImage keeps its versioned name inside the archive
+  sed -i "s/@VERSION@/${VERSION}/g" "$1/README.md"
 }
 
 # Write the Debian AppImage README.md into the given directory (EN + FR)
@@ -373,13 +375,13 @@ Before running GlideFTP, install the WebKit2GTK library required by the applicat
 
 Then make the binary executable and run it:
 
-  chmod +x GlideFTP-Debian-x86_64.AppImage
-  ./GlideFTP-Debian-x86_64.AppImage
+  chmod +x GlideFTP-Debian-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Debian-x86_64-v@VERSION@.AppImage
 
 ## Running the AppImage
 
-  chmod +x GlideFTP-Debian-x86_64.AppImage
-  ./GlideFTP-Debian-x86_64.AppImage
+  chmod +x GlideFTP-Debian-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Debian-x86_64-v@VERSION@.AppImage
 
 ## Password Storage - Keyring
 
@@ -427,13 +429,13 @@ Avant de lancer GlideFTP, installez la bibliotheque WebKit2GTK requise :
 
 Rendez ensuite le binaire executable et lancez-le :
 
-  chmod +x GlideFTP-Debian-x86_64.AppImage
-  ./GlideFTP-Debian-x86_64.AppImage
+  chmod +x GlideFTP-Debian-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Debian-x86_64-v@VERSION@.AppImage
 
 ## Lancer l'AppImage
 
-  chmod +x GlideFTP-Debian-x86_64.AppImage
-  ./GlideFTP-Debian-x86_64.AppImage
+  chmod +x GlideFTP-Debian-x86_64-v@VERSION@.AppImage
+  ./GlideFTP-Debian-x86_64-v@VERSION@.AppImage
 
 ## Stockage des mots de passe - Keyring
 
@@ -468,6 +470,8 @@ Si aucun keyring n'est disponible, GlideFTP affiche une banniere d'avertissement
 le Gestionnaire de sites. Dans ce cas, utilisez le type d'authentification
 "Demander le mot de passe" afin que le mot de passe soit saisi a la connexion.
 EOF
+  # The AppImage keeps its versioned name inside the archive
+  sed -i "s/@VERSION@/${VERSION}/g" "$1/README.md"
 }
 
 # 7z binary: 7z (p7zip / 7zip), 7za or 7zz (official 7-Zip for Linux)
