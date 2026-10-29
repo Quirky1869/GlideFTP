@@ -4843,3 +4843,37 @@ with the links of the latest published release even when it is not newer,
 flagged preview (a "Test" tag before the text, "Skip this version" saves
 nothing), then closes Settings so the banner is visible. i18n EN + FR. Wails
 bindings regenerated.
+
+---
+
+#126
+Title: [Feature] Keyboard shortcuts: Ctrl+A, F5, Backspace, Ctrl+F in the file panels
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+The panels already handled Delete, F2 and Ctrl+C/X/V, but not the reflexes
+of every file explorer: Ctrl+A (select all), F5 (refresh), Backspace (parent
+folder) and Ctrl+F (search).
+
+Solution (closing comment):
+Added in v1.8.0.
+
+FileBrowser.svelte handlePanelKeydown (keys of the focused panel only):
+- Ctrl+F: opens the panel's search and focuses its field; when the search is
+  already open, focuses the field and selects its text (new focusSearch()).
+- F5: same as the refresh button (handleRefresh, so the icon spins and the
+  tree view reloads in tree mode). preventDefault so the WebView never
+  reloads the page.
+- Ctrl+A: selects every entry of the list (or every search result while
+  results are shown). Does nothing in tree view, which only has a
+  single-file selection.
+- Backspace: parent folder (onNavigateUp), like the ".." row.
+Ctrl/Cmd and the letter case are both accepted (Caps Lock, Cmd on macOS).
+The refresh and search button tooltips now show "(F5)" and "(Ctrl+F)".
+
+Also fixed on the way: the panel handler also received the keys typed in
+the panel's own inputs (search field, new folder name), so Delete in the
+search field opened the delete confirmation for the selected files and
+Ctrl+C/X/V copied/pasted files instead of text. Ctrl+A/C/X/V, Backspace,
+Delete and F2 are now ignored when the key comes from an input; arrows and
+Enter keep their previous behaviour.

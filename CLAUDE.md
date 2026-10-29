@@ -9,7 +9,7 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 UI reference sketch in `_images/exemple.png`. The original French design spec (`prompt-glideftp`) was removed from the repo in commit `af4095f` - no longer present, don't reference it as an existing file.
 
 **Project tracking files** (keep in sync after each session):
-- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#125. Add new entries after each fix.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#126. Add new entries after each fix.
 
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
@@ -292,6 +292,7 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - **Multi-select**: Ctrl+click toggles, Shift+click range-selects, rubber-band (click-drag on empty area)
 - **F2 rename**: panel div is `tabindex="-1"` and focused on row click; keydown handler triggers rename on F2; every rename input (list, search results, tree, conflict-dialog rename step) uses `use:selectBaseName={isDir}` (`utils/selectBaseName.js`, v1.7.8 #103) instead of `autofocus` - pre-selects the name without its last extension (whole name for folders/dot-files), deferred one `requestAnimationFrame` because WebKit-GTK's `autofocus` selects everything
 - **Delete key**: keydown handler calls `handleDelete(selected)` - deletes the full selection
+- **Explorer shortcuts** (v1.8.0 #126, `handlePanelKeydown`, focused panel only): Ctrl+F = `focusSearch()` (opens the search, or focuses + selects its field if open), F5 = `handleRefresh()` (preventDefault so the WebView never reloads), Ctrl+A = select all of `sortedEntries` (or `sortedSearchResults` while results are shown; no-op in tree view, single selection), Backspace = `onNavigateUp()`. Ctrl or Cmd, letters lower-cased (Caps Lock). Keys coming from an input inside the panel (search field, new folder name) skip Ctrl+A/C/X/V, Backspace, Delete and F2 - before, Delete in the search field opened the delete confirmation and Ctrl+C/X/V acted on files. Arrows/Enter unchanged. Refresh/search tooltips show "(F5)" / "(Ctrl+F)"
 - **Right-click context menu**: on a file → Rename / Transfer / Delete (deletes full selection if right-clicked item is in selection); on empty area → New Folder; on a **search result** (`handleFileContextMenu(e, entry, true)` → `contextFromSearch`) two extra entries at the top: "Aller à l'emplacement" / "Ouvrir le dossier" (`goToSearchResult`: folder itself or file's parent via `parentOf`, file then selected) and "Copier le chemin" (same location, clipboard + green message) - v1.7.8 #113
 - **Delete confirmation**: `confirmDeleteEntries` (array); popup shows filename (1 item) or "N éléments" (multiple) - since v1.7.9 (#119) that badge is the `<summary>` of a `<details class="confirm-details">` that unfolds `.confirm-list` (every selected entry, scrollable); `doDeleteAll()` iterates and calls `onDelete` for each, single refresh at end. While it runs, `deleting = { done, total }` disables both buttons, shows a spinner + "Suppression 1/2..." and blocks backdrop/Escape (no second parallel run); the popup closes right after the last delete, before the refresh. Supprimer gets the focus on open (`focusOnOpen`), `handlePanelKeydown` ignores keys while the popup is open, the panel gets the focus back on close (v1.7.9, #119 follow-up)
 - **Drag & drop**: rows are `draggable`; drag data is `{ entries: [{path, name}], fromSide }` - if the dragged row is in the current selection, all selected entries are included. Drop iterates over `entries` array. Drag-drop from the OS file manager is not supported (WebKit-GTK does not expose OS drag sources to JS).
@@ -395,10 +396,6 @@ Feature ideas proposed on 2026-10-27 and kept by the user for v1.8.0 (first note
 - Aujourd'hui, si un gros fichier (une ISO de 4 Go par exemple) coupe à 90 %, "Réessayer" repart de zéro.
 - FTP (commande `REST`) et SFTP savent reprendre à l'octet près. La bibliothèque FTP utilisée le gère déjà.
 - Un bouton "Reprendre" dans les échecs, voire une reprise automatique quand le fichier partiel existe. Effort moyen.
-
-**3. Raccourcis clavier manquants**
-- Ctrl+A (tout sélectionner), F5 (rafraîchir), Retour arrière (dossier parent), Ctrl+F (recherche).
-- Ce sont des réflexes de tout explorateur de fichiers, et l'appli gère déjà Suppr, F2 et Ctrl+C/X/V. Effort faible.
 
 ### Priorité moyenne : gros gain au quotidien
 

@@ -791,31 +791,62 @@
   function handlePanelKeydown(e) {
     if (renamingEntry || editingPath || confirmDeleteEntries) return;
 
-    if (e.ctrlKey && e.key === 'c' && selected.length > 0) {
+    const ctrl = e.ctrlKey || e.metaKey;
+    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+
+    if (ctrl && key === 'f') {
       e.preventDefault();
-      copyEntries(selected);
+      focusSearch();
       return;
     }
-    if (e.ctrlKey && e.key === 'x' && selected.length > 0) {
+    if (key === 'F5') {
       e.preventDefault();
-      cutEntries(selected);
-      return;
-    }
-    if (e.ctrlKey && e.key === 'v' && $clipboard?.side === side) {
-      e.preventDefault();
-      pasteToFolder(path);
+      handleRefresh();
       return;
     }
 
-    if (e.key === 'F2' && selected.length === 1) {
-      e.preventDefault();
-      startRename(selected[0]);
-      return;
-    }
-    if (e.key === 'Delete' && selected.length > 0) {
-      e.preventDefault();
-      handleDelete(selected);
-      return;
+    // Keys typed in a panel input (search, new folder) keep their text-editing
+    // meaning - Backspace/Delete/Ctrl+A/C/X/V must not act on the files.
+    const inField = e.target.closest?.('input, textarea');
+    if (!inField) {
+      if (ctrl && key === 'a') {
+        e.preventDefault();
+        if (treeMode && !showSearchResults) return;
+        selected = [...(showSearchResults ? sortedSearchResults : sortedEntries)];
+        parentFocused = false;
+        return;
+      }
+      if (ctrl && key === 'c' && selected.length > 0) {
+        e.preventDefault();
+        copyEntries(selected);
+        return;
+      }
+      if (ctrl && key === 'x' && selected.length > 0) {
+        e.preventDefault();
+        cutEntries(selected);
+        return;
+      }
+      if (ctrl && key === 'v' && $clipboard?.side === side) {
+        e.preventDefault();
+        pasteToFolder(path);
+        return;
+      }
+      if (key === 'Backspace') {
+        e.preventDefault();
+        parentFocused = false;
+        onNavigateUp();
+        return;
+      }
+      if (key === 'F2' && selected.length === 1) {
+        e.preventDefault();
+        startRename(selected[0]);
+        return;
+      }
+      if (key === 'Delete' && selected.length > 0) {
+        e.preventDefault();
+        handleDelete(selected);
+        return;
+      }
     }
 
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -908,6 +939,15 @@
       searchMode = true;
       setTimeout(() => searchInputEl?.focus(), 0);
     }
+  }
+
+  function focusSearch() {
+    if (!searchMode) {
+      toggleSearch();
+      return;
+    }
+    searchInputEl?.focus();
+    searchInputEl?.select();
   }
 
   function closeSearch() {
@@ -1284,10 +1324,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="3" y2="18"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="9" x2="9" y2="15"/></svg>
         {/if}
       </button>
-      <button class="icon-btn" class:active={searchMode} on:click={toggleSearch} title={$t('search')}>
+      <button class="icon-btn" class:active={searchMode} on:click={toggleSearch} title={$t('search') + ' (Ctrl+F)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
-      <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh')}>
+      <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh') + ' (F5)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
       <button class="icon-btn" on:click={() => startNewFolder(path)} title={$t('newFolder')}>
