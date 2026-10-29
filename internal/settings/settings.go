@@ -39,6 +39,11 @@ type Settings struct {
 	// popup has been answered on this device.
 	SearchIndexEnabled bool `json:"searchIndexEnabled"`
 	SearchIndexAsked   bool `json:"searchIndexAsked"`
+	// Look for a newer GitHub release at startup (app_update.go).
+	// SkippedUpdateVersion: "Ignorer cette version" was clicked for it, no
+	// banner until a newer one is published.
+	CheckUpdates         bool   `json:"checkUpdates"`
+	SkippedUpdateVersion string `json:"skippedUpdateVersion"`
 }
 
 func Default() *Settings {
@@ -69,6 +74,7 @@ func Default() *Settings {
 		NotificationSound:              "chime",
 		SearchIndexEnabled:             false,
 		SearchIndexAsked:               false,
+		CheckUpdates:                   true,
 	}
 }
 

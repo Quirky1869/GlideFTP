@@ -26,6 +26,10 @@ export function CancelTransfer(arg1) {
   return window['go']['main']['App']['CancelTransfer'](arg1);
 }
 
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function ChooseAppAndOpen(arg1) {
   return window['go']['main']['App']['ChooseAppAndOpen'](arg1);
 }
@@ -108,6 +112,10 @@ export function ExportSitesPlainSelected(arg1) {
 
 export function GetActiveConnectionID() {
   return window['go']['main']['App']['GetActiveConnectionID']();
+}
+
+export function GetAppVersion() {
+  return window['go']['main']['App']['GetAppVersion']();
 }
 
 export function GetConnectionStatus() {
@@ -208,6 +216,10 @@ export function OpenLocalFile(arg1) {
 
 export function OpenRemoteFile(arg1) {
   return window['go']['main']['App']['OpenRemoteFile'](arg1);
+}
+
+export function OpenUpdateLink(arg1) {
+  return window['go']['main']['App']['OpenUpdateLink'](arg1);
 }
 
 export function QueueDownload(arg1, arg2) {

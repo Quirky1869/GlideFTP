@@ -35,6 +35,12 @@ func OpenWithDefault(path string) error {
 	return err
 }
 
+// OpenURL opens a web link in the default browser. No association check here:
+// for a URL, generic xdg-open's browser fallback is exactly what we want.
+func OpenURL(url string) error {
+	return startAndCheck("xdg-open", url)
+}
+
 // fullDesktops are the XDG_CURRENT_DESKTOP values for which xdg-open hands
 // the file to the desktop's own opener (gio open, kde-open, exo-open...).
 // Those resolve parent types (a shell script opens in the text editor) and

@@ -19,6 +19,8 @@ export function CancelSearch():Promise<void>;
 
 export function CancelTransfer(arg1:string):Promise<void>;
 
+export function CheckForUpdate():Promise<main.UpdateInfo>;
+
 export function ChooseAppAndOpen(arg1:string):Promise<void>;
 
 export function ChooseCustomSound():Promise<main.CustomSoundFile>;
@@ -60,6 +62,8 @@ export function ExportSitesPlain():Promise<void>;
 export function ExportSitesPlainSelected(arg1:Array<string>):Promise<void>;
 
 export function GetActiveConnectionID():Promise<string>;
+
+export function GetAppVersion():Promise<string>;
 
 export function GetConnectionStatus():Promise<string>;
 
@@ -110,6 +114,8 @@ export function OpenImportDialog():Promise<main.ImportFileInfo>;
 export function OpenLocalFile(arg1:string):Promise<main.OpenResult>;
 
 export function OpenRemoteFile(arg1:string):Promise<main.OpenResult>;
+
+export function OpenUpdateLink(arg1:string):Promise<void>;
 
 export function QueueDownload(arg1:string,arg2:string):Promise<void>;
 

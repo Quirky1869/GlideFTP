@@ -21,7 +21,7 @@ rsync -a \
 cd "$WORKDIR"
 
 echo "   [debian] Building wails binary…"
-wails build -tags webkit2_41
+wails build -tags webkit2_41 -ldflags "-X main.appVersion=${VERSION}"
 
 APPDIR="$(mktemp -d)/GlideFTP.AppDir"
 mkdir -p "$APPDIR/usr/bin"

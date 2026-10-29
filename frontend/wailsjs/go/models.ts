@@ -234,6 +234,32 @@ export namespace main {
 	        this.sizeBytes = source["sizeBytes"];
 	    }
 	}
+	export class UpdateInfo {
+	    current: string;
+	    latest: string;
+	    available: boolean;
+	    releaseUrl: string;
+	    kind: string;
+	    downloadUrl: string;
+	    downloadName: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current = source["current"];
+	        this.latest = source["latest"];
+	        this.available = source["available"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.kind = source["kind"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.downloadName = source["downloadName"];
+	        this.command = source["command"];
+	    }
+	}
 
 }
 
@@ -266,6 +292,8 @@ export namespace settings {
 	    customSoundName: string;
 	    searchIndexEnabled: boolean;
 	    searchIndexAsked: boolean;
+	    checkUpdates: boolean;
+	    skippedUpdateVersion: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -299,6 +327,8 @@ export namespace settings {
 	        this.customSoundName = source["customSoundName"];
 	        this.searchIndexEnabled = source["searchIndexEnabled"];
 	        this.searchIndexAsked = source["searchIndexAsked"];
+	        this.checkUpdates = source["checkUpdates"];
+	        this.skippedUpdateVersion = source["skippedUpdateVersion"];
 	    }
 	}
 

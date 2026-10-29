@@ -58,7 +58,7 @@ build_linux() {
   local version="$1"
   echo "→ Building Linux (amd64)…"
   mkdir -p build/bin/linux
-  wails build -tags webkit2_41 2>&1
+  wails build -tags webkit2_41 -ldflags "-X main.appVersion=${version}" 2>&1
   mv build/bin/GlideFTP "build/bin/linux/GlideFTP-v${version}"
   echo "   ✓ build/bin/linux/GlideFTP-v${version}"
 }
@@ -89,7 +89,7 @@ build_windows() {
   CC=x86_64-w64-mingw32-gcc \
   CGO_ENABLED=1 \
   GOOS=windows \
-  wails build -platform windows/amd64 2>&1
+  wails build -platform windows/amd64 -ldflags "-X main.appVersion=${version}" 2>&1
   mv build/bin/GlideFTP.exe "build/bin/windows/GlideFTP-v${version}.exe"
   echo "   ✓ build/bin/windows/GlideFTP-v${version}.exe"
 }

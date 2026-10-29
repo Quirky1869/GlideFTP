@@ -27,6 +27,8 @@
   import OpenedFileModal from './components/OpenedFileModal.svelte';
   import { initOpenFile } from './stores/openfile.js';
   import SearchIndexModal from './components/SearchIndexModal.svelte';
+  import UpdateBanner from './components/UpdateBanner.svelte';
+  import { checkForUpdateAtStartup } from './stores/update.js';
   import { notification, closeNotify } from './stores/notify.js';
 
   let showSettings = false;
@@ -65,6 +67,8 @@
     await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
     initOpenFile();
+    // A few seconds after startup, so the check never slows the first paint.
+    if (s?.checkUpdates) setTimeout(checkForUpdateAtStartup, 3000);
     EventsOn('connection:lost', ({ id, host }) => {
       closeTab(id);
       lostNotif = { host };
@@ -279,6 +283,9 @@
     {/if}
 
   </div>
+
+  <!-- ── New version available (above the queue, under the overlays) ── -->
+  <UpdateBanner />
 
   <!-- ── Transfer queue ─────────────────────────────────────────── -->
   {#if $queueVisible}

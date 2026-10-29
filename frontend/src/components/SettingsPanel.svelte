@@ -1,13 +1,14 @@
 <script>
   import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
-  import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex, ChooseCustomSound, InstallCustomSound, RemoveCustomSound } from '../../wailsjs/go/main/App.js';
+  import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex, ChooseCustomSound, InstallCustomSound, RemoveCustomSound, GetAppVersion } from '../../wailsjs/go/main/App.js';
   import SearchIndexModal from './SearchIndexModal.svelte';
   import { formatBytes } from '../stores/transfers.js';
   import ColorPicker from './ColorPicker.svelte';
   import { trapFocus } from '../utils/focusTrap.js';
   import { NOTIFICATION_SOUNDS, CUSTOM_SOUND_ID, MAX_SOUND_SECONDS, playNotificationSound, probeSound, setCustomSoundUrl } from '../utils/sound.js';
   import { notify } from '../stores/notify.js';
+  import { checkForUpdateNow, previewUpdateBanner } from '../stores/update.js';
   import { WindowGetSize } from '../../wailsjs/runtime/runtime.js';
   import { DEFAULT_DATE_FORMAT, SYSTEM_DATE_FORMAT, DATE_FORMAT_PRESETS, DATE_FORMAT_TOKENS, normalizeDateFormat, formatDateWith } from '../utils/dateFormat.js';
 
@@ -186,7 +187,42 @@
     notificationSound: 'chime',
     customSoundName: '',
     searchIndexEnabled: false,
+    checkUpdates: true,
   };
+
+  // ── Updates (section "Mises à jour") ──
+  // Version comes from the Go side (version.go, set at build time by make.sh).
+  let appVersion = '';
+  GetAppVersion().then(v => appVersion = v).catch(() => {});
+  let checkingUpdate = false;
+  async function checkUpdateNow() {
+    checkingUpdate = true;
+    try {
+      const info = await checkForUpdateNow();
+      if (info?.available) {
+        notify($t('updateFoundNotify').replace('{latest}', info.latest), 'success', { label: $t('updateShowBanner'), run: onClose });
+      } else {
+        notify($t('updateUpToDate').replace('{current}', info?.current || appVersion));
+      }
+    } catch (e) {
+      notify($t('updateCheckFailed') + (e ? `\n${e}` : ''), 'error');
+    } finally {
+      checkingUpdate = false;
+    }
+  }
+  // Shows the real banner (links of the latest published release), then
+  // closes Settings so it is visible.
+  async function testUpdateBanner() {
+    checkingUpdate = true;
+    try {
+      await previewUpdateBanner();
+      onClose();
+    } catch (e) {
+      notify($t('updateCheckFailed') + (e ? `\n${e}` : ''), 'error');
+    } finally {
+      checkingUpdate = false;
+    }
+  }
 
   // ── Search index (section "Recherche") ──
   let showSearchIndexHelp = false;
@@ -608,10 +644,33 @@
       </div>
     </section>
 
+    <div class="divider"></div>
+
+    <!-- Updates -->
+    <section>
+      <h3>{$t('updatesSection')}</h3>
+      <div class="setting-row">
+        <label on:click|self|preventDefault>{$t('checkUpdates')} <button type="button" class="help-btn hint-btn" aria-label={$t('checkUpdatesHint')} on:mouseenter={(e) => openHint(e, 'checkUpdatesHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'checkUpdatesHint')} on:blur={closeHint}>?</button><button type="button" class="help-btn test-banner-btn" disabled={checkingUpdate} on:click|stopPropagation={testUpdateBanner} title={$t('updateTestBannerBtn')} aria-label={$t('updateTestBannerBtn')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> <button class="reset-btn" hidden={form.checkUpdates === DEFAULTS.checkUpdates} on:click|stopPropagation={() => resetSetting('checkUpdates')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.checkUpdates}
+          on:click={() => toggle('checkUpdates')}
+          aria-pressed={form.checkUpdates}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
+        <label>{$t('currentVersion')} <span class="cache-size">v{appVersion}</span></label>
+        <button class="browse-btn" disabled={checkingUpdate} on:click={checkUpdateNow}>
+          {checkingUpdate ? $t('updateChecking') : $t('checkUpdatesNow')}
+        </button>
+      </div>
+    </section>
+
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v1.7.9</span>
+    <span class="version-badge">v{appVersion}</span>
     <button class="io-icon-btn" on:click={exportSettings} title={$t('exportSettings')} aria-label={$t('exportSettings')}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </button>
@@ -926,6 +985,10 @@ input:focus { border-color: var(--accent); }
 }
 .help-btn:hover, .help-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
 .hint-btn { cursor: help; }
+/* "Tester le bandeau" (Mises à jour): same round button as "?", with an eye */
+.test-banner-btn { display: inline-flex; align-items: center; justify-content: center; }
+.test-banner-btn svg { width: 11px; height: 11px; }
+.test-banner-btn:disabled { opacity: 0.5; cursor: default; }
 .hint-tip {
   position: fixed;
   z-index: 600;

@@ -45,6 +45,11 @@ func OpenWithDefault(path string) error {
 	return fmt.Errorf("ShellExecute failed (code %d)", ret)
 }
 
+// OpenURL opens a web link in the default browser.
+func OpenURL(url string) error {
+	return OpenWithDefault(url)
+}
+
 // OpenWithApp launches appPath with filePath as its only argument.
 func OpenWithApp(appPath, filePath string) error {
 	return exec.Command(appPath, filePath).Start()

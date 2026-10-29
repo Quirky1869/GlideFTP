@@ -4782,3 +4782,64 @@ timeout still work.
 
 Also fixed the delete confirmation itself (progress, double click, focus) -
 see #119.
+
+---
+
+#125
+Title: [Feature] Update check: banner with a direct download link when a new release is published
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+Nobody was told when a new GlideFTP version came out: Windows users in
+particular (no package manager) kept the version they downloaded once. Check
+GitHub for a newer published release and, if there is one, show a banner
+with a direct link to the file for this install (the .exe on Windows) and a
+link to the release page. The banner goes at the bottom of the window, right
+above the transfer queue when it is open, and must stay behind the Settings
+panel.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+Version: the version only existed as a hardcoded string in the Settings
+footer badge. New version.go holds `var appVersion = "1.8.0"` (bumped with
+each release) and make.sh (build_linux, build_windows) + docker/
+build-appimage.sh override it with -ldflags "-X main.appVersion=<ver>", so a
+release binary always carries its tag. GetAppVersion() feeds the badge and
+the new Settings > Updates section.
+
+app_update.go: CheckForUpdate() GETs
+api.github.com/repos/Quirky1869/GlideFTP/releases/latest (10 s timeout,
+User-Agent header required by GitHub; that endpoint never returns drafts or
+pre-releases, so nothing shows until the release is published), compares
+tag_name with appVersion number by number (1.10.0 > 1.9.0) and returns
+UpdateInfo {current, latest, available, releaseUrl, kind, downloadUrl,
+downloadName, command}. installKind() picks the asset: Windows = the .exe;
+$APPIMAGE set = the Arch or Debian AppImage archive (from the AppImage's file
+name); /usr/bin/glideftp = AUR (/etc/arch-release, command
+"yay -S glideftp-bin" instead of a link), .deb (/etc/debian_version) or .rpm
+(fedora/redhat-release); otherwise the Linux .tar.gz. OpenUpdateLink(url)
+only opens links under github.com/Quirky1869/GlideFTP/releases/, through new
+localfs.OpenURL (xdg-open via startAndCheck/cleanEnv on Linux so AppImage
+variables don't leak into the browser, ShellExecute on Windows).
+
+Settings: checkUpdates (default true) and skippedUpdateVersion.
+
+Frontend: stores/update.js (updateInfo store; checkForUpdateAtStartup is
+silent on errors and ignores the skipped version; checkForUpdateNow throws
+and always shows the banner). App.svelte runs the startup check 3 s after
+mount when checkUpdates is on. components/UpdateBanner.svelte is mounted in
+#app-root's flex column between .main-content and TransferQueue, so it sits
+at the bottom of the window, above the queue when open, and the
+position: fixed overlays (Settings, Sites, popups) cover it. Buttons:
+download (label per kind) or the yay command + copy button, "See the
+release on GitHub", "Skip this version" (saves skippedUpdateVersion), ✕
+(until next launch). Settings > Updates: switch with a "?" hint (what is
+contacted, nothing installed by itself), current version, "Check now"
+(notify: up to date / found with a "Show" button that closes Settings /
+failed), and a small round eye button right of the "?" ("Test the update
+banner" on hover): previewUpdateBanner() shows the real banner
+with the links of the latest published release even when it is not newer,
+flagged preview (a "Test" tag before the text, "Skip this version" saves
+nothing), then closes Settings so the banner is visible. i18n EN + FR. Wails
+bindings regenerated.
