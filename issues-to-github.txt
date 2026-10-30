@@ -4907,3 +4907,59 @@ swallowed the error. The local side swallowed it in refreshLocal itself:
 connection.js gets a new navigateLocal(path) that throws, used by the local
 panel's onNavigate and by navigateLocalUp; refreshLocal (startup, refresh
 after transfers/settings) still only logs, as before.
+
+---
+
+#128
+Title: [Feature] Warn before overwriting for every kind of transfer (drag and drop, tree view)
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+The transfer button (arrow at the top right of a panel) and the context
+menu "Transférer" already detected a file that exists on the other side and
+offered Replace / Rename / Cancel. Drag and drop skipped that check and
+overwrote without warning, in both directions (local → remote and
+remote → local), and so did the transfer arrow / double-click of a file in
+tree view. Drag and drop is the most common gesture, so it was the biggest
+data-loss risk of the app.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+FileBrowser.svelte: every transfer now goes through transferEntries(entries,
+target, destEntries), which runs checkConflicts and opens the existing
+conflict dialog. target = { destDir, upload } is stored in conflictState so
+Replace / Rename / Skip queue to the right folder in the right direction
+(before, doQueueTransfer always sent to the other panel's folder).
+- Transfer button, context menu, search results: unchanged defaults (other
+  panel's folder, compared with otherEntries).
+- Drop on a panel (handleDrop) and drop on a folder row / ".." / tree folder
+  (handleDropOnFolder, cross-panel case): new dropTransfer(dragged,
+  destFolder). Dropping into the panel's current folder compares with the
+  panel's own entries; dropping onto a subfolder lists it first
+  (RemoteListDir / LocalListDir) since its content isn't loaded.
+- Tree view transfer arrow / double-click (transferTreeFile): goes through
+  transferEntries too.
+Files that don't conflict are queued at once, as before.
+
+---
+
+#129
+Title: [UX] Rename: clicking elsewhere does nothing, only Enter saves the new name
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+While renaming a file or folder in a panel (F2 or right-click > Rename),
+clicking somewhere else left the input open with the new name unsaved; only
+Enter saved it. Every file explorer saves the new name when the field loses
+the focus.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+FileBrowser.svelte: the three rename inputs (list, search results, tree
+view) now call doRename on blur, like Enter. doRename ignores a second call
+(renameSaving flag, and renamingEntry must still be the entry): blur also
+fires when Enter's save removes the input, and Escape clears renamingEntry
+before its blur so cancelling still saves nothing. An unchanged or empty
+name just closes the field, as before.

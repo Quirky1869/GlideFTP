@@ -214,17 +214,7 @@
         }
       } else {
         // Cross-panel: transfer to this specific folder
-        for (const { path: srcPath, name, isDir: entryIsDir } of dragged) {
-          const dest = destFolder.replace(/\/?$/, '/') + name;
-          if (entryIsDir) {
-            if (side === 'remote') QueueUploadDir(srcPath, dest);
-            else QueueDownloadDir(srcPath, dest);
-          } else {
-            if (side === 'remote') QueueUpload(srcPath, dest);
-            else QueueDownload(srcPath, dest);
-          }
-        }
-        queueVisible.set(true);
+        await dropTransfer(dragged, destFolder);
       }
     } catch {}
   }
@@ -611,8 +601,14 @@
     closeContext();
   }
 
+  // Enter and clicking elsewhere (blur) both save, like a file explorer. The
+  // checks stop a second save: blur also fires when Enter's save removes the
+  // input, and Escape clears renamingEntry first so its blur saves nothing.
+  let renameSaving = false;
   async function doRename(entry) {
+    if (renameSaving || renamingEntry?.path !== entry.path) return;
     if (!renameValue || renameValue === entry.name) { renamingEntry = null; return; }
+    renameSaving = true;
     const sep = entry.path.includes('/') ? '/' : '\\';
     const dir = entry.path.substring(0, entry.path.lastIndexOf(sep) + 1);
     const newPath = dir + renameValue;
@@ -637,6 +633,7 @@
       }
     } catch {}
     renamingEntry = null;
+    renameSaving = false;
   }
 
   // ── New folder ────────────────────────────────────────────────────────────
@@ -696,13 +693,16 @@
 
   // ── Transfer ──────────────────────────────────────────────────────────────
 
-  function doQueueTransfer(entry, destNameOverride) {
-    const dest = otherPath.replace(/[/\\]?$/, '/') + (destNameOverride || entry.name);
+  // target = { destDir, upload }: where the entries go and in which direction.
+  // The transfer button / context menu send to the other panel's folder, a drop
+  // sends from the other panel into this one (or into one of its folders).
+  function doQueueTransfer(entry, target, destNameOverride) {
+    const dest = target.destDir.replace(/[/\\]?$/, '/') + (destNameOverride || entry.name);
     if (entry.isDir) {
-      if (side === 'local') QueueUploadDir(entry.path, dest);
+      if (target.upload) QueueUploadDir(entry.path, dest);
       else QueueDownloadDir(entry.path, dest);
     } else {
-      if (side === 'local') QueueUpload(entry.path, dest);
+      if (target.upload) QueueUpload(entry.path, dest);
       else QueueDownload(entry.path, dest);
     }
   }
@@ -711,12 +711,12 @@
 
   // conflictState:
   //   null                              → no conflict dialog
-  //   { mode:'choose', conflicts:[] }   → initial 4-button dialog
-  //   { mode:'rename', entry, remaining:[], inputVal:'', index, total } → rename input
+  //   { mode:'choose', conflicts:[], target }   → initial 4-button dialog
+  //   { mode:'rename', entry, remaining:[], inputVal:'', index, total, target } → rename input
   let conflictState = null;
 
-  function checkConflicts(entriesToTransfer) {
-    const otherNames = new Set((otherEntries || []).map(e => e.name.toLowerCase()));
+  function checkConflicts(entriesToTransfer, destEntries) {
+    const otherNames = new Set((destEntries || []).map(e => e.name.toLowerCase()));
     return {
       conflicts: entriesToTransfer.filter(e => otherNames.has(e.name.toLowerCase())),
       nonConflicts: entriesToTransfer.filter(e => !otherNames.has(e.name.toLowerCase())),
@@ -725,9 +725,9 @@
 
   function resolveConflict(action) {
     if (!conflictState || conflictState.mode !== 'choose') return;
-    const { conflicts } = conflictState;
+    const { conflicts, target } = conflictState;
     if (action === 'replace') {
-      for (const entry of conflicts) doQueueTransfer(entry);
+      for (const entry of conflicts) doQueueTransfer(entry, target);
       queueVisible.set(true);
       conflictState = null;
     } else if (action === 'rename') {
@@ -738,25 +738,26 @@
         inputVal: conflicts[0].name,
         index: 0,
         total: conflicts.length,
+        target,
       };
     }
   }
 
   function confirmRename() {
     if (!conflictState || conflictState.mode !== 'rename') return;
-    const { entry, remaining, inputVal, index, total } = conflictState;
+    const { entry, remaining, inputVal, index, total, target } = conflictState;
     const name = (inputVal || '').trim();
-    if (name) doQueueTransfer(entry, name);
-    advanceRename(remaining, index + 1, total);
+    if (name) doQueueTransfer(entry, target, name);
+    advanceRename(remaining, index + 1, total, target);
   }
 
   function skipRename() {
     if (!conflictState || conflictState.mode !== 'rename') return;
-    const { remaining, index, total } = conflictState;
-    advanceRename(remaining, index + 1, total);
+    const { remaining, index, total, target } = conflictState;
+    advanceRename(remaining, index + 1, total, target);
   }
 
-  function advanceRename(remaining, nextIndex, total) {
+  function advanceRename(remaining, nextIndex, total, target) {
     if (remaining.length > 0) {
       conflictState = {
         mode: 'rename',
@@ -765,6 +766,7 @@
         inputVal: remaining[0].name,
         index: nextIndex,
         total,
+        target,
       };
     } else {
       queueVisible.set(true);
@@ -772,12 +774,14 @@
     }
   }
 
-  function transferEntries(entries) {
+  // Every transfer (button, context menu, tree view, drag and drop) goes
+  // through here so an existing file is never overwritten without asking.
+  function transferEntries(entries, target = { destDir: otherPath, upload: side === 'local' }, destEntries = otherEntries) {
     if (!entries || !entries.length) return;
-    const { conflicts, nonConflicts } = checkConflicts(entries);
-    for (const e of nonConflicts) doQueueTransfer(e);
+    const { conflicts, nonConflicts } = checkConflicts(entries, destEntries);
+    for (const e of nonConflicts) doQueueTransfer(e, target);
     if (conflicts.length > 0) {
-      conflictState = { mode: 'choose', conflicts };
+      conflictState = { mode: 'choose', conflicts, target };
       if (nonConflicts.length > 0) queueVisible.set(true);
     } else {
       queueVisible.set(true);
@@ -792,6 +796,20 @@
   async function transferEntry(entry) {
     closeContext();
     transferEntries([entry]);
+  }
+
+  // Drop from the other panel into destFolder of this panel. A subfolder's
+  // content isn't loaded, so it is listed first to find the conflicts.
+  async function dropTransfer(dragged, destFolder) {
+    let destEntries = entries;
+    if (destFolder !== path) {
+      try {
+        destEntries = await (side === 'remote' ? RemoteListDir : LocalListDir)(destFolder);
+      } catch {
+        destEntries = [];
+      }
+    }
+    transferEntries(dragged, { destDir: destFolder, upload: side === 'remote' }, destEntries);
   }
 
   // ── Keyboard navigation ───────────────────────────────────────────────────
@@ -1183,10 +1201,7 @@
   }
 
   function transferTreeFile(node) {
-    const dest = otherPath.replace(/[/\\]?$/, '/') + node.name;
-    if (side === 'local') QueueUpload(node.path, dest);
-    else QueueDownload(node.path, dest);
-    queueVisible.set(true);
+    transferEntries([{ path: node.path, name: node.name, isDir: false }]);
   }
 
   async function autoExpandToPath(targetPath) {
@@ -1271,17 +1286,7 @@
     try {
       const { entries: dragEntries, fromSide } = JSON.parse(raw);
       if (fromSide === side) return;
-      for (const { path: srcPath, name, isDir } of dragEntries) {
-        const dest = path.replace(/[/\\]?$/, '/') + name;
-        if (isDir) {
-          if (side === 'remote') QueueUploadDir(srcPath, dest);
-          else QueueDownloadDir(srcPath, dest);
-        } else {
-          if (side === 'remote') QueueUpload(srcPath, dest);
-          else QueueDownload(srcPath, dest);
-        }
-      }
-      queueVisible.set(true);
+      await dropTransfer(dragEntries, path);
     } catch {}
   }
 </script>
@@ -1470,6 +1475,7 @@
                   bind:value={renameValue}
                   on:click|stopPropagation
                   on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  on:blur={() => doRename(entry)}
                   use:selectBaseName={entry.isDir}
                 />
               {:else}
@@ -1538,6 +1544,7 @@
                 bind:value={renameValue}
                 on:click|stopPropagation
                 on:keydown={(e) => { if (e.key === 'Enter') doRename(renamingEntry); if (e.key === 'Escape') renamingEntry = null; }}
+                on:blur={() => { if (renamingEntry) doRename(renamingEntry); }}
                 use:selectBaseName={node.isDir}
               />
             {:else}
@@ -1628,6 +1635,7 @@
                   bind:value={renameValue}
                   on:click|stopPropagation
                   on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  on:blur={() => doRename(entry)}
                   use:selectBaseName={entry.isDir}
                 />
               {:else}
