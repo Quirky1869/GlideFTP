@@ -9,7 +9,7 @@
     connections, activeConnectionId, switchTab, closeTab,
     localPath, localEntries, localSelected,
     remotePath, remoteEntries, remoteSelected,
-    initLocalDir, refreshLocal, navigateLocalUp,
+    initLocalDir, refreshLocal, navigateLocal, navigateLocalUp,
     refreshRemote,
     localMkDir, localDelete, localRename, localCopy, localSearch,
     remoteMkDir, remoteDelete, remoteRename, remoteSearch, cancelRemoteSearch,
@@ -242,7 +242,7 @@
             selected={$localSelected}
             otherPath={$remotePath}
             otherEntries={$remoteEntries}
-            onNavigate={refreshLocal}
+            onNavigate={navigateLocal}
             onNavigateUp={() => navigateLocalUp($localPath)}
             onRefresh={() => refreshLocal($localPath)}
             onMkDir={localMkDir}

@@ -78,6 +78,7 @@ export default {
   goToFileLocation: 'Aller à l\'emplacement',
   openFolderLocation: 'Ouvrir le dossier',
   copyPath: 'Copier le chemin',
+  openDirFailed: 'Impossible d\'ouvrir le dossier « {name} » : {error}',
   pathCopied: 'Chemin copié : {path}',
   searchTruncated: 'Recherche partielle : limite de dossiers parcourus atteinte. Lancez-la depuis un sous-dossier plus proche.',
   noSearchResults: 'Aucun résultat',

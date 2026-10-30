@@ -34,12 +34,17 @@ export async function initLocalDir(startDir) {
   await refreshLocal(dir);
 }
 
+// Throws when the folder can't be listed, so the panel can show the error.
+export async function navigateLocal(path) {
+  const entries = await LocalListDir(path);
+  localPath.set(path);
+  localEntries.set(entries || []);
+  localSelected.set([]);
+}
+
 export async function refreshLocal(path) {
   try {
-    const entries = await LocalListDir(path);
-    localPath.set(path);
-    localEntries.set(entries || []);
-    localSelected.set([]);
+    await navigateLocal(path);
   } catch (e) {
     console.error('Local list error', e);
   }
@@ -48,7 +53,7 @@ export async function refreshLocal(path) {
 export async function navigateLocalUp(currentPath) {
   const parent = await GetLocalParent(currentPath);
   if (parent && parent !== currentPath) {
-    await refreshLocal(parent);
+    await navigateLocal(parent);
   }
 }
 

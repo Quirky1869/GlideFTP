@@ -92,6 +92,33 @@
     pasteMsgTimer = setTimeout(() => { pasteMsg = null; }, 4000);
   }
 
+  // A folder that can't be listed (permission denied, removed...) used to fail
+  // silently: the error now shows in the orange bar. Returns false on failure.
+  async function navigate(p) {
+    try {
+      await onNavigate(p);
+      return true;
+    } catch (e) {
+      showOpenDirError(p, e);
+      return false;
+    }
+  }
+
+  async function navigateUp() {
+    try {
+      await onNavigateUp();
+    } catch (e) {
+      showOpenDirError(parentPath, e);
+    }
+  }
+
+  function showOpenDirError(p, e) {
+    const text = $t('openDirFailed')
+      .replace('{name}', folderBaseName(p))
+      .replace('{error}', e?.message || String(e));
+    showPasteMsg(text, false);
+  }
+
   // Returns a unique name like "file (copie).txt", "file (copie 1).txt", etc.
   // usedNames is a Set of names already taken (updated in-place as names are reserved).
   function uniqueCopyName(name, usedNames) {
@@ -290,7 +317,7 @@
       // Only the local side has real environment variables/~ to resolve -
       // a remote path like "$logs" or "%DATA%" is a literal server directory name.
       const target = side === 'local' ? await ExpandLocalPath(editPathValue) : editPathValue;
-      try { await onNavigate(target); } catch {}
+      await navigate(target);
     }
   }
 
@@ -483,7 +510,7 @@
   }
 
   function handleDblClick(entry) {
-    if (entry.isDir) onNavigate(entry.path);
+    if (entry.isDir) navigate(entry.path);
   }
 
   // ── Rubber-band selection ─────────────────────────────────────────────────
@@ -779,7 +806,7 @@
       parentFocused = true;
     } else {
       parentFocused = false;
-      onNavigateUp();
+      navigateUp();
     }
   }
 
@@ -834,7 +861,7 @@
       if (key === 'Backspace') {
         e.preventDefault();
         parentFocused = false;
-        onNavigateUp();
+        navigateUp();
         return;
       }
       if (key === 'F2' && selected.length === 1) {
@@ -896,9 +923,9 @@
       e.preventDefault();
       if (parentFocused) {
         parentFocused = false;
-        onNavigateUp();
+        navigateUp();
       } else if (selected.length === 1 && selected[0].isDir) {
-        onNavigate(selected[0].path);
+        navigate(selected[0].path);
       }
     }
   }
@@ -1050,7 +1077,7 @@
   async function goToSearchResult(entry) {
     closeContext();
     closeSearch();
-    await onNavigate(searchResultLocation(entry));
+    if (!(await navigate(searchResultLocation(entry)))) return;
     await tick(); // let the new folder's entries reach this component
     if (!entry.isDir) {
       const found = entries.find(e => e.path === entry.path);
@@ -1069,10 +1096,9 @@
     }
   }
 
-  function handleSearchResultDblClick(entry) {
+  async function handleSearchResultDblClick(entry) {
     if (entry.isDir) {
-      onNavigate(entry.path);
-      closeSearch();
+      if (await navigate(entry.path)) closeSearch();
     } else {
       transferEntry(entry);
     }
@@ -1278,7 +1304,7 @@
   <div class="browser-header" on:contextmenu|stopPropagation>
     <span class="side-label">{side === 'local' ? $t('local') : $t('remote')}</span>
     <div class="path-nav">
-      <button class="icon-btn" on:click={() => { if (!dblClickUp) onNavigateUp(); }} on:dblclick={onNavigateUp} title="Parent folder">
+      <button class="icon-btn" on:click={() => { if (!dblClickUp) navigateUp(); }} on:dblclick={navigateUp} title="Parent folder">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
       <div class="path-edit-wrap">
@@ -1475,7 +1501,7 @@
           class:drag-target={node.isDir && rowDragOverPath === node.path}
           style="padding-left: {8 + node.depth * 16}px"
           draggable={true}
-          on:click={() => { treeSelected = node.path; if (node.isDir) onNavigate(node.path); }}
+          on:click={() => { treeSelected = node.path; if (node.isDir) navigate(node.path); }}
           on:dblclick={() => { if (!node.isDir) transferTreeFile(node); }}
           on:dragstart={(e) => { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('application/glideftp', JSON.stringify({ entries: [{ path: node.path, name: node.name, isDir: node.isDir }], fromSide: side })); }}
           on:dragover={node.isDir ? (e) => handleRowDragOver(e, node.path) : null}
@@ -1559,7 +1585,7 @@
         class:focused={parentFocused}
         class:drag-target={rowDragOverPath === '__parent__'}
         on:click={handleParentClick}
-        on:dblclick={onNavigateUp}
+        on:dblclick={navigateUp}
         on:contextmenu|stopPropagation
         on:dragover={(e) => handleRowDragOver(e, '__parent__')}
         on:dragleave={handleRowDragLeave}

@@ -4877,3 +4877,33 @@ search field opened the delete confirmation for the selected files and
 Ctrl+C/X/V copied/pasted files instead of text. Ctrl+A/C/X/V, Backspace,
 Delete and F2 are now ignored when the key comes from an input; arrows and
 Enter keep their previous behaviour.
+
+---
+
+#127
+Title: [Bug] Opening a folder without access rights fails silently
+Labels: bug, ui
+Version fixed: v1.8.0
+Description:
+Double-clicking a folder that can't be listed (e.g. a NAS folder whose
+permissions deny everyone, FTP reply "550 /path: Permission denied", or a
+local folder without read rights) did nothing at all: no message, the panel
+just stayed where it was. FileZilla shows "Impossible de récupérer le
+contenu du dossier" with the server reply.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+FileBrowser.svelte: every navigation goes through new navigate(path) /
+navigateUp() wrappers (double-click, Enter, Backspace, "..", path bar,
+tree view, search results "go to location" / double-click). On failure they
+show the orange message bar already used by copy/paste (showPasteMsg),
+"Impossible d'ouvrir le dossier « name » : <server or OS error>" (i18n key
+openDirFailed, EN + FR), and the panel stays on the current folder. A search
+result whose folder can't be opened keeps the search open.
+
+The remote side already rejected (refreshRemote rethrows), but the panel
+swallowed the error. The local side swallowed it in refreshLocal itself:
+connection.js gets a new navigateLocal(path) that throws, used by the local
+panel's onNavigate and by navigateLocalUp; refreshLocal (startup, refresh
+after transfers/settings) still only logs, as before.

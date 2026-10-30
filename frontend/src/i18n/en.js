@@ -78,6 +78,7 @@ export default {
   goToFileLocation: 'Go to location',
   openFolderLocation: 'Open folder',
   copyPath: 'Copy path',
+  openDirFailed: 'Cannot open folder "{name}": {error}',
   pathCopied: 'Path copied: {path}',
   searchTruncated: 'Partial search: folder limit reached. Start it from a closer subfolder.',
   noSearchResults: 'No results',
