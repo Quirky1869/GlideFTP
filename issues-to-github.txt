@@ -4911,7 +4911,7 @@ after transfers/settings) still only logs, as before.
 ---
 
 #128
-Title: [Feature] Warn before overwriting for every kind of transfer (drag and drop, tree view) + real rename choices
+Title: [Feature] Warn before overwriting for every kind of transfer (drag and drop, tree view)
 Labels: enhancement
 Version fixed: v1.8.0
 Description:
@@ -4942,27 +4942,6 @@ Replace / Rename / Skip queue to the right folder in the right direction
   transferEntries too.
 Files that don't conflict are queued at once, as before.
 
-The two rename buttons of the conflict dialog did the same thing: both
-called resolveConflict('rename'), which only gave the transferred copy a new
-name at the destination ("Rename locally" on an upload actually renamed on
-the server). Their labels now follow the direction and each does what it
-says:
-- Upload: "Rename on server" (the copy arrives under the new name, the local
-  file keeps its name) / "Rename locally, then upload" (the local file is
-  renamed first, then uploaded under that name).
-- Download: "Rename locally" (the copy arrives under the new name) / "Rename
-  on server, then download" (the remote file is renamed first).
-conflictState rename mode gains renameAt ('dest' | 'source'), takenNames
-(destination names, plus the names already chosen in the batch), error and
-busy. The new name is refused when it already exists at the destination, or
-in the source folder for a source rename (renameSource lists that folder:
-a local rename would silently replace the file). Errors show in the dialog,
-which stays open; buttons, backdrop and Escape are blocked during the
-rename. The source is renamed through the panel's onRename (with the panel
-update shared with F2 rename, afterRename) or, for a drop where the dialog
-belongs to the destination panel, through localRename/remoteRename + a
-refresh of the other panel. i18n EN + FR.
-
 ---
 
 #129
@@ -4984,3 +4963,39 @@ view) now call doRename on blur, like Enter. doRename ignores a second call
 fires when Enter's save removes the input, and Escape clears renamingEntry
 before its blur so cancelling still saves nothing. An unchanged or empty
 name just closes the field, as before.
+
+---
+
+#130
+Title: [Bug] Conflict dialog: "Rename locally" and "Rename on server" did the same thing
+Labels: bug, ui
+Version fixed: v1.8.0
+Description:
+In the "File already exists" dialog, both rename buttons called
+resolveConflict('rename'), which only gave the transferred copy a new name
+at the destination: on an upload, "Rename locally" actually renamed on the
+server, and on a download "Rename on server" renamed locally. The labels
+didn't match the action, and there was no way to rename the original before
+transferring it.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+FileBrowser.svelte: the button labels now follow the direction and each does
+what it says:
+- Upload: "Rename on server" (the copy arrives under the new name, the local
+  file keeps its name) / "Rename locally, then upload" (the local file is
+  renamed first, then uploaded under that name).
+- Download: "Rename locally" (the copy arrives under the new name) / "Rename
+  on server, then download" (the remote file is renamed first).
+conflictState rename mode gains renameAt ('dest' | 'source'), takenNames
+(destination names, plus the names already chosen in the batch), error and
+busy. The new name is refused when it already exists at the destination, or
+in the source folder for a source rename (renameSource lists that folder:
+a local rename would silently replace the file). Errors show in the dialog,
+which stays open; buttons, backdrop and Escape are blocked during the
+rename. The source is renamed through the panel's onRename (with the panel
+update shared with F2 rename, afterRename) or, for a drop where the dialog
+belongs to the destination panel, through localRename/remoteRename + a
+refresh of the other panel. i18n EN + FR (EN "Rename on host" became
+"Rename locally").
