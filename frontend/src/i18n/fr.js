@@ -293,6 +293,10 @@ export default {
   conflictReplace: 'Remplacer',
   conflictRenameHost: 'Renommer localement',
   conflictRenameServer: 'Renommer sur le serveur',
+  conflictRenameLocalThenUpload: 'Renommer localement puis envoyer',
+  conflictRenameServerThenDownload: 'Renommer sur le serveur puis télécharger',
+  conflictNameTaken: 'Un élément nommé « {name} » existe déjà à destination',
+  conflictNameTakenSource: 'Un élément nommé « {name} » existe déjà dans le dossier d\'origine',
   conflictRenameTitle: 'Nouveau nom du fichier',
   conflictSkip: 'Passer',
 

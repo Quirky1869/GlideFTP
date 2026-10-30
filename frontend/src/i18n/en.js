@@ -291,8 +291,12 @@ export default {
   // Conflict resolution
   conflictTitle: 'File already exists',
   conflictReplace: 'Replace',
-  conflictRenameHost: 'Rename on host',
+  conflictRenameHost: 'Rename locally',
   conflictRenameServer: 'Rename on server',
+  conflictRenameLocalThenUpload: 'Rename locally, then upload',
+  conflictRenameServerThenDownload: 'Rename on server, then download',
+  conflictNameTaken: 'An item named "{name}" already exists at the destination',
+  conflictNameTakenSource: 'An item named "{name}" already exists in the source folder',
   conflictRenameTitle: 'New file name',
   conflictSkip: 'Skip',
 

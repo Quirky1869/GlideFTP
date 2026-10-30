@@ -1,5 +1,6 @@
 <script>
   import { tick } from 'svelte';
+  import { get } from 'svelte/store';
   import { t, locale } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
@@ -9,7 +10,10 @@
   import { formatDateWith } from '../utils/dateFormat.js';
   import { selectBaseName } from '../utils/selectBaseName.js';
   import { openEntry } from '../stores/openfile.js';
-  import { clipboard, localCopy, remoteCopy, remoteCopyDir } from '../stores/connection.js';
+  import {
+    clipboard, localCopy, remoteCopy, remoteCopyDir,
+    localRename, remoteRename, refreshLocal, refreshRemote, localPath, remotePath,
+  } from '../stores/connection.js';
 
   export let side = 'local';
   export let path = '';
@@ -609,31 +613,40 @@
     if (renameSaving || renamingEntry?.path !== entry.path) return;
     if (!renameValue || renameValue === entry.name) { renamingEntry = null; return; }
     renameSaving = true;
-    const sep = entry.path.includes('/') ? '/' : '\\';
-    const dir = entry.path.substring(0, entry.path.lastIndexOf(sep) + 1);
-    const newPath = dir + renameValue;
+    const newPath = siblingPath(entry.path, renameValue);
     try {
       await onRename(entry.path, newPath);
-      if (showSearchResults) {
-        await refreshAfterSearchMutation();
-      } else if (treeMode) {
-        const oldPath = entry.path;
-        treeNodes = treeNodes.map(n => {
-          if (n.path === oldPath) return { ...n, name: renameValue, path: newPath };
-          if (n.path.startsWith(oldPath + '/')) return { ...n, path: newPath + n.path.slice(oldPath.length) };
-          return n;
-        });
-        if (treeSelected === oldPath) treeSelected = newPath;
-        const pdir = treeParentDir(oldPath);
-        treeLoaded.delete(pdir);
-        delete treeChildrenMap[pdir];
-        if (entry.isDir) { treeLoaded.delete(oldPath); delete treeChildrenMap[oldPath]; }
-      } else {
-        await onRefresh();
-      }
+      await afterRename(entry, newPath, renameValue);
     } catch {}
     renamingEntry = null;
     renameSaving = false;
+  }
+
+  // Same folder, other name ("/a/b.txt" + "c.txt" → "/a/c.txt").
+  function siblingPath(p, name) {
+    const sep = p.includes('/') ? '/' : '\\';
+    return p.substring(0, p.lastIndexOf(sep) + 1) + name;
+  }
+
+  // Updates this panel after one of its entries was renamed.
+  async function afterRename(entry, newPath, newName) {
+    if (showSearchResults) {
+      await refreshAfterSearchMutation();
+    } else if (treeMode) {
+      const oldPath = entry.path;
+      treeNodes = treeNodes.map(n => {
+        if (n.path === oldPath) return { ...n, name: newName, path: newPath };
+        if (n.path.startsWith(oldPath + '/')) return { ...n, path: newPath + n.path.slice(oldPath.length) };
+        return n;
+      });
+      if (treeSelected === oldPath) treeSelected = newPath;
+      const pdir = treeParentDir(oldPath);
+      treeLoaded.delete(pdir);
+      delete treeChildrenMap[pdir];
+      if (entry.isDir) { treeLoaded.delete(oldPath); delete treeChildrenMap[oldPath]; }
+    } else {
+      await onRefresh();
+    }
   }
 
   // ── New folder ────────────────────────────────────────────────────────────
@@ -712,7 +725,11 @@
   // conflictState:
   //   null                              → no conflict dialog
   //   { mode:'choose', conflicts:[], target }   → initial 4-button dialog
-  //   { mode:'rename', entry, remaining:[], inputVal:'', index, total, target } → rename input
+  //   { mode:'rename', entry, remaining:[], inputVal:'', index, total, target,
+  //     renameAt, takenNames, error, busy }                → rename input
+  // renameAt 'dest' = only the transferred copy gets the new name; 'source' =
+  // the original is renamed first, then transferred under that name.
+  // takenNames = names already used at the destination (lower case).
   let conflictState = null;
 
   function checkConflicts(entriesToTransfer, destEntries) {
@@ -730,7 +747,7 @@
       for (const entry of conflicts) doQueueTransfer(entry, target);
       queueVisible.set(true);
       conflictState = null;
-    } else if (action === 'rename') {
+    } else if (action === 'rename' || action === 'renameSource') {
       conflictState = {
         mode: 'rename',
         entry: conflicts[0],
@@ -739,34 +756,86 @@
         index: 0,
         total: conflicts.length,
         target,
+        renameAt: action === 'renameSource' ? 'source' : 'dest',
+        takenNames: conflictState.takenNames,
+        error: '',
+        busy: false,
       };
     }
   }
 
-  function confirmRename() {
-    if (!conflictState || conflictState.mode !== 'rename') return;
-    const { entry, remaining, inputVal, index, total, target } = conflictState;
+  async function confirmRename() {
+    if (!conflictState || conflictState.mode !== 'rename' || conflictState.busy) return;
+    const { entry, inputVal, target, renameAt, takenNames } = conflictState;
     const name = (inputVal || '').trim();
-    if (name) doQueueTransfer(entry, target, name);
-    advanceRename(remaining, index + 1, total, target);
+    if (!name) {
+      advanceRename(conflictState);
+      return;
+    }
+    // The new name must not clash at the destination either.
+    if (takenNames.includes(name.toLowerCase())) {
+      conflictState = { ...conflictState, error: $t('conflictNameTaken').replace('{name}', name) };
+      return;
+    }
+    if (renameAt === 'source') {
+      conflictState = { ...conflictState, busy: true, error: '' };
+      try {
+        const renamed = await renameSource(entry, target.upload, name);
+        doQueueTransfer(renamed, target);
+      } catch (e) {
+        conflictState = { ...conflictState, busy: false, error: e?.message || String(e) };
+        return;
+      }
+    } else {
+      doQueueTransfer(entry, target, name);
+    }
+    advanceRename(conflictState, [...takenNames, name.toLowerCase()]);
   }
 
   function skipRename() {
-    if (!conflictState || conflictState.mode !== 'rename') return;
-    const { remaining, index, total, target } = conflictState;
-    advanceRename(remaining, index + 1, total, target);
+    if (!conflictState || conflictState.mode !== 'rename' || conflictState.busy) return;
+    advanceRename(conflictState);
   }
 
-  function advanceRename(remaining, nextIndex, total, target) {
+  function closeConflict() {
+    if (!conflictState?.busy) conflictState = null;
+  }
+
+  // Renames the original (local for an upload, remote for a download) before
+  // it is transferred. Refuses a name already used in its folder: a local
+  // rename would silently replace that file. Returns the renamed entry.
+  async function renameSource(entry, upload, name) {
+    const newPath = siblingPath(entry.path, name);
+    const siblings = await (upload ? LocalListDir : RemoteListDir)(siblingPath(entry.path, ''));
+    if ((siblings || []).some(e => e.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error($t('conflictNameTakenSource').replace('{name}', name));
+    }
+    if ((upload ? 'local' : 'remote') === side) {
+      await onRename(entry.path, newPath);
+      await afterRename(entry, newPath, name);
+    } else {
+      // Drop: the dialog belongs to the destination panel, the source is the other one.
+      await (upload ? localRename : remoteRename)(entry.path, newPath);
+      try {
+        if (upload) await refreshLocal(get(localPath));
+        else await refreshRemote(get(remotePath));
+      } catch {}
+    }
+    return { ...entry, path: newPath, name };
+  }
+
+  function advanceRename(prev, takenNames = prev.takenNames) {
+    const { remaining } = prev;
     if (remaining.length > 0) {
       conflictState = {
-        mode: 'rename',
+        ...prev,
         entry: remaining[0],
         remaining: remaining.slice(1),
         inputVal: remaining[0].name,
-        index: nextIndex,
-        total,
-        target,
+        index: prev.index + 1,
+        takenNames,
+        error: '',
+        busy: false,
       };
     } else {
       queueVisible.set(true);
@@ -781,7 +850,8 @@
     const { conflicts, nonConflicts } = checkConflicts(entries, destEntries);
     for (const e of nonConflicts) doQueueTransfer(e, target);
     if (conflicts.length > 0) {
-      conflictState = { mode: 'choose', conflicts, target };
+      const takenNames = [...(destEntries || []), ...nonConflicts].map(e => e.name.toLowerCase());
+      conflictState = { mode: 'choose', conflicts, target, takenNames };
       if (nonConflicts.length > 0) queueVisible.set(true);
     } else {
       queueVisible.set(true);
@@ -1789,7 +1859,7 @@
 
 <!-- Conflict resolution dialog -->
 {#if conflictState}
-  <div class="confirm-overlay" on:click|self={() => conflictState = null}>
+  <div class="confirm-overlay" on:click|self={closeConflict}>
     <div class="confirm-box" on:click|stopPropagation use:trapFocus>
 
       {#if conflictState.mode === 'choose'}
@@ -1806,8 +1876,8 @@
         </div>
         <div class="conflict-actions">
           <button class="conflict-replace-btn" on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
-          <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameHost')}</button>
-          <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t('conflictRenameServer')}</button>
+          <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t(conflictState.target.upload ? 'conflictRenameServer' : 'conflictRenameHost')}</button>
+          <button class="conflict-rename-btn" on:click={() => resolveConflict('renameSource')}>{$t(conflictState.target.upload ? 'conflictRenameLocalThenUpload' : 'conflictRenameServerThenDownload')}</button>
           <button class="confirm-cancel-btn" on:click={() => conflictState = null}>{$t('cancel')}</button>
         </div>
 
@@ -1821,13 +1891,16 @@
             class="conflict-rename-input"
             type="text"
             bind:value={conflictState.inputVal}
-            on:keydown={(e) => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') conflictState = null; }}
+            on:keydown={(e) => { if (e.key === 'Enter') confirmRename(); if (e.key === 'Escape') closeConflict(); }}
             use:selectBaseName={conflictState.entry?.isDir}
           />
         {/key}
+        {#if conflictState.error}
+          <div class="conflict-error">{conflictState.error}</div>
+        {/if}
         <div class="confirm-actions">
-          <button class="conflict-replace-btn" on:click={confirmRename}>{$t('save')}</button>
-          <button class="confirm-cancel-btn" on:click={skipRename}>{$t('conflictSkip')}</button>
+          <button class="conflict-replace-btn" on:click={confirmRename} disabled={conflictState.busy}>{$t('save')}</button>
+          <button class="confirm-cancel-btn" on:click={skipRename} disabled={conflictState.busy}>{$t('conflictSkip')}</button>
         </div>
       {/if}
 
@@ -2348,6 +2421,11 @@
 
 /* ── Conflict resolution ── */
 .conflict-warn-icon svg { width: 36px; height: 36px; color: #f59e0b; }
+.conflict-error {
+  font-size: 12px;
+  color: var(--danger);
+  text-align: center;
+}
 .conflict-progress {
   font-size: 12px;
   color: var(--text-muted);
