@@ -4897,10 +4897,18 @@ Fixed in v1.8.0.
 FileBrowser.svelte: every navigation goes through new navigate(path) /
 navigateUp() wrappers (double-click, Enter, Backspace, "..", path bar,
 tree view, search results "go to location" / double-click). On failure they
-show the orange message bar already used by copy/paste (showPasteMsg),
+show the message bar already used by copy/paste, in red,
 "Impossible d'ouvrir le dossier « name » : <server or OS error>" (i18n key
 openDirFailed, EN + FR), and the panel stays on the current folder. A search
 result whose folder can't be opened keeps the search open.
+
+Message bar colors: showPasteMsg(text, kind) now takes a kind instead of an
+ok boolean. 'ok' = green (copy/cut/paste done, path copied), 'error' = red
+(.paste-msg-bar default: background var(--danger) + white text, the same as
+the panel's .error-bar, follows the theme), used for a folder that can't be
+opened; 'warn' = orange (.paste-warn, the former colors), kept on purpose by
+the user for a failed paste and a path that can't be copied. Before, every
+failure was orange, which read like a warning.
 
 The remote side already rejected (refreshRemote rethrows), but the panel
 swallowed the error. The local side swallowed it in refreshLocal itself:

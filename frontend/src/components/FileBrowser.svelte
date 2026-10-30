@@ -53,7 +53,7 @@
   let contextFromSearch = false; // right-click on a search result: extra "go to" / "copy path" entries
   let dragOver = false;
   let rowDragOverPath = null; // path of the folder row currently hovered during drag
-  let pasteMsg = null; // { text, ok } - green if ok, orange if !ok
+  let pasteMsg = null; // { text, kind } - kind 'ok' green, 'warn' orange (failed paste / path copy), 'error' red
   let panelEl;
   let fileListEl;
 
@@ -84,20 +84,20 @@
     const text = ents.length === 1
       ? $t(key + 'One').replace('{name}', ents[0].name)
       : $t(key + 'Many').replace('{n}', ents.length);
-    showPasteMsg(text, true);
+    showPasteMsg(text, 'ok');
   }
 
   // One shared timer: a new message restarts the 4s countdown instead of
   // being erased early by the previous message's pending timeout.
   let pasteMsgTimer = null;
-  function showPasteMsg(text, ok) {
-    pasteMsg = { text, ok };
+  function showPasteMsg(text, kind) {
+    pasteMsg = { text, kind };
     clearTimeout(pasteMsgTimer);
     pasteMsgTimer = setTimeout(() => { pasteMsg = null; }, 4000);
   }
 
   // A folder that can't be listed (permission denied, removed...) used to fail
-  // silently: the error now shows in the orange bar. Returns false on failure.
+  // silently: the error now shows in the red bar. Returns false on failure.
   async function navigate(p) {
     try {
       await onNavigate(p);
@@ -120,7 +120,7 @@
     const text = $t('openDirFailed')
       .replace('{name}', folderBaseName(p))
       .replace('{error}', e?.message || String(e));
-    showPasteMsg(text, false);
+    showPasteMsg(text, 'error');
   }
 
   // Returns a unique name like "file (copie).txt", "file (copie 1).txt", etc.
@@ -174,12 +174,12 @@
         if (cb.operation === 'cut') treeRemoveEntries(cb.entries);
         await treeRefreshDir(destFolder);
       }
-      showPasteMsg($t(cb.operation === 'cut' ? 'cutDone' : 'copyDone'), true);
+      showPasteMsg($t(cb.operation === 'cut' ? 'cutDone' : 'copyDone'), 'ok');
     } catch (e) {
       stopProgress();
       await onRefresh();
       if (treeMode) await treeRefreshDir(destFolder);
-      showPasteMsg(e?.message || String(e), false);
+      showPasteMsg(e?.message || String(e), 'warn');
     }
   }
 
@@ -1178,9 +1178,9 @@
     const text = searchResultLocation(entry);
     try {
       await navigator.clipboard.writeText(text);
-      showPasteMsg($t('pathCopied').replace('{path}', text), true);
+      showPasteMsg($t('pathCopied').replace('{path}', text), 'ok');
     } catch (e) {
-      showPasteMsg(e?.message || String(e), false);
+      showPasteMsg(e?.message || String(e), 'warn');
     }
   }
 
@@ -1450,7 +1450,7 @@
     <div class="error-bar">{deleteError}</div>
   {/if}
   {#if pasteMsg}
-    <div class="paste-msg-bar" class:paste-ok={pasteMsg.ok}>{pasteMsg.text}</div>
+    <div class="paste-msg-bar" class:paste-ok={pasteMsg.kind === 'ok'} class:paste-warn={pasteMsg.kind === 'warn'}>{pasteMsg.text}</div>
   {/if}
 
   {#if newFolderMode}
@@ -2076,6 +2076,10 @@
   font-size: 12px;
   padding: 4px 10px;
   flex-shrink: 0;
+  background: var(--danger);
+  color: white;
+}
+.paste-msg-bar.paste-warn {
   background: #7a3a00;
   color: #ffd0a0;
 }
