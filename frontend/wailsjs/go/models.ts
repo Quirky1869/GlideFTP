@@ -330,6 +330,10 @@ export namespace settings {
 	    checkUpdates: boolean;
 	    skippedUpdateVersion: string;
 	    syncCreateMissing: boolean;
+	    compareBy: string;
+	    compareHideIdentical: boolean;
+	    compareAlign: boolean;
+	    caseSensitiveSort: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -366,6 +370,10 @@ export namespace settings {
 	        this.checkUpdates = source["checkUpdates"];
 	        this.skippedUpdateVersion = source["skippedUpdateVersion"];
 	        this.syncCreateMissing = source["syncCreateMissing"];
+	        this.compareBy = source["compareBy"];
+	        this.compareHideIdentical = source["compareHideIdentical"];
+	        this.compareAlign = source["compareAlign"];
+	        this.caseSensitiveSort = source["caseSensitiveSort"];
 	    }
 	}
 

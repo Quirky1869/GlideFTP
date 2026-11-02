@@ -4847,13 +4847,13 @@ bindings regenerated.
 ---
 
 #126
-Title: [Feature] Keyboard shortcuts: Ctrl+A, F5, Backspace, Ctrl+F in the file panels
+Title: [Feature] Keyboard shortcuts: Ctrl+A, F5, Backspace, Ctrl+F, Ctrl+Shift+N in the file panels
 Labels: enhancement
 Version fixed: v1.8.0
 Description:
 The panels already handled Delete, F2 and Ctrl+C/X/V, but not the reflexes
 of every file explorer: Ctrl+A (select all), F5 (refresh), Backspace (parent
-folder) and Ctrl+F (search).
+folder), Ctrl+F (search) and Ctrl+Shift+N (new folder).
 
 Solution (closing comment):
 Added in v1.8.0.
@@ -4868,6 +4868,11 @@ FileBrowser.svelte handlePanelKeydown (keys of the focused panel only):
   results are shown). Does nothing in tree view, which only has a
   single-file selection.
 - Backspace: parent folder (onNavigateUp), like the ".." row.
+- Ctrl+Shift+N: new folder in the current folder; when exactly one folder
+  is selected (mouse or keyboard, list view), the same "create it here or
+  in the selected folder?" dialog as the right-click "New folder" on a
+  folder (requestNewFolderForEntry). The new folder button's tooltip shows
+  "(Ctrl+Shift+N)".
 Ctrl/Cmd and the letter case are both accepted (Caps Lock, Cmd on macOS).
 The refresh and search button tooltips now show "(F5)" and "(Ctrl+F)".
 
@@ -5314,7 +5319,8 @@ the same name, and ".." goes up on both sides. Handy to keep a local copy
 of a site in step with the server.
 
 - Toggle: link button in the header of both panels (accent when on) or
-  Ctrl+Y (FileZilla's shortcut; ignored in text fields, where it is redo).
+  Ctrl+Y (FileZilla's shortcut; works wherever the focus is, ignored in
+  text fields, where it is redo, and with a window open on top).
   Session only; turned off on tab switch and disconnect.
 - Folder missing on the other side: dialog "The local folder « path » does
   not exist." (or "... on the server") with 3 choices: create it and open it
@@ -5340,3 +5346,79 @@ localMkDir / remoteMkDir before the other panel follows (followSync, a
 failure turns sync off with a red message). SyncMissingModal.svelte
 (button radios, trapFocus, Escape = cancel). Setting syncCreateMissing.
 i18n EN + FR.
+
+---
+
+#139
+Title: [Feature] Compare the two panels (Ctrl+O), FileZilla colours
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+v1.8.0 point 5, like FileZilla's "Directory comparison": colours the
+entries of both panels that differ, to see at once what is left to send
+when updating a site.
+
+- Toggle: two-columns button in the header of both panels (accent when on)
+  or Ctrl+O (FileZilla's shortcut, works wherever the focus is, not while
+  typing in a field or with a window open on top). Session only.
+- FileZilla's colours, on purpose (users must not be lost): yellow = only
+  on this side, green = newer than the other side's file (comparison by
+  date), red = different size (comparison by size). No colour = identical.
+- A legend strip under the panels while it is on (FileZilla has none) and
+  a tooltip on each coloured row with the reason ("Newer here (02/11 14:32
+  vs 28/10 09:10)", "Different size: 4.0 GB here, 3.6 GB on the server").
+- Settings: new section "Panel comparison (Ctrl+O)" with a "?" recalling
+  the colours: compare by size (default) or date, "Hide identical files",
+  "Align the rows of both panels (like FileZilla)" (off by default): both
+  panels show the same names on the same lines, sorted by name, with an
+  empty line where a name only exists on the other side, and the two
+  lists scroll together.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+utils/compare.js compareEntries(): name match (case-insensitive when one
+side is a Windows folder); a file vs a folder of the same name = only on
+this side; folders on both sides never marked. Date: 1-minute tolerance
+(FTP LIST is often minute-precise), a midnight time (date-only listing
+of old files) compares by day. stores/compare.js (compareMode, off on
+disconnect). FileBrowser: cmpMarks for the list view (not tree / search
+results), row classes + title, hide identical (folders kept, "No
+difference" message), Ctrl+O, header button. CompareLegend.svelte under
+the panels. CSS vars --cmp-only/newer/size (+ -bg) for dark and light
+themes. Settings compareBy / compareHideIdentical / compareAlign.
+Alignment: alignEntries() = union of both panels' names (folders then
+files, compareNames order), gaps { gap, key } for names missing here;
+with "hide identical", a file stays when marked on either side so both
+panels keep the same rows. sortedEntries follows the aligned order
+(keyboard), gap rows have the row height and no interaction; scroll
+synced through stores/compare.js alignedScroll. i18n EN + FR.
+
+Next (user's request): "Send the differences" - select the coloured files
+of a panel in one click and transfer them.
+
+---
+
+#140
+Title: [Feature] Option: sort names like FileZilla (upper case first)
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+FileZilla sorts names character by character: names starting with a dot,
+then UPPER CASE names, then lower case ones (Bureau, Documents, VirtualBox
+VMs, then aur, docker...; on a server: Recovery, _Archive, refonte-pc).
+GlideFTP mixes upper and lower case like a file explorer. Users coming
+from FileZilla asked for its order as an option.
+
+New switch in Settings > Interface, "Sort names like FileZilla (upper
+case first)", with a "?" showing both orders. Off by default: the order
+stays as before. Folders stay above files either way.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+utils/sortNames.js compareNames(a, b, strict): strict = code-point order
+(a < b), else localeCompare with base sensitivity (unchanged). Used by
+every name sort of FileBrowser.svelte: list (name column), search
+results, tree view children, favourites block. Setting caseSensitiveSort
+(Go settings.go + SettingsPanel DEFAULTS, reset button). i18n EN + FR.

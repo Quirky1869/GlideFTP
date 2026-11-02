@@ -24,6 +24,14 @@
   --danger-hover:   #C83C3C;
   --success:        #52C87A;
 
+  /* Panel comparison (v1.8.0 point 5) - FileZilla's yellow / green / red */
+  --cmp-only:       #E8C547;
+  --cmp-only-bg:    rgba(232, 197, 71, 0.16);
+  --cmp-newer:      #4CC46E;
+  --cmp-newer-bg:   rgba(76, 196, 110, 0.16);
+  --cmp-size:       #E5534B;
+  --cmp-size-bg:    rgba(229, 83, 75, 0.17);
+
   color-scheme: dark;
 }
 
@@ -50,6 +58,13 @@
   --danger:         #D94040;
   --danger-hover:   #BC2C2C;
   --success:        #38A85C;
+
+  --cmp-only:       #D4A80F;
+  --cmp-only-bg:    rgba(240, 200, 40, 0.26);
+  --cmp-newer:      #2E9E50;
+  --cmp-newer-bg:   rgba(60, 180, 90, 0.20);
+  --cmp-size:       #D0362E;
+  --cmp-size-bg:    rgba(220, 60, 50, 0.16);
 
   color-scheme: light;
 }

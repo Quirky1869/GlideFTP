@@ -18,6 +18,9 @@
   } from '../stores/connection.js';
   import { favorites, favKey, isFavorite, addFavorites, removeFavorites } from '../stores/favorites.js';
   import { syncBrowsing, toggleSyncBrowsing, planSync } from '../stores/syncBrowse.js';
+  import { compareMode, toggleCompare, alignedScroll } from '../stores/compare.js';
+  import { compareEntries, alignEntries } from '../utils/compare.js';
+  import { compareNames } from '../utils/sortNames.js';
 
   export let side = 'local';
   export let path = '';
@@ -400,12 +403,58 @@
   let sortKey = 'name';
   let sortDir = 'asc';
 
+  // Panel comparison (v1.8.0 point 5, Ctrl+O): path → { kind, here, there }
+  // for the entries that differ from the other panel's (list view only).
+  // A Windows folder on either side compares names case-insensitively.
+  $: cmpMarks = $compareMode && !treeMode
+    ? compareEntries(entries, otherEntries, $settings?.compareBy === 'date' ? 'date' : 'size',
+        /^[A-Za-z]:/.test(path) || /^[A-Za-z]:/.test(otherPath || ''))
+    : null;
+  // "Hide identical files": folders always stay, to keep browsing.
+  $: cmpHide = !!cmpMarks && !!$settings?.compareHideIdentical;
+
+  // "Align the rows of both panels" (FileZilla): every name of both sides,
+  // with gaps where it is missing here, in the same order in both panels
+  // (by name, whatever the column sort), and the two lists scroll together.
+  $: cmpCaseInsensitive = /^[A-Za-z]:/.test(path) || /^[A-Za-z]:/.test(otherPath || '');
+  $: alignRows = cmpMarks && $settings?.compareAlign && !showSearchResults
+    ? alignEntries(entries, otherEntries, cmpMarks,
+        compareEntries(otherEntries, entries, $settings?.compareBy === 'date' ? 'date' : 'size', cmpCaseInsensitive),
+        cmpHide, cmpCaseInsensitive, (a, b) => compareNames(a, b, strictSort))
+    : null;
+
+  function onListScroll() {
+    if (alignRows && fileListEl) alignedScroll.set({ side, top: fileListEl.scrollTop });
+  }
+  $: if (alignRows && fileListEl && $alignedScroll.side && $alignedScroll.side !== side
+         && Math.abs(fileListEl.scrollTop - $alignedScroll.top) > 1) {
+    fileListEl.scrollTop = $alignedScroll.top;
+  }
+
+  // Reason of a row's colour, for its tooltip.
+  function cmpTitle(mark, t, fmt, loc) {
+    if (!mark) return null;
+    if (mark.kind === 'only') return t('cmpOnlyHere');
+    if (mark.kind === 'newer') {
+      return t('cmpNewer').replace('{here}', formatDate(mark.here, fmt, loc)).replace('{there}', formatDate(mark.there, fmt, loc));
+    }
+    return t(side === 'local' ? 'cmpSizeLocal' : 'cmpSizeRemote')
+      .replace('{here}', formatBytes(mark.here)).replace('{there}', formatBytes(mark.there));
+  }
+
+  // "Sort names like FileZilla" setting (case-sensitive, upper case first).
+  $: strictSort = !!$settings?.caseSensitiveSort;
+
   $: sortedEntries = (() => {
-    const dirs = entries.filter(e => e.isDir);
-    const files = entries.filter(e => !e.isDir);
+    // Aligned comparison: same order as the rows shown (gaps left out), so
+    // the keyboard moves through the rows as they appear.
+    if (alignRows) return alignRows.filter(r => !r.gap);
+    const shown = cmpHide ? entries.filter(e => e.isDir || cmpMarks.has(e.path)) : entries;
+    const dirs = shown.filter(e => e.isDir);
+    const files = shown.filter(e => !e.isDir);
     const cmp = (a, b) => {
       let v = 0;
-      if (sortKey === 'name') v = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      if (sortKey === 'name') v = compareNames(a.name, b.name, strictSort);
       else if (sortKey === 'size') v = (a.size || 0) - (b.size || 0);
       else if (sortKey === 'date') v = (new Date(a.modTime || 0)) - (new Date(b.modTime || 0));
       return sortDir === 'asc' ? v : -v;
@@ -1074,12 +1123,17 @@
     // meaning - Backspace/Delete/Ctrl+A/C/X/V must not act on the files.
     const inField = e.target.closest?.('input, textarea');
     if (!inField) {
-      // Synchronized browsing on/off, like FileZilla (in a field Ctrl+Y is redo).
-      if (ctrl && key === 'y') {
+      // New folder. One folder selected: ask whether to create it here or
+      // inside that folder, like the right-click "New folder" on a folder.
+      if (ctrl && e.shiftKey && key === 'n') {
         e.preventDefault();
-        toggleSyncBrowsing();
+        const one = !parentFocused && !treeMode && selected.length === 1 ? selected[0] : null;
+        if (one?.isDir) requestNewFolderForEntry(one);
+        else startNewFolder(path);
         return;
       }
+      // Ctrl+O (compare) and Ctrl+Y (synchronized browsing) are global:
+      // App.svelte's handleKeydown, so they work outside the panels too.
       if (ctrl && key === 'a') {
         e.preventDefault();
         if (treeMode && !showSearchResults) return;
@@ -1200,7 +1254,7 @@
   $: searchDisplayResults = searchRecursive ? searchResults : nonRecursiveResults;
   $: sortedSearchResults = [...searchDisplayResults].sort((a, b) => {
     if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    return compareNames(a.name, b.name, strictSort);
   });
 
   function toggleSearch() {
@@ -1334,7 +1388,7 @@
   $: favListKey = favKey(side, $activeConnectionConfig);
   $: favList = (favListKey ? ($favorites[favListKey] || []) : [])
     .map(f => ({ ...f, name: folderBaseName(f.path) }))
-    .sort((a, b) => (b.isDir - a.isDir) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    .sort((a, b) => (b.isDir - a.isDir) || compareNames(a.name, b.name, strictSort));
   $: pathIsFavorite = isFavorite($favorites, favListKey, path);
 
   const favCollapsedKey = `glideftp_fav_collapsed_${side}`;
@@ -1442,7 +1496,7 @@
     try {
       const fn = side === 'local' ? LocalListDir : RemoteListDir;
       const list = await fn(dirPath);
-      const cmp = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      const cmp = (a, b) => compareNames(a.name, b.name, strictSort);
       const dirs  = (list || []).filter(e =>  e.isDir).sort(cmp);
       const files = (list || []).filter(e => !e.isDir).sort(cmp);
       const all = [...dirs, ...files];
@@ -1672,6 +1726,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="3" y2="18"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="9" x2="9" y2="15"/></svg>
         {/if}
       </button>
+      <button class="icon-btn" class:active={$compareMode} on:click={toggleCompare} title={($compareMode ? $t('compareOff') : $t('compareOn')) + ' (Ctrl+O)'}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/><line x1="5.5" y1="9" x2="7.5" y2="9"/><line x1="16.5" y1="9" x2="18.5" y2="9"/><line x1="5.5" y1="13" x2="7.5" y2="13"/><line x1="16.5" y1="13" x2="18.5" y2="13"/></svg>
+      </button>
       <button class="icon-btn" class:active={$syncBrowsing} on:click={toggleSyncBrowsing} title={($syncBrowsing ? $t('syncBrowsingOff') : $t('syncBrowsingOn')) + ' (Ctrl+Y)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </button>
@@ -1681,7 +1738,7 @@
       <button class="icon-btn" class:spinning={refreshing} on:click={handleRefresh} title={$t('refresh') + ' (F5)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
-      <button class="icon-btn" on:click={() => startNewFolder(path)} title={$t('newFolder')}>
+      <button class="icon-btn" on:click={() => startNewFolder(path)} title={$t('newFolder') + ' (Ctrl+Shift+N)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
       </button>
       {#if selected.length > 0}
@@ -1925,6 +1982,7 @@
       class:fixed-cols={colW.name}
       bind:this={fileListEl}
       on:mousedown={handleListMouseDown}
+      on:scroll={onListScroll}
     >
       <div class="file-list-header" on:contextmenu|stopPropagation>
         <span class="col-name col-sortable" on:click={() => toggleSort('name')}>
@@ -1961,12 +2019,25 @@
         <span class="col-date"></span>
       </div>
 
-      {#if entries.length === 0}
+      {#if entries.length === 0 && !alignRows?.length}
         <div class="empty">{$t('emptyFolder')}</div>
+      {:else if (alignRows || sortedEntries).length === 0}
+        <div class="empty">{$t('cmpNoDifference')}</div>
       {:else}
-        {#each sortedEntries as entry (entry.path)}
+        {#each (alignRows || sortedEntries) as entry (entry.gap ? 'gap:' + entry.key : entry.path)}
+          {#if entry.gap}
+            <!-- Aligned comparison: this name only exists in the other panel -->
+            <div class="file-row gap-row" aria-hidden="true">
+              <span class="col-name"><span class="file-icon">{entry.isDir ? '📁' : '📄'}</span></span>
+            </div>
+          {:else}
+          {@const mark = cmpMarks?.get(entry.path)}
           <div
             class="file-row"
+            class:cmp-only={mark?.kind === 'only'}
+            class:cmp-newer={mark?.kind === 'newer'}
+            class:cmp-size={mark?.kind === 'size'}
+            title={cmpTitle(mark, $t, dateFormat, $locale)}
             class:selected={selected.some(s => s.path === entry.path)}
             class:is-dir={entry.isDir}
             class:drag-target={entry.isDir && rowDragOverPath === entry.path}
@@ -2006,6 +2077,7 @@
             {/if}
             <span class="col-date">{formatDate(entry.modTime, dateFormat, $locale)}</span>
           </div>
+          {/if}
         {/each}
       {/if}
     </div>
@@ -2599,6 +2671,15 @@
   transition: background 0.08s;
 }
 .file-row:hover { background: var(--bg-hover); }
+/* Panel comparison - FileZilla's colours (yellow only here, green newer,
+   red other size); the left bar stays visible on a selected row. */
+.file-row.cmp-only  { background: var(--cmp-only-bg);  box-shadow: inset 3px 0 0 var(--cmp-only); }
+.file-row.cmp-newer { background: var(--cmp-newer-bg); box-shadow: inset 3px 0 0 var(--cmp-newer); }
+.file-row.cmp-size  { background: var(--cmp-size-bg);  box-shadow: inset 3px 0 0 var(--cmp-size); }
+.file-row.cmp-only:hover, .file-row.cmp-newer:hover, .file-row.cmp-size:hover { filter: brightness(1.15); }
+/* Aligned comparison: empty line where the name only exists on the other side */
+.file-row.gap-row { cursor: default; pointer-events: none; }
+.file-row.gap-row .file-icon { visibility: hidden; }
 .file-row.selected { background: var(--accent-subtle-bg); }
 
 .parent-row { color: var(--text-muted); }

@@ -47,6 +47,15 @@ type Settings struct {
 	// Synchronized browsing (Ctrl+Y): create the folder missing on the
 	// other side without asking (the dialog's "create and don't ask again").
 	SyncCreateMissing bool `json:"syncCreateMissing"`
+	// Panel comparison (Ctrl+O): criterion "size" or "date", and whether
+	// identical files are hidden while it is on.
+	CompareBy            string `json:"compareBy"`
+	CompareHideIdentical bool   `json:"compareHideIdentical"`
+	// Align the rows of both panels (gaps where a name is missing), like FileZilla.
+	CompareAlign bool `json:"compareAlign"`
+	// Sort file names character by character like FileZilla (dot names,
+	// then UPPER CASE, then lower case) instead of the explorer order.
+	CaseSensitiveSort bool `json:"caseSensitiveSort"`
 }
 
 func Default() *Settings {
@@ -78,6 +87,7 @@ func Default() *Settings {
 		SearchIndexEnabled:             false,
 		SearchIndexAsked:               false,
 		CheckUpdates:                   true,
+		CompareBy:                      "size",
 	}
 }
 

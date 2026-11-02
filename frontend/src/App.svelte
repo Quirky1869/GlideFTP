@@ -30,9 +30,11 @@
   import SearchIndexModal from './components/SearchIndexModal.svelte';
   import UpdateBanner from './components/UpdateBanner.svelte';
   import ResumeBanner from './components/ResumeBanner.svelte';
+  import CompareLegend from './components/CompareLegend.svelte';
   import TransferGuardModal from './components/TransferGuardModal.svelte';
   import SyncMissingModal from './components/SyncMissingModal.svelte';
-  import { syncPrompt, answerSyncPrompt } from './stores/syncBrowse.js';
+  import { syncPrompt, answerSyncPrompt, toggleSyncBrowsing } from './stores/syncBrowse.js';
+  import { toggleCompare } from './stores/compare.js';
   import { transferGuard, answerTransferGuard, askQuitWithTransfers } from './stores/transferGuard.js';
   import ReleaseNotesModal from './components/ReleaseNotesModal.svelte';
   import { releaseNotes, closeReleaseNotes } from './stores/releaseNotes.js';
@@ -106,6 +108,22 @@
       if ($releaseNotes) { closeReleaseNotes(); return; }
       showSettings = false;
       showSiteManager = false;
+      return;
+    }
+    // Ctrl+O (compare) / Ctrl+Y (synchronized browsing) act on both panels:
+    // handled here so they work wherever the focus is (after closing the
+    // Settings it is on the page, not in a panel) - not while typing in a
+    // field (Ctrl+Y = redo) nor with a window or panel open on top.
+    const ctrl = e.ctrlKey || e.metaKey;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (ctrl && !e.shiftKey && !e.altKey && (k === 'o' || k === 'y')) {
+      const typing = e.target?.closest?.('input, textarea, select');
+      const overlay = showSettings || showSiteManager || $notification || $transferGuard || $syncPrompt || $releaseNotes;
+      if (isConnected && !typing && !overlay) {
+        e.preventDefault();
+        if (k === 'o') toggleCompare();
+        else toggleSyncBrowsing();
+      }
       return;
     }
     // WebKit-GTK doesn't fire native undo in bound inputs - force it
@@ -300,6 +318,9 @@
     {/if}
 
   </div>
+
+  <!-- Colour legend of the panel comparison (only while it is on) -->
+  <CompareLegend />
 
   <!-- ── New version available (above the queue, under the overlays) ── -->
   <ResumeBanner />

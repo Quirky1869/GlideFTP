@@ -190,6 +190,10 @@
     searchIndexEnabled: false,
     checkUpdates: true,
     syncCreateMissing: false,
+    compareBy: 'size',
+    compareHideIdentical: false,
+    compareAlign: false,
+    caseSensitiveSort: false,
   };
 
   // ── Updates (section "Mises à jour") ──
@@ -535,6 +539,16 @@
         ><span class="sw-knob"></span></button>
       </div>
       <div class="setting-row">
+        <label on:click|self|preventDefault>{$t('caseSensitiveSort')} <button type="button" class="help-btn hint-btn" aria-label={$t('caseSensitiveSortHint')} on:mouseenter={(e) => openHint(e, 'caseSensitiveSortHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'caseSensitiveSortHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.caseSensitiveSort === DEFAULTS.caseSensitiveSort} on:click|stopPropagation={() => resetSetting('caseSensitiveSort')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.caseSensitiveSort}
+          on:click={() => toggle('caseSensitiveSort')}
+          aria-pressed={form.caseSensitiveSort}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
         <label>{$t('confirmOnDelete')} <button class="reset-btn" hidden={form.confirmOnDelete === DEFAULTS.confirmOnDelete} on:click|stopPropagation={() => resetSetting('confirmOnDelete')} title={$t('resetToDefault')}>↺</button></label>
         <button
           type="button"
@@ -622,9 +636,51 @@
 
     <div class="divider"></div>
 
+    <!-- Panel comparison (v1.8.0 point 5) -->
+    <section>
+      <!-- The ? sits next to the h3, not inside: the h3's gradient text would make it transparent -->
+      <div class="section-title">
+        <h3>{$t('compareSection')}</h3>
+        <button type="button" class="help-btn hint-btn" aria-label={$t('compareSectionHint')} on:mouseenter={(e) => openHint(e, 'compareSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareSectionHint')} on:blur={closeHint}>?</button>
+      </div>
+      <div class="setting-row">
+        <label>{$t('compareBy')} <button class="reset-btn" hidden={form.compareBy === DEFAULTS.compareBy} on:click|stopPropagation={() => resetSetting('compareBy')} title={$t('resetToDefault')}>↺</button></label>
+        <select class="date-select" bind:value={form.compareBy}>
+          <option value="size">{$t('compareBySize')}</option>
+          <option value="date">{$t('compareByDate')}</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label on:click|self|preventDefault>{$t('compareHideIdentical')} <button class="reset-btn" hidden={form.compareHideIdentical === DEFAULTS.compareHideIdentical} on:click|stopPropagation={() => resetSetting('compareHideIdentical')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.compareHideIdentical}
+          on:click={() => toggle('compareHideIdentical')}
+          aria-pressed={form.compareHideIdentical}
+        ><span class="sw-knob"></span></button>
+      </div>
+      <div class="setting-row">
+        <label on:click|self|preventDefault>{$t('compareAlign')} <button type="button" class="help-btn hint-btn" aria-label={$t('compareAlignHint')} on:mouseenter={(e) => openHint(e, 'compareAlignHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareAlignHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.compareAlign === DEFAULTS.compareAlign} on:click|stopPropagation={() => resetSetting('compareAlign')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.compareAlign}
+          on:click={() => toggle('compareAlign')}
+          aria-pressed={form.compareAlign}
+        ><span class="sw-knob"></span></button>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
     <!-- Synchronized browsing (v1.8.0 point 6) -->
     <section>
-      <h3>{$t('syncSection')} <button type="button" class="help-btn hint-btn" aria-label={$t('syncSectionHint')} on:mouseenter={(e) => openHint(e, 'syncSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'syncSectionHint')} on:blur={closeHint}>?</button></h3>
+      <!-- The ? sits next to the h3, not inside: the h3's gradient text would make it transparent -->
+      <div class="section-title">
+        <h3>{$t('syncSection')}</h3>
+        <button type="button" class="help-btn hint-btn" aria-label={$t('syncSectionHint')} on:mouseenter={(e) => openHint(e, 'syncSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'syncSectionHint')} on:blur={closeHint}>?</button>
+      </div>
       <div class="setting-row">
         <label on:click|self|preventDefault>{$t('syncCreateMissing')} <button class="reset-btn" hidden={form.syncCreateMissing === DEFAULTS.syncCreateMissing} on:click|stopPropagation={() => resetSetting('syncCreateMissing')} title={$t('resetToDefault')}>↺</button></label>
         <button
@@ -819,6 +875,15 @@ h3 {
   color: var(--accent);
   margin: 0 0 12px;
 }
+
+/* Section title with a "?" hint next to it */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 0 12px;
+}
+.section-title h3 { margin: 0; }
 
 .setting-row {
   display: flex;
