@@ -31,6 +31,8 @@
   import UpdateBanner from './components/UpdateBanner.svelte';
   import ResumeBanner from './components/ResumeBanner.svelte';
   import TransferGuardModal from './components/TransferGuardModal.svelte';
+  import SyncMissingModal from './components/SyncMissingModal.svelte';
+  import { syncPrompt, answerSyncPrompt } from './stores/syncBrowse.js';
   import { transferGuard, answerTransferGuard, askQuitWithTransfers } from './stores/transferGuard.js';
   import ReleaseNotesModal from './components/ReleaseNotesModal.svelte';
   import { releaseNotes, closeReleaseNotes } from './stores/releaseNotes.js';
@@ -100,6 +102,7 @@
     if (e.key === 'Escape') {
       if ($notification) { closeNotify(); return; }
       if ($transferGuard) { answerTransferGuard('cancel'); return; }
+      if ($syncPrompt) { answerSyncPrompt('cancel'); return; }
       if ($releaseNotes) { closeReleaseNotes(); return; }
       showSettings = false;
       showSiteManager = false;
@@ -318,6 +321,7 @@
 
   <ReleaseNotesModal />
   <TransferGuardModal />
+  <SyncMissingModal />
   <NotifyModal />
   <WindowSizeOverlay />
   <OpenedFileModal />

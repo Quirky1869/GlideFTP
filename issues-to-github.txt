@@ -5300,3 +5300,43 @@ Fixed in v1.8.0.
 
 The tooltip now uses the new i18n key disconnectTab: "Se déconnecter" /
 "Disconnect" (App.svelte, .conn-tab-close).
+
+---
+
+#138
+Title: [Feature] Synchronized browsing (Ctrl+Y)
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+v1.8.0 point 6, like FileZilla's "Synchronized browsing": when on,
+opening a folder in one panel makes the other panel open the folder of
+the same name, and ".." goes up on both sides. Handy to keep a local copy
+of a site in step with the server.
+
+- Toggle: link button in the header of both panels (accent when on) or
+  Ctrl+Y (FileZilla's shortcut; ignored in text fields, where it is redo).
+  Session only; turned off on tab switch and disconnect.
+- Folder missing on the other side: dialog "The local folder « path » does
+  not exist." (or "... on the server") with 3 choices: create it and open it
+  (default), create it and don't ask again (turns on the setting), turn
+  synchronized browsing off and continue; Cancel = no navigation at all,
+  sync stays on.
+- A jump with no clear match on the other side (typed path, favourite,
+  search result, unrelated folder in the tree) turns it off with a message.
+- Settings: new section "Synchronized browsing (Ctrl+Y)" with a "?"
+  explaining it and the switch "Create the missing folder without asking"
+  (default off), user's choice.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+stores/syncBrowse.js: syncBrowsing store, planSync(side, oldPath,
+newPath, { up, jump }) called by FileBrowser's navigate() / navigateUp()
+before moving. Relative mirroring by path segments (down = same
+sub-folders, up = as many levels, ".." at the root moves nothing; Windows
+local paths compared case-insensitively). Missing levels found in the
+other panel's entries (first level) or by listing (deeper); created with
+localMkDir / remoteMkDir before the other panel follows (followSync, a
+failure turns sync off with a red message). SyncMissingModal.svelte
+(button radios, trapFocus, Escape = cancel). Setting syncCreateMissing.
+i18n EN + FR.

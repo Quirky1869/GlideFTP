@@ -44,6 +44,9 @@ type Settings struct {
 	// banner until a newer one is published.
 	CheckUpdates         bool   `json:"checkUpdates"`
 	SkippedUpdateVersion string `json:"skippedUpdateVersion"`
+	// Synchronized browsing (Ctrl+Y): create the folder missing on the
+	// other side without asking (the dialog's "create and don't ask again").
+	SyncCreateMissing bool `json:"syncCreateMissing"`
 }
 
 func Default() *Settings {

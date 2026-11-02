@@ -329,6 +329,7 @@ export namespace settings {
 	    searchIndexAsked: boolean;
 	    checkUpdates: boolean;
 	    skippedUpdateVersion: string;
+	    syncCreateMissing: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -364,6 +365,7 @@ export namespace settings {
 	        this.searchIndexAsked = source["searchIndexAsked"];
 	        this.checkUpdates = source["checkUpdates"];
 	        this.skippedUpdateVersion = source["skippedUpdateVersion"];
+	        this.syncCreateMissing = source["syncCreateMissing"];
 	    }
 	}
 

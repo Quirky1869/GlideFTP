@@ -189,6 +189,7 @@
     customSoundName: '',
     searchIndexEnabled: false,
     checkUpdates: true,
+    syncCreateMissing: false,
   };
 
   // ── Updates (section "Mises à jour") ──
@@ -616,6 +617,23 @@
           {#if sizeCopied}<span class="saved-msg">{form.windowWidth} × {form.windowHeight} ✓</span>{/if}
           <button class="browse-btn" disabled={form.startMaximized} on:click={useCurrentWindowSize}>{$t('useCurrentWindowSize')}</button>
         </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- Synchronized browsing (v1.8.0 point 6) -->
+    <section>
+      <h3>{$t('syncSection')} <button type="button" class="help-btn hint-btn" aria-label={$t('syncSectionHint')} on:mouseenter={(e) => openHint(e, 'syncSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'syncSectionHint')} on:blur={closeHint}>?</button></h3>
+      <div class="setting-row">
+        <label on:click|self|preventDefault>{$t('syncCreateMissing')} <button class="reset-btn" hidden={form.syncCreateMissing === DEFAULTS.syncCreateMissing} on:click|stopPropagation={() => resetSetting('syncCreateMissing')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.syncCreateMissing}
+          on:click={() => toggle('syncCreateMissing')}
+          aria-pressed={form.syncCreateMissing}
+        ><span class="sw-knob"></span></button>
       </div>
     </section>
 

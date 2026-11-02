@@ -17,6 +17,7 @@
     activeConnectionConfig,
   } from '../stores/connection.js';
   import { favorites, favKey, isFavorite, addFavorites, removeFavorites } from '../stores/favorites.js';
+  import { syncBrowsing, toggleSyncBrowsing, planSync } from '../stores/syncBrowse.js';
 
   export let side = 'local';
   export let path = '';
@@ -103,21 +104,43 @@
 
   // A folder that can't be listed (permission denied, removed...) used to fail
   // silently: the error now shows in the red bar. Returns false on failure.
-  async function navigate(p) {
+  // jump: typed path, favourite, search result - turns synchronized browsing
+  // off (no clear match on the other side).
+  async function navigate(p, { jump = false } = {}) {
+    const plan = await planSync(side, path, p, { jump });
+    if (!plan) return false; // missing-folder dialog cancelled: stay here
     try {
       await onNavigate(p);
-      return true;
     } catch (e) {
       showOpenDirError(p, e);
       return false;
     }
+    await followSync(plan);
+    return true;
   }
 
   async function navigateUp() {
+    const plan = await planSync(side, path, null, { up: 1 });
+    if (!plan) return;
     try {
       await onNavigateUp();
     } catch (e) {
       showOpenDirError(parentPath, e);
+      return;
+    }
+    await followSync(plan);
+  }
+
+  // Synchronized browsing: the other panel's matching step, after this one
+  // moved. A failure turns the sync off and says why.
+  async function followSync(plan) {
+    if (plan.notice) showPasteMsg($t(plan.notice), 'ok');
+    if (!plan.follow) return;
+    try {
+      await plan.follow();
+    } catch (e) {
+      syncBrowsing.set(false);
+      showPasteMsg($t('syncFollowFailed').replace('{error}', e?.message || String(e)), 'error');
     }
   }
 
@@ -316,7 +339,7 @@
       // Only the local side has real environment variables/~ to resolve -
       // a remote path like "$logs" or "%DATA%" is a literal server directory name.
       const target = side === 'local' ? await ExpandLocalPath(editPathValue) : editPathValue;
-      await navigate(target);
+      await navigate(target, { jump: true });
     }
   }
 
@@ -1051,6 +1074,12 @@
     // meaning - Backspace/Delete/Ctrl+A/C/X/V must not act on the files.
     const inField = e.target.closest?.('input, textarea');
     if (!inField) {
+      // Synchronized browsing on/off, like FileZilla (in a field Ctrl+Y is redo).
+      if (ctrl && key === 'y') {
+        e.preventDefault();
+        toggleSyncBrowsing();
+        return;
+      }
       if (ctrl && key === 'a') {
         e.preventDefault();
         if (treeMode && !showSearchResults) return;
@@ -1292,7 +1321,7 @@
   async function goToSearchResult(entry) {
     closeContext();
     closeSearch();
-    if (!(await navigate(searchResultLocation(entry)))) return;
+    if (!(await navigate(searchResultLocation(entry), { jump: true }))) return;
     await tick(); // let the new folder's entries reach this component
     if (!entry.isDir) {
       const found = entries.find(e => e.path === entry.path);
@@ -1345,7 +1374,7 @@
     closeContext();
     if (searchMode) closeSearch();
     const dir = fav.isDir ? fav.path : parentOf(fav.path);
-    if (dir !== path && !(await navigate(dir))) return;
+    if (dir !== path && !(await navigate(dir, { jump: true }))) return;
     if (fav.isDir) return;
     await tick();
     if (treeMode) {
@@ -1394,7 +1423,7 @@
 
   async function handleSearchResultDblClick(entry) {
     if (entry.isDir) {
-      if (await navigate(entry.path)) closeSearch();
+      if (await navigate(entry.path, { jump: true })) closeSearch();
     } else {
       transferEntry(entry);
     }
@@ -1642,6 +1671,9 @@
         {:else}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="3" y2="18"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="9" y1="9" x2="9" y2="15"/></svg>
         {/if}
+      </button>
+      <button class="icon-btn" class:active={$syncBrowsing} on:click={toggleSyncBrowsing} title={($syncBrowsing ? $t('syncBrowsingOff') : $t('syncBrowsingOn')) + ' (Ctrl+Y)'}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
       </button>
       <button class="icon-btn" class:active={searchMode} on:click={toggleSearch} title={$t('search') + ' (Ctrl+F)'}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
