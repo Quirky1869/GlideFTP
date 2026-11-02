@@ -5119,3 +5119,48 @@ headings, paragraphs, - lists, ---, `code`, **bold**, *italic*, links
 reduced to their text, tables dropped) into HTML after escaping every
 character, so the notes can't inject HTML. Switching the language while
 the window is open re-renders it. i18n EN + FR.
+
+---
+
+#134
+Title: [Feature] Favourite folders and files, pinned at the top of each panel
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+A saved site only remembers one starting folder, so reaching the folders
+used every day meant navigating again after each connection. Folders and
+files can now be added to favourites, on both sides. They show in a
+"Favourites (N)" block at the top of the panel, above ".." and the folder
+content, and stay there whatever folder is open. The block can be folded
+(remembered per panel). Remote favourites belong to the server account
+(protocol, user, host, port), so a quick connection without a saved site
+gets them too; local favourites are the same for every server (user's
+choice).
+
+Solution (closing comment):
+Added in v1.8.0.
+
+Adding / removing: right-click a folder or file (the whole selection when
+the clicked entry is in it) > "Add to favourites" / "Remove from
+favourites" (list, tree and search results), or the star button right of
+the path bar (current folder, filled in the accent colour when it is a
+favourite). A favourite row has a ✕ on hover and its own right-click menu
+(open / go to location, copy path, remove).
+
+Opening: a folder favourite opens the folder; a file favourite opens its
+folder with the file selected and scrolled into view, like "Go to
+location" in the search (user's choice); a search in progress is closed.
+A file that is no longer there gives a red message. Changes made outside
+GlideFTP are not tracked (user's call); renames, moves (cut/paste, drag
+within the panel) and deletes done in GlideFTP update the favourites:
+localRename/remoteRename/localDelete/remoteDelete in stores/connection.js
+call favoritesRenamed/favoritesDeleted, which also cover favourites
+inside a renamed or deleted folder.
+
+Backend: internal/favorites (favorites.json in the user config folder,
+key → [{path, isDir}], "local" for the local disk) + app_favorites.go
+(GetFavorites / SetFavorites). Frontend: stores/favorites.js (favKey,
+add/remove, rename/delete tracking), loaded at startup in App.svelte;
+fav block in FileBrowser.svelte (sorted folders first then by name,
+max 35% of the panel height with its own scroll, fold state in
+localStorage glideftp_fav_collapsed_{side}). i18n EN + FR.

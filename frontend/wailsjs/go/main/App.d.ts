@@ -3,6 +3,7 @@
 import {main} from '../models';
 import {connection} from '../models';
 import {sites} from '../models';
+import {favorites} from '../models';
 import {fs} from '../models';
 import {settings} from '../models';
 import {transfer} from '../models';
@@ -74,6 +75,8 @@ export function GetConnectionStatus():Promise<string>;
 export function GetConnections():Promise<Array<connection.ConnInfo>>;
 
 export function GetCustomSound():Promise<string>;
+
+export function GetFavorites():Promise<Record<string, Array<favorites.Favorite>>>;
 
 export function GetKeyringStatus():Promise<string>;
 
@@ -158,6 +161,8 @@ export function ReorderSites(arg1:Array<string>):Promise<void>;
 export function RetryTransfer(arg1:string):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
+
+export function SetFavorites(arg1:string,arg2:Array<favorites.Favorite>):Promise<void>;
 
 export function SetOpenedFileAutoUpload(arg1:string,arg2:boolean):Promise<void>;
 

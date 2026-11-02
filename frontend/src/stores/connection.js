@@ -8,6 +8,7 @@ import {
   LocalListDir, LocalMkDir, LocalDelete, LocalRename, LocalCopy, LocalSearch,
   GetLocalHome, GetLocalParent, ExpandLocalPath,
 } from '../../wailsjs/go/main/App.js';
+import { favKey, favoritesRenamed, favoritesDeleted } from './favorites.js';
 
 // 'disconnected' | 'connecting' | 'connected'
 export const connectionStatus = writable('disconnected');
@@ -265,12 +266,14 @@ export async function closeTab(id) {
 // ── Local FS helpers (unchanged) ─────────────────────────────────────────────
 
 export async function localMkDir(path)               { await LocalMkDir(path); }
-export async function localDelete(path)               { await LocalDelete(path); }
-export async function localRename(oldPath, newPath)   { await LocalRename(oldPath, newPath); }
+export async function localDelete(path)               { await LocalDelete(path); favoritesDeleted('local', path).catch(() => {}); }
+export async function localRename(oldPath, newPath)   { await LocalRename(oldPath, newPath); favoritesRenamed('local', oldPath, newPath).catch(() => {}); }
 export async function localCopy(srcPath, destPath)    { await LocalCopy(srcPath, destPath); }
 export async function remoteMkDir(path)               { await RemoteMkDir(path); }
-export async function remoteDelete(path)              { await RemoteDelete(path); }
-export async function remoteRename(oldPath, newPath)  { await RemoteRename(oldPath, newPath); }
+export async function remoteDelete(path)              { await RemoteDelete(path); favoritesDeleted(remoteFavKey(), path).catch(() => {}); }
+export async function remoteRename(oldPath, newPath)  { await RemoteRename(oldPath, newPath); favoritesRenamed(remoteFavKey(), oldPath, newPath).catch(() => {}); }
+// Remote deletes and renames always act on the active connection.
+const remoteFavKey = () => favKey('remote', get(activeConnectionConfig));
 export async function remoteCopy(srcPath, destPath)   { await RemoteCopy(srcPath, destPath); }
 export async function remoteCopyDir(srcPath, destPath) { await RemoteCopyDir(srcPath, destPath); }
 export async function localSearch(path, query, recursive)  { return await LocalSearch(path, query, recursive); }

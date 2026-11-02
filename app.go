@@ -11,6 +11,7 @@ import (
 
 	"GlideFTP/internal/connection"
 	gfeCrypto "GlideFTP/internal/crypto"
+	"GlideFTP/internal/favorites"
 	localfs "GlideFTP/internal/fs"
 	"GlideFTP/internal/keyring"
 	"GlideFTP/internal/openfile"
@@ -48,6 +49,9 @@ type App struct {
 	// Folder size walks in progress, by id (app_dirsize.go).
 	dirSizeMu      sync.Mutex
 	dirSizeCancels map[string]context.CancelFunc
+
+	// Favourite folders and files of both panels (app_favorites.go).
+	favMgr *favorites.Manager
 }
 
 func NewApp() *App {
@@ -57,6 +61,7 @@ func NewApp() *App {
 		siteMgr:     sites.NewManager(),
 		appSettings: s,
 		keyringMgr:  keyring.NewManager(),
+		favMgr:      favorites.NewManager(),
 	}
 	return app
 }

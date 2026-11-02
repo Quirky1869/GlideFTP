@@ -138,6 +138,10 @@ export function GetCustomSound() {
   return window['go']['main']['App']['GetCustomSound']();
 }
 
+export function GetFavorites() {
+  return window['go']['main']['App']['GetFavorites']();
+}
+
 export function GetKeyringStatus() {
   return window['go']['main']['App']['GetKeyringStatus']();
 }
@@ -304,6 +308,10 @@ export function RetryTransfer(arg1) {
 
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
+}
+
+export function SetFavorites(arg1, arg2) {
+  return window['go']['main']['App']['SetFavorites'](arg1, arg2);
 }
 
 export function SetOpenedFileAutoUpload(arg1, arg2) {

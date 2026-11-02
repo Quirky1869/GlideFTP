@@ -94,6 +94,25 @@ export namespace connection {
 
 }
 
+export namespace favorites {
+	
+	export class Favorite {
+	    path: string;
+	    isDir: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Favorite(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.isDir = source["isDir"];
+	    }
+	}
+
+}
+
 export namespace fs {
 	
 	export class FileEntry {

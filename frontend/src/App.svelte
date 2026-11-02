@@ -4,6 +4,7 @@
   import { t } from './i18n/index.js';
   import { EventsOn } from '../wailsjs/runtime/runtime.js';
   import { loadSettings, settings, saveSettings } from './stores/settings.js';
+  import { loadFavorites } from './stores/favorites.js';
   import {
     connectionStatus,
     connections, activeConnectionId, switchTab, closeTab,
@@ -68,6 +69,7 @@
     lastDefaultLocalDir = s?.defaultLocalDir || '';
     await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
+    loadFavorites();
     initOpenFile();
     // A few seconds after startup, so the check never slows the first paint.
     if (s?.checkUpdates) setTimeout(checkForUpdateAtStartup, 3000);

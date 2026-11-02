@@ -14,7 +14,9 @@
   import {
     clipboard, localCopy, remoteCopy, remoteCopyDir,
     localRename, remoteRename, refreshLocal, refreshRemote, localPath, remotePath,
+    activeConnectionConfig,
   } from '../stores/connection.js';
+  import { favorites, favKey, isFavorite, addFavorites, removeFavorites } from '../stores/favorites.js';
 
   export let side = 'local';
   export let path = '';
@@ -53,6 +55,7 @@
   let contextEntry = null;
   let contextIsEmpty = false;
   let contextFromSearch = false; // right-click on a search result: extra "go to" / "copy path" entries
+  let contextFavorite = null; // right-click on a row of the favourites block
   let dragOver = false;
   let rowDragOverPath = null; // path of the folder row currently hovered during drag
   let pasteMsg = null; // { text, kind } - kind 'ok' green, 'warn' orange (failed paste / path copy), 'error' red
@@ -580,6 +583,7 @@
     contextEntry = entry;
     contextIsEmpty = false;
     contextFromSearch = fromSearch;
+    contextFavorite = null;
     contextMenu = { x: e.clientX, y: e.clientY };
     if (!selected.some(s => s.path === entry.path)) selected = [entry];
   }
@@ -589,6 +593,7 @@
     contextEntry = null;
     contextIsEmpty = true;
     contextFromSearch = false;
+    contextFavorite = null;
     contextMenu = { x: e.clientX, y: e.clientY };
   }
 
@@ -597,6 +602,7 @@
     contextEntry = null;
     contextIsEmpty = false;
     contextFromSearch = false;
+    contextFavorite = null;
   }
 
   // ── Rename ────────────────────────────────────────────────────────────────
@@ -1268,6 +1274,87 @@
     }
   }
 
+  // ── Favourites (pinned at the top of the panel, whatever the folder) ──────
+
+  $: favListKey = favKey(side, $activeConnectionConfig);
+  $: favList = (favListKey ? ($favorites[favListKey] || []) : [])
+    .map(f => ({ ...f, name: folderBaseName(f.path) }))
+    .sort((a, b) => (b.isDir - a.isDir) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  $: pathIsFavorite = isFavorite($favorites, favListKey, path);
+
+  const favCollapsedKey = `glideftp_fav_collapsed_${side}`;
+  let favCollapsed = false;
+  try { favCollapsed = localStorage.getItem(favCollapsedKey) === '1'; } catch {}
+
+  function toggleFavCollapsed() {
+    favCollapsed = !favCollapsed;
+    try { localStorage.setItem(favCollapsedKey, favCollapsed ? '1' : '0'); } catch {}
+  }
+
+  // remove: decided by the clicked entry, so the action matches the menu label.
+  async function toggleFavorites(ents, remove) {
+    closeContext();
+    try {
+      if (remove) {
+        await removeFavorites(favListKey, ents.map(e => e.path));
+      } else {
+        await addFavorites(favListKey, ents);
+      }
+    } catch (e) {
+      showPasteMsg(e?.message || String(e), 'error');
+    }
+  }
+
+  async function removeFavorite(fav) {
+    closeContext();
+    try {
+      await removeFavorites(favListKey, [fav.path]);
+    } catch (e) {
+      showPasteMsg(e?.message || String(e), 'error');
+    }
+  }
+
+  // A folder opens; a file opens its folder with the file selected.
+  async function openFavorite(fav) {
+    closeContext();
+    if (searchMode) closeSearch();
+    const dir = fav.isDir ? fav.path : parentOf(fav.path);
+    if (dir !== path && !(await navigate(dir))) return;
+    if (fav.isDir) return;
+    await tick();
+    if (treeMode) {
+      treeSelected = fav.path;
+      return;
+    }
+    const found = entries.find(e => e.path === fav.path);
+    if (found) {
+      selected = [found];
+      await tick();
+      fileListEl?.querySelector('.file-row.selected')?.scrollIntoView({ block: 'nearest' });
+    } else {
+      showPasteMsg($t('favoriteFileMissing').replace('{name}', fav.name), 'error');
+    }
+  }
+
+  function handleFavoriteContextMenu(e, fav) {
+    e.preventDefault();
+    contextEntry = null;
+    contextIsEmpty = false;
+    contextFromSearch = false;
+    contextFavorite = fav;
+    contextMenu = { x: e.clientX, y: e.clientY };
+  }
+
+  async function copyFavoritePath(fav) {
+    closeContext();
+    try {
+      await navigator.clipboard.writeText(fav.path);
+      showPasteMsg($t('pathCopied').replace('{path}', fav.path), 'ok');
+    } catch (e) {
+      showPasteMsg(e?.message || String(e), 'warn');
+    }
+  }
+
   async function copySearchResultPath(entry) {
     closeContext();
     const text = searchResultLocation(entry);
@@ -1506,6 +1593,16 @@
           <div class="path-display" title={path} on:click={startEditPath}>{path}</div>
         {/if}
       </div>
+      {#if favListKey}
+        <button
+          class="icon-btn fav-star-btn"
+          class:on={pathIsFavorite}
+          on:click={() => toggleFavorites([{ path, isDir: true }], pathIsFavorite)}
+          title={pathIsFavorite ? $t('removeFavoriteFolder') : $t('addFavoriteFolder')}
+        >
+          <svg viewBox="0 0 24 24" fill="{pathIsFavorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </button>
+      {/if}
     </div>
     <div class="browser-actions">
       <button
@@ -1589,6 +1686,35 @@
         <svg class="tree-spin search-row-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
       {/if}
       <button class="icon-btn small" on:click={closeSearch} title={$t('close')}>✕</button>
+    </div>
+  {/if}
+
+  {#if favList.length > 0}
+    <!-- Favourites: pinned above the folder content, whatever the folder -->
+    <div class="fav-block" class:collapsed={favCollapsed} on:contextmenu|stopPropagation>
+      <button class="fav-header" on:click={toggleFavCollapsed} title={favCollapsed ? $t('favoritesExpand') : $t('favoritesCollapse')}>
+        <svg class="fav-chevron" viewBox="0 0 24 24" fill="currentColor"><path d="M10 17l5-5-5-5v10z"/></svg>
+        <span class="fav-header-star"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+        {$t('favorites')} ({favList.length})
+      </button>
+      {#if !favCollapsed}
+        <div class="fav-list">
+          {#each favList as fav (fav.path)}
+            <div
+              class="fav-row"
+              class:current={fav.isDir ? fav.path === path : selected.some(s => s.path === fav.path) || treeSelected === fav.path}
+              title={fav.path}
+              on:click={() => openFavorite(fav)}
+              on:contextmenu|stopPropagation={(e) => handleFavoriteContextMenu(e, fav)}
+            >
+              <span class="file-icon">{fav.isDir ? '📁' : '📄'}</span>
+              <span class="fav-name">{fav.name}</span>
+              <span class="fav-path">{fav.path}</span>
+              <button class="fav-remove-btn" on:click|stopPropagation={() => removeFavorite(fav)} title={$t('removeFavorite')}>✕</button>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -1835,7 +1961,21 @@
     style="left: {contextMenu.x}px; top: {contextMenu.y}px"
     on:click|stopPropagation
   >
-    {#if contextIsEmpty}
+    {#if contextFavorite}
+      <button on:click={() => openFavorite(contextFavorite)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><polyline points="12 10 15 13 12 16"/><line x1="8" y1="13" x2="15" y2="13"/></svg>
+        {contextFavorite.isDir ? $t('openFolderLocation') : $t('goToFileLocation')}
+      </button>
+      <button on:click={() => copyFavoritePath(contextFavorite)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        {$t('copyPath')}
+      </button>
+      <hr class="menu-sep" />
+      <button class="danger" on:click={() => removeFavorite(contextFavorite)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        {$t('removeFavorite')}
+      </button>
+    {:else if contextIsEmpty}
       <button on:click={() => startNewFolder(path)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         {$t('newFolder')}
@@ -1869,6 +2009,13 @@
         <button on:click={() => { const ent = contextEntry; closeContext(); openEntry(side, ent); }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           {$t('openFile')}
+        </button>
+        <hr class="menu-sep" />
+      {/if}
+      {#if favListKey}
+        <button on:click={() => toggleFavorites(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry], isFavorite($favorites, favListKey, contextEntry?.path))}>
+          <svg viewBox="0 0 24 24" fill="{isFavorite($favorites, favListKey, contextEntry?.path) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {isFavorite($favorites, favListKey, contextEntry?.path) ? $t('removeFavorite') : $t('addFavorite')}
         </button>
         <hr class="menu-sep" />
       {/if}
@@ -2395,6 +2542,65 @@
 .file-icon { font-size: 14px; margin-right: 4px; flex-shrink: 0; }
 .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .is-dir .file-name { font-weight: 500; }
+
+.fav-star-btn.on { color: var(--accent); }
+
+.fav-block {
+  display: flex;
+  flex-direction: column;
+  max-height: 35%;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border-bottom: 2px solid var(--border);
+}
+.fav-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+}
+.fav-header:hover { color: var(--text-primary); }
+.fav-chevron { width: 12px; height: 12px; flex-shrink: 0; transform: rotate(90deg); transition: transform 0.12s; }
+.fav-block.collapsed .fav-chevron { transform: none; }
+.fav-header-star { display: flex; color: var(--accent); }
+.fav-header-star svg { width: 12px; height: 12px; }
+.fav-list { overflow-y: auto; min-height: 0; }
+.fav-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 18px;
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.fav-row:hover { background: var(--bg-hover); }
+.fav-row.current .fav-name { color: var(--accent); }
+.fav-name { white-space: nowrap; font-weight: 500; flex-shrink: 0; max-width: 50%; overflow: hidden; text-overflow: ellipsis; }
+.fav-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--text-muted); }
+.fav-remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 0 4px;
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+}
+.fav-row:hover .fav-remove-btn { opacity: 1; }
+.fav-remove-btn:hover { color: var(--danger); }
 
 .rename-input {
   flex: 1;
