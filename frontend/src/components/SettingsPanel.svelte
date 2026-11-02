@@ -1,4 +1,5 @@
 <script>
+  import { onDestroy } from 'svelte';
   import { openReleaseNotes } from '../stores/releaseNotes.js';
   import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
@@ -30,9 +31,45 @@
 
   $: if ($settings && !formReady) {
     form = { ...$settings, dateFormat: normalizeDateFormat($settings.dateFormat) };
+    lastSavedJson = JSON.stringify(form);
     syncDateAdvanced();
     formReady = true;
   }
+
+  // ── Instant save (v1.8.0 #141) ──
+  // Every change is saved on its own, no "Save" button: switches, buttons,
+  // lists and +/- right away (short debounce to group quick clicks); a text
+  // or number field only once the user leaves it (focusout), so a path or a
+  // number being typed is never saved half-way (the local panel would jump
+  // to each partial "default local directory"). Pending changes are saved
+  // when the panel closes. "Settings saved ✓" shows after each save.
+  const SAVE_DELAY_MS = 300;
+  let lastSavedJson = '';
+  let saveTimer = null;
+  let savedTimer = null;
+
+  const isTyping = () => {
+    const el = document.activeElement;
+    return !!el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && el.type !== 'checkbox'));
+  };
+
+  $: if (formReady) scheduleSave(form);
+
+  function scheduleSave(f, delay = SAVE_DELAY_MS) {
+    if (JSON.stringify(f) === lastSavedJson || isTyping()) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, delay);
+  }
+
+  // A number field emptied or half-typed: wait for a valid value.
+  function formValid(f) {
+    return Object.keys(DEFAULTS).every(k => typeof DEFAULTS[k] !== 'number' || (f[k] !== '' && Number.isFinite(Number(f[k]))));
+  }
+
+  onDestroy(() => {
+    clearTimeout(savedTimer);
+    if (formReady && JSON.stringify(form) !== lastSavedJson) save();
+  });
 
   // ── Date format ──
   // The dropdown lists the presets + "Advanced"; advanced reveals a free text
@@ -80,10 +117,27 @@
   function closeHint() { hint = null; }
 
   async function save() {
-    await saveSettings(form);
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    if (!formValid(form)) return;
+    const snapshot = { ...form };
+    for (const k of Object.keys(DEFAULTS)) {
+      if (typeof DEFAULTS[k] === 'number') snapshot[k] = Number(snapshot[k]);
+    }
+    const json = JSON.stringify(snapshot);
+    if (json === lastSavedJson) return;
+    lastSavedJson = json;
+    try {
+      await saveSettings(snapshot);
+    } catch (e) {
+      lastSavedJson = '';
+      notify(e?.toString() || $t('unknownError'), 'error');
+      return;
+    }
     saved = true;
-    setTimeout(() => saved = false, 2000);
-    onSaved(form);
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => saved = false, 2000);
+    onSaved(snapshot);
   }
 
   async function browseDir() {
@@ -129,8 +183,7 @@
       const name = await InstallCustomSound(file.path);
       setCustomSoundUrl(file.dataUrl);
       form = { ...form, notificationSound: CUSTOM_SOUND_ID, customSoundName: name };
-      await saveSettings(form);
-      onSaved(form);
+      await save();
       playNotificationSound(CUSTOM_SOUND_ID);
       const long = isFinite(duration) && duration > MAX_SOUND_SECONDS;
       notify($t(long ? 'customSoundLoadedLong' : 'customSoundLoaded').replace('{name}', name).replace('{n}', MAX_SOUND_SECONDS));
@@ -150,8 +203,7 @@
         customSoundName: '',
         notificationSound: form.notificationSound === CUSTOM_SOUND_ID ? DEFAULTS.notificationSound : form.notificationSound,
       };
-      await saveSettings(form);
-      onSaved(form);
+      await save();
     } catch (e) {
       notify(soundErrorText(e), 'error');
     }
@@ -160,10 +212,7 @@
   async function onColorApply({ color, gradient, color2 }) {
     form = { ...form, accentColor: color, accentGradient: gradient, accentColor2: color2 };
     showColorPicker = false;
-    await saveSettings(form);
-    saved = true;
-    setTimeout(() => saved = false, 2000);
-    onSaved(form);
+    await save();
   }
 
   const DEFAULTS = {
@@ -243,10 +292,7 @@
   async function enableSearchIndexFromHelp() {
     showSearchIndexHelp = false;
     form = { ...form, searchIndexEnabled: true, searchIndexAsked: true };
-    await saveSettings(form);
-    saved = true;
-    setTimeout(() => saved = false, 2000);
-    onSaved(form);
+    await save();
   }
 
   async function clearSearchIndex() {
@@ -272,14 +318,23 @@
         windowWidth: Math.max(800, Math.min(3840, w)),
         windowHeight: Math.max(600, Math.min(2160, h)),
       };
-      await saveSettings(form);
-      onSaved(form);
+      await save();
       sizeCopied = true;
       clearTimeout(sizeCopiedTimer);
       sizeCopiedTimer = setTimeout(() => sizeCopied = false, 2000);
     } catch (e) {
       notify(e?.toString() || $t('unknownError'), 'error');
     }
+  }
+
+  // Light theme: a (joke) warning first - "flashbang mode".
+  let confirmFlashbang = false;
+  function answerFlashbang(yes) {
+    confirmFlashbang = false;
+    if (yes) form = { ...form, theme: 'light' };
+  }
+  function focusOnOpen(node) {
+    requestAnimationFrame(() => node.focus());
   }
 
   function resetSetting(key) {
@@ -301,7 +356,9 @@
       if (!imported) return;
       await saveSettings(imported);
       form = { ...imported, dateFormat: normalizeDateFormat(imported.dateFormat) };
+      lastSavedJson = JSON.stringify(form);
       syncDateAdvanced();
+      onSaved(form);
       notify($t('settingsImported'));
     } catch (e) {
       if (e) notify(e.toString(), 'error');
@@ -311,7 +368,7 @@
 
 <div class="panel-backdrop" on:click|self={onClose}></div>
 
-<div class="settings-panel" use:trapFocus>
+<div class="settings-panel" use:trapFocus on:focusout={() => setTimeout(() => scheduleSave(form, 0))}>
   <div class="panel-header">
     <span class="panel-title">{$t('settingsTitle')}</span>
     <button class="close-btn" on:click={onClose}>✕</button>
@@ -329,7 +386,7 @@
             <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             {$t('themeDark')}
           </button>
-          <button class="toggle-btn" class:active={form.theme === 'light'} on:click={() => form = { ...form, theme: 'light' }}>
+          <button class="toggle-btn" class:active={form.theme === 'light'} on:click={() => { if (form.theme !== 'light') confirmFlashbang = true; }}>
             <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             {$t('themeLight')}
           </button>
@@ -760,9 +817,23 @@
     {#if saved}
       <span class="saved-msg">{$t('settingsSaved')} ✓</span>
     {/if}
-    <button class="btn-primary" on:click={save}>{$t('saveSettings')}</button>
   </div>
 </div>
+
+<!-- Light theme warning ("flashbang mode") - Escape stays here, it must not close Settings -->
+{#if confirmFlashbang}
+  <div class="flash-overlay" on:click|self={() => answerFlashbang(false)} on:keydown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); answerFlashbang(false); } }}>
+    <div class="flash-box" use:trapFocus role="dialog" aria-modal="true">
+      <div class="flash-icon">😎</div>
+      <div class="flash-title">{$t('flashbangTitle')}</div>
+      <div class="flash-msg">{$t('flashbangMsg')}</div>
+      <div class="flash-actions">
+        <button class="flash-no" use:focusOnOpen on:click={() => answerFlashbang(false)}>{$t('flashbangNo')}</button>
+        <button class="flash-yes" on:click={() => answerFlashbang(true)}>{$t('flashbangYes')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if showDateTip}
   <div
@@ -1255,6 +1326,62 @@ input:focus { border-color: var(--accent); }
 .io-icon-btn svg { width: 15px; height: 15px; }
 
 .saved-msg { font-size: 13px; color: var(--success); }
+
+/* ── Light theme warning ── */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 700;
+}
+.flash-box {
+  background: linear-gradient(var(--bg-secondary), var(--bg-secondary)) padding-box,
+              var(--accent-gradient) border-box;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 22px 26px;
+  width: 400px;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+}
+.flash-icon { font-size: 34px; line-height: 1; }
+.flash-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.flash-msg { font-size: 13px; color: var(--text-secondary); white-space: pre-line; }
+.flash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+.flash-yes, .flash-no {
+  width: 100%;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.flash-no {
+  background: var(--accent-bg) border-box;
+  border: 1px solid transparent;
+  color: white;
+  font-weight: 600;
+}
+.flash-no:hover { background: var(--accent-hover-bg) border-box; }
+.flash-yes {
+  background: var(--bg-button);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.flash-yes:hover { background: var(--bg-button-hover); color: var(--text-primary); }
 
 .btn-primary {
   background: var(--accent-bg);

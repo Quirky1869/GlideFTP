@@ -54,6 +54,7 @@
   let showDisconnectConfirm = false;
   let lostNotif = null; // { host } when a connection is dropped by the server
   let lastDefaultLocalDir = ''; // tracks the setting so a change can be applied live
+  let lastShowHidden = false;
 
   // Resizable split pane
   let leftWidth = 50; // percent
@@ -74,6 +75,7 @@
     // First launch on this device: explain the (opt-in) search index once.
     if (s && !s.searchIndexAsked) showSearchIndexIntro = true;
     lastDefaultLocalDir = s?.defaultLocalDir || '';
+    lastShowHidden = !!s?.showHiddenFiles;
     await initLocalDir(lastDefaultLocalDir);
     await initTransfers();
     loadFavorites();
@@ -141,14 +143,19 @@
   async function handleSettingsSaved(newSettings) {
     // Default local directory changed - navigate there immediately instead of
     // waiting for the next app launch to pick it up.
+    // Settings are saved on every change (v1.8.0 #141): only re-list the
+    // folders when the hidden-files setting changed, not after each click.
     const newDefaultDir = newSettings?.defaultLocalDir || '';
+    const showHidden = !!newSettings?.showHiddenFiles;
+    const hiddenChanged = showHidden !== lastShowHidden;
+    lastShowHidden = showHidden;
     if (newDefaultDir !== lastDefaultLocalDir) {
       lastDefaultLocalDir = newDefaultDir;
       await initLocalDir(newDefaultDir);
-    } else {
+    } else if (hiddenChanged) {
       refreshLocal(get(localPath));
     }
-    if (isConnected) {
+    if (isConnected && hiddenChanged) {
       refreshRemote(get(remotePath));
     }
   }

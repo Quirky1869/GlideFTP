@@ -5422,3 +5422,36 @@ utils/sortNames.js compareNames(a, b, strict): strict = code-point order
 every name sort of FileBrowser.svelte: list (name column), search
 results, tree view children, favourites block. Setting caseSensitiveSort
 (Go settings.go + SettingsPanel DEFAULTS, reset button). i18n EN + FR.
+
+---
+
+#141
+Title: [UX] Settings saved instantly (no Save button) + light theme "flashbang" confirmation
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+Every change in Settings needed a click on "Save" at the bottom of the
+panel; forgetting it lost the change. Now each change is applied and saved
+at once, and the green "Settings saved ✓" still confirms it. The Save
+button is gone.
+
+Choosing the light theme first opens a joke confirmation: "Turn on
+GlideFTP's flashbang mode?" with "Yes, I accept the risks" and "No,
+abort the mission" (focused by default). Resetting the theme to its
+default (dark) or importing settings doesn't ask.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+SettingsPanel.svelte: reactive scheduleSave(form) → save() (300 ms
+debounce, lastSavedJson to skip unchanged forms, number fields coerced and
+an emptied one waits for a valid value, error → red notify). Text and
+number inputs are saved when they lose the focus (isTyping() check +
+focusout on the panel), so typing a default local directory doesn't make
+the local panel jump to every partial path; pending changes are flushed in
+onDestroy. The one-click helpers (colour picker, custom sound, current
+window size, search index "Enable") now call save(). App.svelte
+handleSettingsSaved: re-lists both panels only when showHiddenFiles
+changed (it ran a remote LIST after every save before). Flashbang dialog:
+themed popup, trapFocus, its Escape cancels without closing Settings.
+i18n EN + FR.
