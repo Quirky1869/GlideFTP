@@ -5081,3 +5081,41 @@ some folders couldn't be read. Results (dirSizes, keyed by path) are kept
 until the panel changes folder or is refreshed by hand (F5 / button), which
 also cancels walks in progress; destroying the panel cancels too. Errors in
 the red message bar. Works in the list and in search results. i18n EN + FR.
+
+---
+
+#133
+Title: [Feature] Release notes inside the app, in the app's language
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+The release notes were only readable on GitHub. They can now be shown in a
+window of the app, in French when GlideFTP is in French and in English
+otherwise, from three places: a "Release notes" row in Settings > Updates
+(under "Current version"), a click on the version number at the bottom
+left of Settings (pointer cursor), and a "Release notes" button in the
+update banner, between "See the release on GitHub" and "Skip this version"
+(notes of the new version). No window opens by itself after an update:
+the banner already tells about it (user's choice).
+
+Solution (closing comment):
+Added in v1.8.0.
+
+app_update.go: GetReleaseNotes(version) reads the body of the GitHub release
+api.github.com/repos/Quirky1869/GlideFTP/releases/tags/v<version> (the
+v{version}.md pushed by release.yml, edits made on GitHub included);
+version checked against ^\d+\.\d+\.\d+$, 404 = "not_found" (release not
+published yet, or still a draft). The request code is shared with
+CheckForUpdate (fetchRelease). Wails bindings regenerated.
+
+Frontend: stores/releaseNotes.js (openReleaseNotes(version) /
+closeReleaseNotes), components/ReleaseNotesModal.svelte (mounted once in
+App.svelte, z-index 4900: above Settings, under NotifyModal; Escape,
+backdrop and Close/✕ close it), utils/releaseNotes.js: notesForLocale(md,
+locale) keeps the "## 🇬🇧 English" or "## 🇫🇷 Français" part (CRLF
+handled) without its "### Downloads" / "### Téléchargements" section, and
+renderNotes(md) turns the Markdown subset of the notes (##/###/####
+headings, paragraphs, - lists, ---, `code`, **bold**, *italic*, links
+reduced to their text, tables dropped) into HTML after escaping every
+character, so the notes can't inject HTML. Switching the language while
+the window is open re-renders it. i18n EN + FR.

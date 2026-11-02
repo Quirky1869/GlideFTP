@@ -1,4 +1,5 @@
 <script>
+  import { openReleaseNotes } from '../stores/releaseNotes.js';
   import { t, locale } from '../i18n/index.js';
   import { settings, saveSettings } from '../stores/settings.js';
   import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex, ChooseCustomSound, InstallCustomSound, RemoveCustomSound, GetAppVersion } from '../../wailsjs/go/main/App.js';
@@ -665,12 +666,16 @@
           {checkingUpdate ? $t('updateChecking') : $t('checkUpdatesNow')}
         </button>
       </div>
+      <div class="setting-row">
+        <label>{$t('releaseNotes')}</label>
+        <button class="browse-btn" disabled={!appVersion} on:click={() => openReleaseNotes(appVersion)}>{$t('releaseNotesShow')}</button>
+      </div>
     </section>
 
   </div>
 
   <div class="panel-footer">
-    <span class="version-badge">v{appVersion}</span>
+    <button class="version-badge" disabled={!appVersion} on:click={() => openReleaseNotes(appVersion)} title={$t('releaseNotesShowTitle')}>v{appVersion}</button>
     <button class="io-icon-btn" on:click={exportSettings} title={$t('exportSettings')} aria-label={$t('exportSettings')}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </button>
@@ -1144,7 +1149,8 @@ input:focus { border-color: var(--accent); }
   flex-shrink: 0;
 }
 
-.version-badge { font-size: 12px; color: var(--accent); }
+.version-badge { font-size: 12px; color: var(--accent); background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; }
+.version-badge:hover:not(:disabled) { text-decoration: underline; }
 
 .footer-spacer { flex: 1; }
 

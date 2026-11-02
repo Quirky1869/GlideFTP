@@ -6,6 +6,7 @@
   import { t } from '../i18n/index.js';
   import { updateInfo, skipUpdateVersion, openUpdateLink } from '../stores/update.js';
   import { notify } from '../stores/notify.js';
+  import { openReleaseNotes } from '../stores/releaseNotes.js';
 
   let copied = false;
   let copiedTimer = null;
@@ -61,6 +62,7 @@
         </button>
       {/if}
       <button class="update-btn" on:click={() => open($updateInfo.releaseUrl)}>{$t('updateSeeRelease')}</button>
+      <button class="update-btn" on:click={() => openReleaseNotes($updateInfo.latest)}>{$t('releaseNotes')}</button>
       <button class="update-btn" on:click={() => skipUpdateVersion($updateInfo.latest)}>{$t('updateSkip')}</button>
       <button class="update-close" on:click={() => updateInfo.set(null)} title={$t('updateLater')} aria-label={$t('updateLater')}>✕</button>
     </div>

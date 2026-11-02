@@ -28,6 +28,8 @@
   import { initOpenFile } from './stores/openfile.js';
   import SearchIndexModal from './components/SearchIndexModal.svelte';
   import UpdateBanner from './components/UpdateBanner.svelte';
+  import ReleaseNotesModal from './components/ReleaseNotesModal.svelte';
+  import { releaseNotes, closeReleaseNotes } from './stores/releaseNotes.js';
   import { checkForUpdateAtStartup } from './stores/update.js';
   import { notification, closeNotify } from './stores/notify.js';
 
@@ -87,6 +89,7 @@
   function handleKeydown(e) {
     if (e.key === 'Escape') {
       if ($notification) { closeNotify(); return; }
+      if ($releaseNotes) { closeReleaseNotes(); return; }
       showSettings = false;
       showSiteManager = false;
       return;
@@ -301,6 +304,7 @@
     <SiteManager initialSiteId={siteManagerInitialId} onClose={() => showSiteManager = false} />
   {/if}
 
+  <ReleaseNotesModal />
   <NotifyModal />
   <WindowSizeOverlay />
   <OpenedFileModal />

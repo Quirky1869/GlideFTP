@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	goruntime "runtime"
 	"strconv"
 	"strings"
@@ -26,6 +27,7 @@ import (
 const (
 	updateRepo       = "Quirky1869/GlideFTP"
 	updateCheckURL   = "https://api.github.com/repos/" + updateRepo + "/releases/latest"
+	releaseByTagURL  = "https://api.github.com/repos/" + updateRepo + "/releases/tags/v"
 	updateTimeoutSec = 10
 )
 
@@ -48,19 +50,22 @@ type UpdateInfo struct {
 type ghRelease struct {
 	TagName string `json:"tag_name"`
 	HTMLURL string `json:"html_url"`
+	Body    string `json:"body"` // the release notes (v{version}.md, EN + FR)
 	Assets  []struct {
 		Name string `json:"name"`
 		URL  string `json:"browser_download_url"`
 	} `json:"assets"`
 }
 
-// CheckForUpdate fetches the latest GitHub release. An error (no network,
-// proxy, GitHub rate limit) is only shown when the user asked for the check.
-func (a *App) CheckForUpdate() (*UpdateInfo, error) {
+// errReleaseNotFound: the GitHub API has no published release for that tag
+// (not published yet, or still a draft).
+var errReleaseNotFound = errors.New("not_found")
+
+func fetchRelease(url string) (*ghRelease, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), updateTimeoutSec*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, updateCheckURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +77,42 @@ func (a *App) CheckForUpdate() (*UpdateInfo, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errReleaseNotFound
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("GitHub: HTTP %d", resp.StatusCode)
 	}
 
 	var rel ghRelease
 	if err := json.NewDecoder(resp.Body).Decode(&rel); err != nil {
+		return nil, err
+	}
+	return &rel, nil
+}
+
+var versionRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+// GetReleaseNotes returns the notes of a published release (the body of the
+// GitHub release, i.e. v{version}.md with its English and French parts - the
+// frontend keeps the part of the app's language). "not_found" = no published
+// release with that tag.
+func (a *App) GetReleaseNotes(version string) (string, error) {
+	if !versionRe.MatchString(version) {
+		return "", fmt.Errorf("invalid version %q", version)
+	}
+	rel, err := fetchRelease(releaseByTagURL + version)
+	if err != nil {
+		return "", err
+	}
+	return rel.Body, nil
+}
+
+// CheckForUpdate fetches the latest GitHub release. An error (no network,
+// proxy, GitHub rate limit) is only shown when the user asked for the check.
+func (a *App) CheckForUpdate() (*UpdateInfo, error) {
+	rel, err := fetchRelease(updateCheckURL)
+	if err != nil {
 		return nil, err
 	}
 	latest := strings.TrimPrefix(rel.TagName, "v")

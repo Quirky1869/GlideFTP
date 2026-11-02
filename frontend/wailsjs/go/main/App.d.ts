@@ -83,6 +83,8 @@ export function GetLocalParent(arg1:string):Promise<string>;
 
 export function GetLocalRoots():Promise<Array<fs.FileEntry>>;
 
+export function GetReleaseNotes(arg1:string):Promise<string>;
+
 export function GetRemoteCwd():Promise<string>;
 
 export function GetSearchIndexInfo():Promise<main.SearchIndexInfo>;

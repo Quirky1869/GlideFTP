@@ -154,6 +154,10 @@ export function GetLocalRoots() {
   return window['go']['main']['App']['GetLocalRoots']();
 }
 
+export function GetReleaseNotes(arg1) {
+  return window['go']['main']['App']['GetReleaseNotes'](arg1);
+}
+
 export function GetRemoteCwd() {
   return window['go']['main']['App']['GetRemoteCwd']();
 }
