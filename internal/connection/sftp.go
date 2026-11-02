@@ -235,6 +235,12 @@ func (c *SFTPClient) CurrentDir() (string, error) {
 }
 
 func (c *SFTPClient) Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error {
+	return c.UploadFrom(ctx, localPath, remotePath, 0, progress)
+}
+
+// UploadFrom sends localPath from byte offset (0 = whole file): a resumed
+// upload keeps the first offset bytes of the remote file and writes after them.
+func (c *SFTPClient) UploadFrom(ctx context.Context, localPath, remotePath string, offset int64, progress func(sent, total int64)) error {
 	if c.client == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -253,18 +259,39 @@ func (c *SFTPClient) Upload(ctx context.Context, localPath, remotePath string, p
 		return err
 	}
 
-	dst, err := c.client.Create(remotePath)
+	var dst *gsftp.File
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+		dst, err = c.client.OpenFile(remotePath, os.O_WRONLY)
+		if err == nil {
+			if err = dst.Truncate(offset); err == nil {
+				_, err = dst.Seek(offset, io.SeekStart)
+			}
+			if err != nil {
+				dst.Close()
+			}
+		}
+	} else {
+		dst, err = c.client.Create(remotePath)
+	}
 	if err != nil {
 		return err
 	}
 	defer dst.Close()
 
-	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), cb: progress}
+	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), sent: offset, cb: progress}
 	_, err = io.Copy(dst, pr)
 	return err
 }
 
 func (c *SFTPClient) Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error {
+	return c.DownloadFrom(ctx, remotePath, localPath, 0, progress)
+}
+
+// DownloadFrom fetches remotePath from byte offset (0 = whole file).
+func (c *SFTPClient) DownloadFrom(ctx context.Context, remotePath, localPath string, offset int64, progress func(received, total int64)) error {
 	if c.client == nil {
 		return fmt.Errorf("not connected")
 	}
@@ -278,17 +305,34 @@ func (c *SFTPClient) Download(ctx context.Context, remotePath, localPath string,
 	if err != nil {
 		return err
 	}
+	if offset > 0 {
+		if _, err := src.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+	}
 
 	if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
 		return err
 	}
-	dst, err := os.Create(localPath)
+	dst, err := openLocalAt(localPath, offset)
 	if err != nil {
 		return err
 	}
 	defer dst.Close()
 
-	pw := &progressWriter{ctx: ctx, w: dst, total: info.Size(), cb: progress}
+	pw := &progressWriter{ctx: ctx, w: dst, total: info.Size(), received: offset, cb: progress}
 	_, err = io.Copy(pw, src)
 	return err
+}
+
+// RemoteSize returns the size of a remote file.
+func (c *SFTPClient) RemoteSize(path string) (int64, error) {
+	if c.client == nil {
+		return 0, fmt.Errorf("not connected")
+	}
+	info, err := c.client.Stat(path)
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
 }

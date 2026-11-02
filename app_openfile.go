@@ -271,30 +271,36 @@ func (a *App) forgetOpenedFiles(connID string) {
 }
 
 // beforeClose (options.App.OnBeforeClose): warns when opened files have
-// changes that were never sent back. Returns true to cancel quitting.
+// changes that were never sent back, then - with transfers still pending or
+// running - lets the frontend ask what to do with them ("app:quitWithTransfers",
+// answered by QuitWithTransfers). Returns true to cancel quitting.
 func (a *App) beforeClose(ctx context.Context) bool {
-	if a.openWatcher == nil {
+	if a.quitConfirmed.Load() {
 		return false
 	}
-	n := len(a.openWatcher.Unsynced())
-	if n == 0 {
-		return false
+	if a.openWatcher != nil {
+		if n := len(a.openWatcher.Unsynced()); n > 0 {
+			title := "Unsent changes"
+			msg := fmt.Sprintf("%d modified file(s) opened from the server have not been sent back. Their temporary copies will be deleted. Quit anyway?", n)
+			if a.appSettings.Language == "fr" {
+				title = "Modifications non renvoyées"
+				msg = fmt.Sprintf("%d fichier(s) modifié(s) ouvert(s) depuis le serveur n'ont pas été renvoyés. Leurs copies temporaires seront supprimées. Quitter quand même ?", n)
+			}
+			choice, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+				Type:    runtime.QuestionDialog,
+				Title:   title,
+				Message: msg,
+			})
+			if err == nil && choice != "Yes" {
+				return true
+			}
+		}
 	}
-	title := "Unsent changes"
-	msg := fmt.Sprintf("%d modified file(s) opened from the server have not been sent back. Their temporary copies will be deleted. Quit anyway?", n)
-	if a.appSettings.Language == "fr" {
-		title = "Modifications non renvoyées"
-		msg = fmt.Sprintf("%d fichier(s) modifié(s) ouvert(s) depuis le serveur n'ont pas été renvoyés. Leurs copies temporaires seront supprimées. Quitter quand même ?", n)
+	if a.queue != nil && a.queue.ActiveCount() > 0 {
+		runtime.EventsEmit(ctx, "app:quitWithTransfers")
+		return true
 	}
-	choice, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
-		Type:    runtime.QuestionDialog,
-		Title:   title,
-		Message: msg,
-	})
-	if err != nil {
-		return false
-	}
-	return choice != "Yes"
+	return false
 }
 
 // statRemote returns a remote file's ModTime/Size by listing its parent

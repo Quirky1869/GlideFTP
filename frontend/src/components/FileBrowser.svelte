@@ -4,7 +4,7 @@
   import { t, locale } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
-  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath, LocalCreateFile, RemoteCreateFile, DirSize, CancelDirSizes } from '../../wailsjs/go/main/App.js';
+  import { QueueUpload, QueueDownload, QueueUploadResume, QueueDownloadResume, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath, LocalCreateFile, RemoteCreateFile, DirSize, CancelDirSizes } from '../../wailsjs/go/main/App.js';
   import { EventsOn } from '../../wailsjs/runtime/runtime.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
@@ -810,9 +810,14 @@
   // target = { destDir, upload }: where the entries go and in which direction.
   // The transfer button / context menu send to the other panel's folder, a drop
   // sends from the other panel into this one (or into one of its folders).
-  function doQueueTransfer(entry, target, destNameOverride) {
+  // resume: continue after the smaller file already at the destination (the
+  // conflict dialog's "Resume", files only).
+  function doQueueTransfer(entry, target, destNameOverride, resume = false) {
     const dest = target.destDir.replace(/[/\\]?$/, '/') + (destNameOverride || entry.name);
-    if (entry.isDir) {
+    if (resume) {
+      if (target.upload) QueueUploadResume(entry.path, dest);
+      else QueueDownloadResume(entry.path, dest);
+    } else if (entry.isDir) {
       if (target.upload) QueueUploadDir(entry.path, dest);
       else QueueDownloadDir(entry.path, dest);
     } else {
@@ -825,7 +830,9 @@
 
   // conflictState:
   //   null                              → no conflict dialog
-  //   { mode:'choose', conflicts:[], target }   → initial 4-button dialog
+  //   { mode:'choose', conflicts:[], target, partial }   → initial dialog;
+  //     partial = { size, total } when every conflict is a file whose copy at
+  //     the destination is smaller (a cut transfer) → extra "Resume" button
   //   { mode:'rename', entry, remaining:[], inputVal:'', index, total, target,
   //     renameAt, takenNames, error, busy }                → rename input
   // renameAt 'dest' = only the transferred copy gets the new name; 'source' =
@@ -844,7 +851,11 @@
   function resolveConflict(action) {
     if (!conflictState || conflictState.mode !== 'choose') return;
     const { conflicts, target } = conflictState;
-    if (action === 'replace') {
+    if (action === 'resume') {
+      for (const entry of conflicts) doQueueTransfer(entry, target, null, true);
+      queueVisible.set(true);
+      conflictState = null;
+    } else if (action === 'replace') {
       for (const entry of conflicts) doQueueTransfer(entry, target);
       queueVisible.set(true);
       conflictState = null;
@@ -952,11 +963,26 @@
     for (const e of nonConflicts) doQueueTransfer(e, target);
     if (conflicts.length > 0) {
       const takenNames = [...(destEntries || []), ...nonConflicts].map(e => e.name.toLowerCase());
-      conflictState = { mode: 'choose', conflicts, target, takenNames };
+      conflictState = { mode: 'choose', conflicts, target, takenNames, partial: partialCopies(conflicts, destEntries) };
       if (nonConflicts.length > 0) queueVisible.set(true);
     } else {
       queueVisible.set(true);
     }
+  }
+
+  // { size, total } (summed) when every conflicting entry is a file whose copy
+  // at the destination is smaller but not empty - an earlier transfer that
+  // was cut - else null. Resuming is then offered, like FileZilla.
+  function partialCopies(conflicts, destEntries) {
+    const dest = new Map((destEntries || []).map(e => [e.name.toLowerCase(), e]));
+    let size = 0, total = 0;
+    for (const e of conflicts) {
+      const d = dest.get(e.name.toLowerCase());
+      if (e.isDir || !d || d.isDir || !(d.size > 0) || d.size >= e.size) return null;
+      size += d.size;
+      total += e.size;
+    }
+    return { size, total };
   }
 
   async function transferSelected() {
@@ -2143,8 +2169,16 @@
             {conflictState.conflicts.length} {$t('items')}
           {/if}
         </div>
+        {#if conflictState.partial}
+          <div class="conflict-partial">
+            {$t('conflictPartial').replace('{size}', formatBytes(conflictState.partial.size)).replace('{total}', formatBytes(conflictState.partial.total))}
+          </div>
+        {/if}
         <div class="conflict-actions">
-          <button class="conflict-replace-btn" on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
+          {#if conflictState.partial}
+            <button class="conflict-replace-btn" title={$t('conflictResumeHint')} on:click={() => resolveConflict('resume')}>{$t('resumeTransfer')}</button>
+          {/if}
+          <button class={conflictState.partial ? 'conflict-rename-btn' : 'conflict-replace-btn'} on:click={() => resolveConflict('replace')}>{$t('conflictReplace')}</button>
           <button class="conflict-rename-btn" on:click={() => resolveConflict('rename')}>{$t(conflictState.target.upload ? 'conflictRenameServer' : 'conflictRenameHost')}</button>
           <button class="conflict-rename-btn" on:click={() => resolveConflict('renameSource')}>{$t(conflictState.target.upload ? 'conflictRenameLocalThenUpload' : 'conflictRenameServerThenDownload')}</button>
           <button class="confirm-cancel-btn" on:click={() => conflictState = null}>{$t('cancel')}</button>
@@ -2787,6 +2821,12 @@
   color: var(--text-secondary); padding: 7px 14px; font-size: 13px; cursor: pointer;
 }
 .conflict-rename-btn:hover { background: var(--bg-button-hover); }
+.conflict-partial {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: -4px;
+}
 
 /* ── Tree view ── */
 .tree-list {

@@ -3,6 +3,7 @@
   import { get } from 'svelte/store';
   import { t } from '../i18n/index.js';
   import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, connections, activeConnectionId, addConnectionAdHoc, closeTab } from '../stores/connection.js';
+  import { guardTransfers } from '../stores/transferGuard.js';
   import { settings } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { notify } from '../stores/notify.js';
@@ -110,6 +111,8 @@
   async function doQuickReplace(cfg) {
     quickConnectDialog = null;
     const oldId = get(activeConnectionId);
+    // Asked before connecting: "Cancel" keeps everything as it was.
+    if (oldId && !(await guardTransfers([oldId]))) return;
     showError = false;
     try {
       await addConnectionAdHoc(cfg);
@@ -140,8 +143,7 @@
         onMultiDisconnect();
         return;
       }
-      password = '';
-      await disconnect();
+      if (await disconnect()) password = '';
       return;
     }
     pendingQuickCfg = null;

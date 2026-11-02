@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"GlideFTP/internal/connection"
@@ -31,6 +32,10 @@ type App struct {
 	siteMgr     *sites.Manager
 	appSettings *settings.Settings
 	keyringMgr  *keyring.Manager
+
+	// Set once the user chose what to do with running transfers on quit
+	// (QuitWithTransfers): beforeClose then lets the window close.
+	quitConfirmed atomic.Bool
 
 	// Files opened with the default application (app_openfile.go).
 	openWatcher *openfile.Watcher
@@ -73,7 +78,20 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.queue = transfer.NewQueue(a.appSettings.MaxConcurrentTransfers, emitter)
 	a.queue.SetSpeedLimit(a.appSettings.MaxTransferSpeedKBps)
+	// Each job runs on the connection it was queued on, never the active one.
+	a.queue.SetResolver(func(connID string) transfer.Executor {
+		if client, _, ok := a.connMgr.ClientByID(connID); ok {
+			return client
+		}
+		return nil
+	})
+	// Unfinished transfers survive a restart or a crash (point 8).
+	if dir, err := os.UserConfigDir(); err == nil {
+		a.queue.EnableStore(filepath.Join(dir, "GlideFTP", "queue.json"))
+	}
 	a.connMgr.SetOnConnectionLost(func(id, host string) {
+		// A lost connection keeps its transfers aside, resumed on reconnect.
+		a.queue.ConnectionClosed(id, true)
 		runtime.EventsEmit(ctx, "connection:lost", map[string]string{"id": id, "host": host})
 	})
 	a.migratePasswords()
@@ -98,6 +116,8 @@ func (a *App) onSecondInstanceLaunch(_ options.SecondInstanceData) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	// Before disconnecting: running jobs are saved as paused, not failed.
+	a.queue.Save()
 	a.connMgr.Disconnect()
 	a.cleanupOpenFiles()
 	if a.searchIdx != nil {
@@ -503,11 +523,10 @@ func (a *App) Connect(cfg connection.Config) (connection.ConnInfo, error) {
 	}
 	name := cfg.Host
 	a.forgetOpenedFiles(a.connMgr.ActiveID())
-	id, err := a.connMgr.Connect(cfg, name)
+	id, err := a.connectReplacing(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
 	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
@@ -565,11 +584,10 @@ func (a *App) ConnectToSite(siteID string) (connection.ConnInfo, error) {
 	}
 	cfg := a.buildSiteConfig(site, "")
 	a.forgetOpenedFiles(a.connMgr.ActiveID())
-	id, err := a.connMgr.Connect(cfg, name)
+	id, err := a.connectReplacing(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
 	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
@@ -586,11 +604,10 @@ func (a *App) ConnectWithPassword(siteID, password string) (connection.ConnInfo,
 	cfg := a.buildSiteConfig(site, password)
 	cfg.AuthType = connection.AuthPassword
 	a.forgetOpenedFiles(a.connMgr.ActiveID())
-	id, err := a.connMgr.Connect(cfg, name)
+	id, err := a.connectReplacing(cfg, name)
 	if err != nil {
 		return connection.ConnInfo{}, err
 	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
@@ -604,7 +621,6 @@ func (a *App) ConnectAdditional(cfg connection.Config) (connection.ConnInfo, err
 	if err != nil {
 		return connection.ConnInfo{}, err
 	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
@@ -627,7 +643,6 @@ func (a *App) ConnectToSiteAdditional(siteID, overridePassword string) (connecti
 	if err != nil {
 		return connection.ConnInfo{}, err
 	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
 	return a.connInfoFrom(cfg, id, name), nil
 }
 
@@ -638,11 +653,7 @@ func (a *App) GetConnections() []connection.ConnInfo {
 
 // SwitchConnection makes a different connection the active one.
 func (a *App) SwitchConnection(id string) error {
-	if err := a.connMgr.SwitchTo(id); err != nil {
-		return err
-	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
-	return nil
+	return a.connMgr.SwitchTo(id)
 }
 
 // CloseConnection disconnects and removes a specific connection.
@@ -650,11 +661,9 @@ func (a *App) CloseConnection(id string) error {
 	// Before CloseOne: a connection lost on keepalive is already gone from the
 	// manager (CloseOne errors) but its opened files must still be released.
 	a.forgetOpenedFiles(id)
-	if err := a.connMgr.CloseOne(id); err != nil {
-		return err
-	}
-	a.queue.SetExecutor(a.connMgr.GetClient())
-	return nil
+	// Its transfers end too: they never move to another connection.
+	a.queue.ConnectionClosed(id, false)
+	return a.connMgr.CloseOne(id)
 }
 
 // GetActiveConnectionID returns the ID of the currently active connection.
@@ -665,9 +674,18 @@ func (a *App) GetActiveConnectionID() string {
 func (a *App) Disconnect() error {
 	for _, c := range a.connMgr.GetConnections() {
 		a.forgetOpenedFiles(c.ID)
+		a.queue.ConnectionClosed(c.ID, false)
 	}
-	a.queue.SetExecutor(nil)
 	return a.connMgr.Disconnect()
+}
+
+// connectReplacing is connMgr.Connect, which closes the active connection
+// first: that connection's transfers end (see Queue.ConnectionClosed).
+func (a *App) connectReplacing(cfg connection.Config, name string) (string, error) {
+	if old := a.connMgr.ActiveID(); old != "" {
+		a.queue.ConnectionClosed(old, false)
+	}
+	return a.connMgr.Connect(cfg, name)
 }
 
 func (a *App) GetConnectionStatus() string {
@@ -786,12 +804,25 @@ func (a *App) BrowseSSHKey() (string, error) {
 
 // ─── Transfers ────────────────────────────────────────────────────────────────
 
+// Every transfer is bound to the connection active when it is queued (the
+// tab the user is looking at) and always runs on it, even if another tab is
+// active by the time it starts.
 func (a *App) QueueUpload(localPath, remotePath string) {
-	a.queue.Add(transfer.Upload, localPath, remotePath, a.connMgr.GetActiveHost())
+	a.queue.Add(transfer.Upload, localPath, remotePath, a.activeTarget(), false)
 }
 
 func (a *App) QueueDownload(remotePath, localPath string) {
-	a.queue.Add(transfer.Download, localPath, remotePath, a.connMgr.GetActiveHost())
+	a.queue.Add(transfer.Download, localPath, remotePath, a.activeTarget(), false)
+}
+
+// QueueUploadResume / QueueDownloadResume: the conflict dialog's "Resume",
+// for a destination file smaller than the source (an earlier transfer cut).
+func (a *App) QueueUploadResume(localPath, remotePath string) {
+	a.queue.Add(transfer.Upload, localPath, remotePath, a.activeTarget(), true)
+}
+
+func (a *App) QueueDownloadResume(remotePath, localPath string) {
+	a.queue.Add(transfer.Download, localPath, remotePath, a.activeTarget(), true)
 }
 
 // QueueUploadDir recursively enumerates localPath and queues one upload job per file.
@@ -799,30 +830,33 @@ func (a *App) QueueDownload(remotePath, localPath string) {
 // The walk stops as soon as CancelAllTransfers is called (queue generation changes).
 func (a *App) QueueUploadDir(localPath, remotePath string) {
 	gen := a.queue.Generation()
-	go a.enqueueUploadDir(gen, localPath, remotePath)
+	go a.enqueueUploadDir(gen, a.activeTarget(), localPath, remotePath)
 }
 
-// enqueueUploadDir returns false once the walk was cancelled, so recursion unwinds.
-func (a *App) enqueueUploadDir(gen uint64, localPath, remotePath string) bool {
+// enqueueUploadDir returns false once the walk was cancelled (or its
+// connection closed), so recursion unwinds.
+func (a *App) enqueueUploadDir(gen uint64, conn transfer.Target, localPath, remotePath string) bool {
 	if a.queue.Generation() != gen {
 		return false
 	}
-	if err := a.connMgr.MkDir(remotePath); err != nil {
+	if _, _, ok := a.connMgr.ClientByID(conn.ConnID); !ok {
+		return false
+	}
+	if err := a.connMgr.MkDirOn(conn.ConnID, remotePath); err != nil {
 		return true
 	}
 	entries, err := os.ReadDir(localPath)
 	if err != nil {
 		return true
 	}
-	host := a.connMgr.GetActiveHost()
 	for _, e := range entries {
 		src := filepath.Join(localPath, e.Name())
 		dst := remotePath + "/" + e.Name()
 		if e.IsDir() {
-			if !a.enqueueUploadDir(gen, src, dst) {
+			if !a.enqueueUploadDir(gen, conn, src, dst) {
 				return false
 			}
-		} else if a.queue.AddForGeneration(gen, transfer.Upload, src, dst, host) == nil {
+		} else if a.queue.AddForGeneration(gen, transfer.Upload, src, dst, conn) == nil {
 			return false
 		}
 	}
@@ -834,29 +868,32 @@ func (a *App) enqueueUploadDir(gen uint64, localPath, remotePath string) bool {
 // The walk stops as soon as CancelAllTransfers is called (queue generation changes).
 func (a *App) QueueDownloadDir(remotePath, localPath string) {
 	gen := a.queue.Generation()
-	go a.enqueueDownloadDir(gen, remotePath, localPath)
+	go a.enqueueDownloadDir(gen, a.activeTarget(), remotePath, localPath)
 }
 
-// enqueueDownloadDir returns false once the walk was cancelled, so recursion unwinds.
-func (a *App) enqueueDownloadDir(gen uint64, remotePath, localPath string) bool {
+// enqueueDownloadDir returns false once the walk was cancelled (or its
+// connection closed), so recursion unwinds.
+func (a *App) enqueueDownloadDir(gen uint64, conn transfer.Target, remotePath, localPath string) bool {
 	if a.queue.Generation() != gen {
+		return false
+	}
+	if _, _, ok := a.connMgr.ClientByID(conn.ConnID); !ok {
 		return false
 	}
 	if err := os.MkdirAll(localPath, 0755); err != nil {
 		return true
 	}
-	entries, err := a.connMgr.ListDir(remotePath)
+	entries, err := a.connMgr.ListDirOn(conn.ConnID, remotePath)
 	if err != nil {
 		return true
 	}
-	host := a.connMgr.GetActiveHost()
 	for _, e := range entries {
 		dst := filepath.Join(localPath, e.Name)
 		if e.IsDir {
-			if !a.enqueueDownloadDir(gen, e.Path, dst) {
+			if !a.enqueueDownloadDir(gen, conn, e.Path, dst) {
 				return false
 			}
-		} else if a.queue.AddForGeneration(gen, transfer.Download, dst, e.Path, host) == nil {
+		} else if a.queue.AddForGeneration(gen, transfer.Download, dst, e.Path, conn) == nil {
 			return false
 		}
 	}
@@ -875,10 +912,6 @@ func (a *App) CancelTransfer(id string) error {
 // folder upload/download still enumerating files.
 func (a *App) CancelAllTransfers() {
 	a.queue.CancelAll()
-}
-
-func (a *App) RetryTransfer(id string) error {
-	return a.queue.Retry(id)
 }
 
 func (a *App) ClearTransfers(status string) {

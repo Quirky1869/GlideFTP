@@ -396,7 +396,8 @@
     }
     connecting = true;
     try {
-      await connectBySite(pendingSiteId, pendingConfig);
+      // false: the user kept the current connection (transfers question).
+      if (!(await connectBySite(pendingSiteId, pendingConfig))) return;
       await refreshRemote(site?.remoteDir || '/');
       onClose();
     } catch (e) {
@@ -414,7 +415,10 @@
       if (promptIsAdd) {
         await addConnection(promptSiteId, promptPassword);
       } else {
-        await connectBySiteWithPassword(promptSiteId, promptPassword, site ? siteConfig(site) : null);
+        if (!(await connectBySiteWithPassword(promptSiteId, promptPassword, site ? siteConfig(site) : null))) {
+          showPasswordPrompt = false;
+          return;
+        }
       }
       await refreshRemote(site?.remoteDir || '/');
       showPasswordPrompt = false;

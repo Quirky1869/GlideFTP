@@ -416,6 +416,8 @@ export namespace transfer {
 	    localPath: string;
 	    remotePath: string;
 	    remoteHost: string;
+	    connId: string;
+	    account: string;
 	    name: string;
 	    size: number;
 	    bytesDone: number;
@@ -425,6 +427,9 @@ export namespace transfer {
 	    createdAt: any;
 	    // Go type: time
 	    finishedAt: any;
+	    // Go type: time
+	    srcModTime: any;
+	    resume: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Job(source);
@@ -437,6 +442,8 @@ export namespace transfer {
 	        this.localPath = source["localPath"];
 	        this.remotePath = source["remotePath"];
 	        this.remoteHost = source["remoteHost"];
+	        this.connId = source["connId"];
+	        this.account = source["account"];
 	        this.name = source["name"];
 	        this.size = source["size"];
 	        this.bytesDone = source["bytesDone"];
@@ -444,6 +451,8 @@ export namespace transfer {
 	        this.error = source["error"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.finishedAt = this.convertValues(source["finishedAt"], null);
+	        this.srcModTime = this.convertValues(source["srcModTime"], null);
+	        this.resume = source["resume"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

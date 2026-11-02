@@ -9,7 +9,7 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 UI reference sketch in `_images/exemple.png`. The original French design spec (`prompt-glideftp`) was removed from the repo in commit `af4095f` - no longer present, don't reference it as an existing file.
 
 **Project tracking files** (keep in sync after each session):
-- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#134. Add new entries after each fix.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#137. Add new entries after each fix.
 
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
@@ -126,6 +126,7 @@ GlideFTP/
 ├── version.go                     # `var appVersion` (bump each release; make.sh/docker build-appimage.sh override it with -ldflags "-X main.appVersion=<ver>") + GetAppVersion() (v1.8.0 #125)
 ├── app_dirsize.go                 # Same App struct: DirSize (local WalkDir / remote parallel walk like the search) + CancelDirSizes(prefix) for right-click "Calculate size" (v1.8.0 #132)
 ├── app_favorites.go               # Same App struct: GetFavorites / SetFavorites (favourite folders + files pinned at the top of each panel, v1.8.0 #134)
+├── app_transfers.go               # Same App struct: resume / start over / abandon a transfer, stop or pause a connection's transfers, resume paused ones, QuitWithTransfers (v1.8.0 #136)
 ├── app_update.go                  # Same App struct: CheckForUpdate (GitHub releases/latest) + OpenUpdateLink (v1.8.0 #125)
 ├── app_sound.go                   # Same App struct: custom notification sound (ChooseCustomSound/InstallCustomSound/GetCustomSound/RemoveCustomSound) (v1.7.9 #120)
 ├── app_openfile.go                # Same App struct: "Open with default app" bindings (OpenLocalFile/OpenRemoteFile/UploadOpenedFile/...), beforeClose (v1.7.8 #110)
@@ -150,7 +151,8 @@ GlideFTP/
 │   │   ├── sftp.go                # SFTP client (github.com/pkg/sftp + golang.org/x/crypto/ssh)
 │   │   └── ppk.go                 # PuTTY .ppk key parser (v2/v3, RSA + Ed25519, unencrypted)
 │   ├── transfer/
-│   │   └── queue.go               # Worker-pool transfer queue; emits Wails events for progress
+│   │   ├── queue.go               # Worker-pool transfer queue; emits Wails events for progress; resume at byte offset, paused status (v1.8.0 #136)
+│   │   └── store.go               # Unfinished jobs saved to ~/.config/GlideFTP/queue.json (every 2s when changed + at shutdown), reloaded paused (v1.8.0 #136)
 │   ├── sites/
 │   │   └── sites.go               # Saved sites - persisted to ~/.config/GlideFTP/sites.json (passwords NEVER written to disk)
 │   ├── keyring/
@@ -192,6 +194,8 @@ GlideFTP/
         ├── SiteManager.svelte      # Centered modal: create/edit/delete/connect/duplicate saved sites; form inputs have right-click cut/copy/paste menu; password field has eye toggle; detail panel fully centered (align-items center on .site-detail, .site-view, .site-view-header)
         ├── WindowSizeOverlay.svelte # v1.7.8 #106 - centered "W × H" badge while the window is resized (Wails WindowGetSize(), same units as the WindowWidth/Height settings), rAF-throttled, fades 1.2s after last resize, accent border always but accent glow only when `settings.connectCardShadow` is on (`class:glow`), ignores the first 1.5s (startup/maximize); mounted once in App.svelte. Companion (#107): SettingsPanel's "Utiliser la taille actuelle" button (row below Window height) fills `form.windowWidth/Height` from `WindowGetSize()`, clamped 800-3840 / 600-2160, then saves immediately (`saveSettings(form)` + `onSaved(form)`, like `onColorApply()` - saves the whole form). Can be turned off (v1.7.9 #122): setting `showWindowSizeBadge` (default true) - `sw` switch row between Window height and "Taille actuelle", not greyed by startMaximized; `onResize()` returns early when false
         ├── OpenedFileModal.svelte  # v1.7.8 #110 - "Opening x..." box, "modified - send back?" / conflict prompts, no-app dialog, toast (state in stores/openfile.js)
+        ├── TransferGuardModal.svelte # v1.8.0 #136 - "N transfers in progress": Resume later / Stop / Cancel before closing connections or quitting (stores/transferGuard.js)
+        ├── ResumeBanner.svelte     # v1.8.0 #136 - "N paused transfers for host. Resume?" bar, next to UpdateBanner, once connected to that server account
         ├── UpdateBanner.svelte     # v1.8.0 #125 - "new version available" bar, in #app-root's flex column between .main-content and TransferQueue (above the queue, under the fixed overlays)
         ├── ReleaseNotesModal.svelte # v1.8.0 #133 - release notes window (z-index 4900), opened by stores/releaseNotes.js openReleaseNotes(version); utils/releaseNotes.js keeps the app language's part and renders the Markdown subset (escaped first)
         ├── NotifyModal.svelte      # Global themed popup (accent border, no icon, large bold message) - mounted once in App.svelte, replaces native alert() everywhere
@@ -213,6 +217,8 @@ GlideFTP/
 - **FTP concurrent transfers**: `FTPClient.Upload()` and `FTPClient.Download()` open a **dedicated FTP connection** per transfer via `dial()` (same credentials as the primary connection). The primary connection (`c.conn`) is reserved exclusively for control operations (ListDir, MkDir, Delete, Rename) and is protected by `c.mu`. This allows N concurrent transfers = N independent FTP connections, which is the standard approach (FileZilla etc.). The `jlaffaye/ftp` library is not thread-safe on a single connection - never run concurrent operations on the same `*ServerConn`.
 - **Transfer cancellation**: each `Job` holds a `cancelFn context.CancelFunc` set in `queue.run()`. `progressReader.Read()` and `progressWriter.Write()` check `ctx.Err()` before each chunk - calling `cancelFn()` interrupts an in-progress transfer. `Cancel(id)` handles both `StatusPending` and `StatusRunning` jobs.
 - **Cancel all transfers** (v1.7.8, #104 + #105): `Queue.CancelAll()` cancels pending jobs (one bulk `transfer:cancelledAll` event with the ids - never one event per job, a dropped folder can hold thousands) and calls the `cancelFn` of running ones; it also bumps `Queue.generation`. Folder walkers (`enqueueUploadDir`/`enqueueDownloadDir` in `app.go`) receive the generation read *synchronously* in `QueueUploadDir`/`QueueDownloadDir`, return `bool` (false = cancelled, unwinds recursion) and add jobs via `AddForGeneration(gen, ...)` (generation check + append under one lock, nil when stale). `run()` re-checks `job.Status == StatusCancelled` right after acquiring the worker semaphore - before #105 a cancelled pending job still ran once a slot freed. Frontend: `cancelAllTransfers()` (transfers.js, sets `suppressDrainSound` so the notification sound doesn't play for a cancelled batch) + red `.small-btn.danger.cancel-all` "Tout annuler" button in `TransferQueue.svelte`'s header, only on the pending tab when it has jobs.
+- **Transfers bound to their connection** (v1.8.0 #135): every `Job` has `ConnID` (connection active when queued) and always runs on it - the queue has a `Resolver` (connID → `Manager.ClientByID`), there is no "active executor" any more (`SetExecutor` removed; never reintroduce one - before, a tab switch sent waiting transfers to the other server). Folder walkers capture a `transferConn{id, host}` and use `Manager.ListDirOn` / `MkDirOn`. Closing a connection in any way (`CloseConnection`, `Disconnect`, `connectReplacing` for `connMgr.Connect`, `connection:lost`) must call `Queue.ConnectionClosed(id)`: pending jobs fail with `connection_closed` (bulk `transfer:connectionClosed` event), running ones are interrupted and fail the same way; TransferQueue translates it (`transferConnClosed`).
+- **Resume + kept queue** (v1.8.0 #136, points 2 + 8): partial files keep their **final name** (user's choice, like FileZilla - no `.part`). `Client.UploadFrom`/`DownloadFrom(offset)` + `RemoteSize`: FTP = `APPE` (upload) / `REST`+`RETR` (`RetrFrom`), SFTP = `OpenFile`+`Truncate`+`Seek`; local target via `openLocalAt` (truncate to offset, seek). `resumeOffset` = size of the partial destination, 0 (= from zero) if missing / bigger / source changed (`Size`, upload `SrcModTime`), -1 = already complete (→ done). **`Job.Resume` is only set when the job wrote bytes (`BytesDone > 0`) or on an explicit "Resume"** - never because a file is there (a "Replace" paused before its first byte must not resume the old file). Status `paused`: shown in the Pending tab; resumed by `ResumePausedTransfers(connId)` (ResumeBanner, "Resume all"; "Later" = `resumeBannerDismissed` in transfers.js, cleared when a paused row is resumed by hand so the bar comes back) or the row's "Resume", on a connection to the same `Account` (`connection.AccountKey` = frontend `accountKey`/`favKey`, `targetForJob`). Failed tab: Resume (if bytesDone > 0) / Start over / Abandon (`AbandonTransfer`: removes the job + deletes the partial file it wrote - local to the trash, remote if connected, else "remote_kept"); × only on done/cancelled. Before closing connections (`disconnect()`, `closeTab()`, `connectBySite*` replace, quick-connect Replace) the frontend calls `guardTransfers(connIds)` (stores/transferGuard.js): with pending/running jobs it asks Resume later / Stop / Cancel (`StopConnectionTransfers(ids, pause)`), and those helpers return false on Cancel - callers must stop there. Connection lost = paused automatically (`ConnectionClosed(id, true)`); `closeTab(id, { force: true })`. Quit: `beforeClose` (after the opened-files question) emits `app:quitWithTransfers` and cancels; the modal answers with `QuitWithTransfers(pause)` (sets `quitConfirmed`, `runtime.Quit` → beforeClose lets it close). Queue saved to `queue.json` (pending/running/paused/failed; reloaded as paused, ConnID cleared; the queue opens at startup if any). The conflict dialog offers "Resume" (`QueueUploadResume`/`QueueDownloadResume`) when every conflict is a file whose destination copy is smaller (`partialCopies`).
 - **Concurrent transfer setting**: `Queue.SetWorkers(n int)` replaces the semaphore channel with a new one of capacity `n`. `run()` snapshots `q.sem` into a local variable before the `select` so acquire and release always use the same channel, even if `SetWorkers` is called mid-flight. `SaveSettings()` in `app.go` calls both `SetWorkers` and `SetSpeedLimit` so changes take effect immediately without restart.
 - **Reconnection**: `manager.Connect()` disconnects an existing connection before reconnecting - no "already connected" error.
 - **Multi-connection tabs**: `manager.ConnectNew()` adds a connection alongside existing ones. The frontend tracks open connections in the `connections` writable store (`[{id, name, host, protocol, port, user, remotePath}]`). Tabs appear in `App.svelte` between the topbar and dual-browser only when `$connections.length > 1`. `switchTab(id)` saves the current remotePath before switching. `closeTab(id)` cleans up and auto-activates the next tab. When the disconnect button is clicked with 2+ open connections, a confirmation overlay asks to close all. `MaxConnections` (1-5, default 3) is a setting that controls how many can be kept open; `SiteManager` checks this before offering the "keep and open new" option.
@@ -346,8 +352,8 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 - `app.ConnectWithPassword(id, password)` - connects to a saved site but overrides its stored password (for `ask_password` sites)
 - `app.ConnectToSiteAdditional(siteID, overridePassword)` - adds a new connection alongside existing ones (multi-tab); calls `manager.ConnectNew()`
 - `app.GetConnections()` - returns `[]ConnInfo` for all currently open connections
-- `app.SwitchConnection(id)` - switches the active connection and calls `queue.SetExecutor` with the new client
-- `app.CloseConnection(id)` - closes a specific connection and calls `queue.SetExecutor` with the updated active client
+- `app.SwitchConnection(id)` - switches the active connection (the transfer queue is not affected, each job keeps its own connection - #135)
+- `app.CloseConnection(id)` - calls `queue.ConnectionClosed(id)` (its transfers fail with `connection_closed`) then closes that connection
 - `app.GetActiveConnectionID()` - returns the UUID of the currently active connection
 - `manager.ConnectNew()` - adds a connection without removing existing ones; new connection becomes active
 - `manager.CloseOne(id)` - closes specific connection; if it was active, switches to the most-recently-added remaining one
@@ -396,13 +402,6 @@ The Wails WebView on Linux uses WebKit-GTK. These patterns are broken and **must
 
 Feature ideas proposed on 2026-10-27 and kept by the user for v1.8.0 (first noted as v2.0.0 by mistake). **When the user asks for them, give them back exactly as written below (French, same wording and order).** Once a feature is actually added to the app, remove its entry from this list (it then gets its own issue / release-notes section like any other feature); delete this whole section when the list is empty.
 
-### Priorité haute : des manques qui peuvent coûter des fichiers ou du temps
-
-**2. Reprendre un transfert interrompu**
-- Aujourd'hui, si un gros fichier (une ISO de 4 Go par exemple) coupe à 90 %, "Réessayer" repart de zéro.
-- FTP (commande `REST`) et SFTP savent reprendre à l'octet près. La bibliothèque FTP utilisée le gère déjà.
-- Un bouton "Reprendre" dans les échecs, voire une reprise automatique quand le fichier partiel existe. Effort moyen.
-
 ### Priorité moyenne : gros gain au quotidien
 
 **5. Comparer les deux panneaux**
@@ -414,17 +413,6 @@ Feature ideas proposed on 2026-10-27 and kept by the user for v1.8.0 (first note
 - Une option qui fait suivre le panneau d'en face quand tu entres dans un dossier, si le même dossier existe de l'autre côté.
 - Très pratique quand on maintient une copie locale d'un site. Elle se combine bien avec le point 5. Effort faible.
 
-### Priorité plus basse : utile mais plus spécialisé
-
-**7. Permissions (chmod)**
-- Les permissions sont déjà récupérées depuis le serveur mais jamais affichées.
-- Ajouter une colonne "Droits", masquable, et un clic droit "Permissions..." avec des cases lecture/écriture/exécution.
-- C'est indispensable pour un hébergement web, quand un script PHP refuse d'écrire dans un dossier. Effort moyen.
-
-**8. Garder la file de transferts après un redémarrage**
-- Si on ferme l'appli avec des transferts en attente, ils sont perdus.
-- On pourrait les sauvegarder et proposer "Reprendre les N transferts en attente ?" au lancement suivant. Avec le point 2, c'est encore plus utile. Effort moyen.
-
 ### Ordre conseillé
 Je commencerais par **1 + 3** : c'est rapide, ça corrige un vrai risque et ça rend l'appli plus naturelle à utiliser. Ensuite **2**, la reprise de transfert, parce que tu manipules de gros fichiers comme des ISO. Puis **4** et **5**.
 
@@ -433,5 +421,4 @@ Je commencerais par **1 + 3** : c'est rapide, ça corrige un vrai risque et ça 
 - **Point 6 (synchronized browsing)**: use **Ctrl+Y** to toggle it, the same shortcut as FileZilla's "Navigation synchronisée" (Affichage menu). Ctrl+Y is not used anywhere in GlideFTP yet (checked 2026-10-30). Add it to `handlePanelKeydown` next to Ctrl+O and show "(Ctrl+Y)" in the button tooltip. Skip it when the key comes from an input (`inField`), where Ctrl+Y can mean "redo".
   - **Missing folder on the other side** (not in the original idea, which only said "if the same folder exists"): like FileZilla, show a dialog instead of silently doing nothing - "The local folder « /path/ » does not exist." with two radio choices, "Create the missing local folder and open it" (default, pre-selected) and "Turn off synchronized browsing and continue the remote folder change", plus Annuler / Valider. Annuler = no navigation at all, sync stays on. Same dialog in the other direction (remote folder missing when navigating locally → create the remote folder with `MkDir`). Use the app's themed popup style + `use:trapFocus`, and button-based radio choices (no hidden native inputs, see WebKit-GTK pattern #1). Also handle ".." the same way.
 - **Points 5 + 6 - where to put the controls (decided with the user on 2026-10-30)**: the on/off toggles for comparison and synchronized browsing are buttons in the panel header, next to tree view / refresh / search (switched often during a session for a given folder - like FileZilla's toolbar), with Ctrl+O / Ctrl+Y as direct access. Only the lasting options go in Settings: comparison criterion (size or date) and "hide identical files". The user dropped a "favourite settings" idea that was only meant to make these reachable - don't propose it again.
-- **Point 7 (permissions) - Unix rights only** (user's call 2026-10-30): Windows servers (IIS FTP NTFS ACLs, OpenSSH for Windows) are out of scope - no special handling, don't propose it again. A server that refuses CHMOD just gets the usual error message.
-  - **Rights of the FTP/SFTP user**: on Unix only the file's **owner** (or root) can chmod it, and some servers disable chmod entirely (vsftpd `chmod_enable=NO`, some NAS settings). A refused change must show the server's reply in the red bar (same as #127 `openDirFailed`, e.g. "550 Permission denied"), never fail silently; for a multi-selection, apply what can be applied and list the failures.
+- **Point 7 (permissions) dropped for good** (user's call 2026-11-02): no Rights column and no chmod at all, neither local nor SFTP nor FTP. A view-only column was built (#135) then fully removed at the user's request - too complex for what it brings (jlaffaye/ftp drops the rights, FTP would need a modified copy of the library). Don't propose it again.

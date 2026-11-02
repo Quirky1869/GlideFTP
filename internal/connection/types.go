@@ -2,6 +2,8 @@ package connection
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -64,5 +66,16 @@ type Client interface {
 	Rename(oldPath, newPath string) error
 	Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error
 	Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error
+	// UploadFrom / DownloadFrom resume a transfer at byte offset (0 = whole
+	// file); RemoteSize gives the size of a partial remote file.
+	UploadFrom(ctx context.Context, localPath, remotePath string, offset int64, progress func(sent, total int64)) error
+	DownloadFrom(ctx context.Context, remotePath, localPath string, offset int64, progress func(received, total int64)) error
+	RemoteSize(path string) (int64, error)
 	CurrentDir() (string, error)
+}
+
+// AccountKey identifies a server account: protocol://user@host:port, the
+// same key as the frontend's favKey (favourites, paused transfers).
+func AccountKey(cfg Config) string {
+	return fmt.Sprintf("%s://%s@%s:%d", cfg.Protocol, cfg.User, strings.ToLower(cfg.Host), cfg.Port)
 }

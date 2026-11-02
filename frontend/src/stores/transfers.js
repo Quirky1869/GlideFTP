@@ -1,12 +1,16 @@
 import { writable, get } from 'svelte/store';
 import { EventsOn } from '../../wailsjs/runtime/runtime.js';
-import { GetTransfers, CancelTransfer, CancelAllTransfers, RetryTransfer, ClearTransfers, RemoveTransfer } from '../../wailsjs/go/main/App.js';
+import { GetTransfers, CancelTransfer, CancelAllTransfers, RetryTransfer, ClearTransfers, RemoveTransfer, AbandonTransfer, StopConnectionTransfers, ResumePausedTransfers } from '../../wailsjs/go/main/App.js';
 import { settings } from './settings.js';
 import { playNotificationSound } from '../utils/sound.js';
 
 export const transfers = writable([]);
 export const queueVisible = writable(false);
 export const completedTransfer = writable(null);
+// Connection ids whose "Resume N paused transfers?" bar was put off ("Later").
+// Resuming one paused transfer by hand clears it, so the bar comes back for
+// the others.
+export const resumeBannerDismissed = writable(new Set());
 
 function isActive(job) {
   return job.status === 'pending' || job.status === 'running';
@@ -34,6 +38,8 @@ export async function initTransfers() {
   try {
     const list = await GetTransfers();
     transfers.set(list || []);
+    // Transfers kept from the last session (queue.json): show them.
+    if ((list || []).some(j => j.status === 'paused')) queueVisible.set(true);
   } catch {}
 
   EventsOn('transfer:added', (job) => {
@@ -60,6 +66,24 @@ export async function initTransfers() {
     transfers.update(list => list.map(j => set.has(j.id) ? { ...j, status: 'cancelled', finishedAt: now } : j));
   });
 
+  // Bulk event from the Go queue's stop(): pending jobs of a closed
+  // connection fail (error "connection_closed") or are paused, at once.
+  EventsOn('transfer:stopped', ({ ids, status, error }) => {
+    if (!ids || ids.length === 0) return;
+    const set = new Set(ids);
+    const now = new Date().toISOString();
+    transfers.update(list => list.map(j => set.has(j.id)
+      ? { ...j, status, error, ...(status === 'failed' ? { finishedAt: now } : {}) }
+      : j));
+  });
+
+  // Bulk event from ResumePaused: paused jobs back in the queue on a new connection.
+  EventsOn('transfer:requeued', ({ ids, connId, remoteHost }) => {
+    if (!ids || ids.length === 0) return;
+    const set = new Set(ids);
+    transfers.update(list => list.map(j => set.has(j.id) ? { ...j, status: 'pending', error: '', connId, remoteHost } : j));
+  });
+
   EventsOn('transfer:cleared', (status) => {
     transfers.update(list => list.filter(j => j.status !== status));
   });
@@ -82,8 +106,36 @@ export async function cancelAllTransfers() {
   await CancelAllTransfers();
 }
 
-export async function retryTransfer(id) {
-  await RetryTransfer(id);
+// resume = continue where the transfer stopped, else start again from zero.
+// Rejects with "not_connected" when no connection to its server is open.
+export async function retryTransfer(id, resume = false) {
+  await RetryTransfer(id, resume);
+}
+
+// Drops a failed or paused transfer and deletes its incomplete file.
+// Resolves to "remote_kept" when the remote partial file could not be deleted.
+export async function abandonTransfer(id) {
+  return await AbandonTransfer(id);
+}
+
+// Before closing connections: stop their transfers (failed) or put them
+// aside (pause = "resume later"). A batch stopped this way is not a
+// finished batch - no notification sound.
+export async function stopConnectionTransfers(connIds, pause) {
+  // Only when it empties the whole queue: transfers of other tabs still
+  // running will end with their own sound.
+  const active = get(transfers).filter(isActive);
+  if (active.length && active.every(j => connIds.includes(j.connId))) suppressDrainSound = true;
+  await StopConnectionTransfers(connIds, pause);
+}
+
+export async function resumePausedTransfers(connId) {
+  return await ResumePausedTransfers(connId);
+}
+
+// Same key as favKey / Go's connection.AccountKey: protocol://user@host:port.
+export function accountKey(c) {
+  return `${c.protocol}://${c.user || ''}@${(c.host || '').toLowerCase()}:${c.port}`;
 }
 
 export async function clearTransfers(status) {

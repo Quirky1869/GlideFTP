@@ -384,8 +384,20 @@ func (m *Manager) GetActiveHost() string {
 type boundedIO interface{ BoundedIO() bool }
 
 func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
+	return m.ListDirOn(m.ActiveID(), path)
+}
+
+// ListDirOn lists a folder on a given connection (not necessarily the active
+// one) - folder transfers keep walking the server they were started on.
+func (m *Manager) ListDirOn(id, path string) ([]RemoteFileEntry, error) {
 	m.mu.Lock()
-	active := m.getActive()
+	var active *connEntry
+	for _, c := range m.conns {
+		if c.id == id {
+			active = c
+			break
+		}
+	}
 	if active == nil {
 		m.mu.Unlock()
 		return nil, fmt.Errorf("not connected")
@@ -441,6 +453,15 @@ func (m *Manager) ListDir(path string) ([]RemoteFileEntry, error) {
 		m.mu.Unlock()
 		return nil, fmt.Errorf("operation timed out, please reconnect")
 	}
+}
+
+// MkDirOn creates a folder on a given connection (see ListDirOn).
+func (m *Manager) MkDirOn(id, path string) error {
+	client, _, ok := m.ClientByID(id)
+	if !ok {
+		return fmt.Errorf("not connected")
+	}
+	return client.MkDir(path)
 }
 
 func (m *Manager) MkDir(path string) error {

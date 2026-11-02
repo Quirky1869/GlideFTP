@@ -29,6 +29,9 @@
   import { initOpenFile } from './stores/openfile.js';
   import SearchIndexModal from './components/SearchIndexModal.svelte';
   import UpdateBanner from './components/UpdateBanner.svelte';
+  import ResumeBanner from './components/ResumeBanner.svelte';
+  import TransferGuardModal from './components/TransferGuardModal.svelte';
+  import { transferGuard, answerTransferGuard, askQuitWithTransfers } from './stores/transferGuard.js';
   import ReleaseNotesModal from './components/ReleaseNotesModal.svelte';
   import { releaseNotes, closeReleaseNotes } from './stores/releaseNotes.js';
   import { checkForUpdateAtStartup } from './stores/update.js';
@@ -74,9 +77,14 @@
     // A few seconds after startup, so the check never slows the first paint.
     if (s?.checkUpdates) setTimeout(checkForUpdateAtStartup, 3000);
     EventsOn('connection:lost', ({ id, host }) => {
-      closeTab(id);
+      // Its transfers were already put aside by the backend: no question.
+      closeTab(id, { force: true });
       lostNotif = { host };
       setTimeout(() => { lostNotif = null; }, 10000);
+    });
+    // Window closed with transfers pending or running (beforeClose).
+    EventsOn('app:quitWithTransfers', () => {
+      if (!get(transferGuard)) askQuitWithTransfers();
     });
   });
 
@@ -91,6 +99,7 @@
   function handleKeydown(e) {
     if (e.key === 'Escape') {
       if ($notification) { closeNotify(); return; }
+      if ($transferGuard) { answerTransferGuard('cancel'); return; }
       if ($releaseNotes) { closeReleaseNotes(); return; }
       showSettings = false;
       showSiteManager = false;
@@ -211,7 +220,7 @@
           <button
             class="conn-tab-close"
             on:click|stopPropagation={() => closeTab(conn.id)}
-            title="Fermer"
+            title={$t('disconnectTab')}
           >✕</button>
         </div>
       {/each}
@@ -290,6 +299,7 @@
   </div>
 
   <!-- ── New version available (above the queue, under the overlays) ── -->
+  <ResumeBanner />
   <UpdateBanner />
 
   <!-- ── Transfer queue ─────────────────────────────────────────── -->
@@ -307,6 +317,7 @@
   {/if}
 
   <ReleaseNotesModal />
+  <TransferGuardModal />
   <NotifyModal />
   <WindowSizeOverlay />
   <OpenedFileModal />

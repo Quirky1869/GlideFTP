@@ -8,6 +8,8 @@ import {fs} from '../models';
 import {settings} from '../models';
 import {transfer} from '../models';
 
+export function AbandonTransfer(arg1:string):Promise<string>;
+
 export function BrowseLocalDir():Promise<string>;
 
 export function BrowseSSHKey():Promise<string>;
@@ -132,9 +134,15 @@ export function QueueDownload(arg1:string,arg2:string):Promise<void>;
 
 export function QueueDownloadDir(arg1:string,arg2:string):Promise<void>;
 
+export function QueueDownloadResume(arg1:string,arg2:string):Promise<void>;
+
 export function QueueUpload(arg1:string,arg2:string):Promise<void>;
 
 export function QueueUploadDir(arg1:string,arg2:string):Promise<void>;
+
+export function QueueUploadResume(arg1:string,arg2:string):Promise<void>;
+
+export function QuitWithTransfers(arg1:boolean):Promise<void>;
 
 export function RemoteCopy(arg1:string,arg2:string):Promise<void>;
 
@@ -158,13 +166,17 @@ export function RemoveTransfer(arg1:string):Promise<void>;
 
 export function ReorderSites(arg1:Array<string>):Promise<void>;
 
-export function RetryTransfer(arg1:string):Promise<void>;
+export function ResumePausedTransfers(arg1:string):Promise<number>;
+
+export function RetryTransfer(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SetFavorites(arg1:string,arg2:Array<favorites.Favorite>):Promise<void>;
 
 export function SetOpenedFileAutoUpload(arg1:string,arg2:boolean):Promise<void>;
+
+export function StopConnectionTransfers(arg1:Array<string>,arg2:boolean):Promise<void>;
 
 export function SwitchConnection(arg1:string):Promise<void>;
 

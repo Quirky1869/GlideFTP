@@ -9,6 +9,7 @@ import {
   GetLocalHome, GetLocalParent, ExpandLocalPath,
 } from '../../wailsjs/go/main/App.js';
 import { favKey, favoritesRenamed, favoritesDeleted } from './favorites.js';
+import { guardTransfers } from './transferGuard.js';
 
 // 'disconnected' | 'connecting' | 'connected'
 export const connectionStatus = writable('disconnected');
@@ -133,20 +134,27 @@ export async function connect(cfg) {
 
 // ── Disconnect all ───────────────────────────────────────────────────────────
 
+// Returns false when the user kept the connections (transfers question
+// answered "Cancel") - nothing changed then.
 export async function disconnect() {
+  if (!(await guardTransfers(get(connections).map(c => c.id)))) return false;
   await Disconnect();
   connectionStatus.set('disconnected');
   connections.set([]);
   activeConnectionId.set(null);
   clearRemoteState();
+  return true;
 }
 
 // ── Connect via saved site (replace active) ──────────────────────────────────
 
+// Replaces the active connection: returns false (nothing done) when the
+// user cancelled the transfers question for it.
 export async function connectBySite(id, config = null) {
+  const oldId = get(activeConnectionId);
+  if (!(await guardTransfers([oldId]))) return false;
   connectionStatus.set('connecting');
   connectionError.set('');
-  const oldId = get(activeConnectionId);
   try {
     const info = await ConnectToSite(id);
     connectionStatus.set('connected');
@@ -156,6 +164,7 @@ export async function connectBySite(id, config = null) {
       return [...without, entryFromInfo(info)];
     });
     activeConnectionId.set(info.id);
+    return true;
   } catch (e) {
     connectionStatus.set('disconnected');
     connectionError.set(e?.toString() || 'Connection failed');
@@ -163,10 +172,13 @@ export async function connectBySite(id, config = null) {
   }
 }
 
+// Replaces the active connection: returns false (nothing done) when the
+// user cancelled the transfers question for it.
 export async function connectBySiteWithPassword(id, password, config = null) {
+  const oldId = get(activeConnectionId);
+  if (!(await guardTransfers([oldId]))) return false;
   connectionStatus.set('connecting');
   connectionError.set('');
-  const oldId = get(activeConnectionId);
   try {
     const info = await ConnectWithPassword(id, password);
     connectionStatus.set('connected');
@@ -176,6 +188,7 @@ export async function connectBySiteWithPassword(id, password, config = null) {
       return [...without, entryFromInfo(info)];
     });
     activeConnectionId.set(info.id);
+    return true;
   } catch (e) {
     connectionStatus.set('disconnected');
     connectionError.set(e?.toString() || 'Connection failed');
@@ -244,7 +257,11 @@ export async function switchTab(id) {
 
 // ── Close a single connection tab ────────────────────────────────────────────
 
-export async function closeTab(id) {
+// Returns false when the user kept the tab (transfers question answered
+// "Cancel"). force: no question (connection already lost - its transfers
+// were put aside by the backend).
+export async function closeTab(id, { force = false } = {}) {
+  if (!force && !(await guardTransfers([id]))) return false;
   const currentId = get(activeConnectionId);
   await CloseConnection(id);
   connections.update(cs => cs.filter(c => c.id !== id));
@@ -261,6 +278,7 @@ export async function closeTab(id) {
     activeConnectionConfig.set(configFromInfo(next));
     await refreshRemote(next.remotePath || '/');
   }
+  return true;
 }
 
 // ── Local FS helpers (unchanged) ─────────────────────────────────────────────

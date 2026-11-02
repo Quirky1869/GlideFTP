@@ -1,6 +1,8 @@
 <script>
   import { t } from '../i18n/index.js';
-  import { transfers, cancelTransfer, cancelAllTransfers, retryTransfer, clearTransfers, removeTransfer, formatBytes, progressPct, queueVisible } from '../stores/transfers.js';
+  import { transfers, cancelTransfer, cancelAllTransfers, retryTransfer, abandonTransfer, clearTransfers, removeTransfer, formatBytes, progressPct, queueVisible, accountKey, resumeBannerDismissed } from '../stores/transfers.js';
+  import { connections } from '../stores/connection.js';
+  import { notify } from '../stores/notify.js';
 
   let activeTab = 'pending';
   let queueHeight = 220;
@@ -52,6 +54,39 @@
     return job.direction === 'upload' ? `local → ${host} ` : `${host} → local `;
   }
 
+  // connection_closed comes from the Go queue (Queue.ConnectionClosed).
+  function jobError(job, t) {
+    if (job.error === 'connection_closed') return t('transferConnClosed').replace('{host}', job.remoteHost || '?');
+    return job.error;
+  }
+
+  // Accounts with an open connection: a paused / failed transfer can only be
+  // resumed on its own server (it is bound again to that connection).
+  $: openAccounts = new Set($connections.map(accountKey));
+  const canRun = (job, accounts) => !job.account || accounts.has(job.account);
+
+  async function runAgain(job, resume) {
+    try {
+      const wasPaused = job.status === 'paused';
+      await retryTransfer(job.id, resume);
+      // Resuming one paused transfer brings back the "Resume all" bar for the
+      // others, even after "Later".
+      if (wasPaused) resumeBannerDismissed.set(new Set());
+    } catch (e) {
+      const msg = e?.toString() || '';
+      notify(msg.includes('not_connected') ? $t('transferNotConnected').replace('{host}', job.remoteHost || '?') : msg, 'error');
+    }
+  }
+
+  async function abandon(job) {
+    try {
+      const note = await abandonTransfer(job.id);
+      if (note === 'remote_kept') notify($t('transferRemoteKept').replace('{path}', job.remotePath));
+    } catch (e) {
+      notify(e?.toString() || $t('unknownError'), 'error');
+    }
+  }
+
   function startResize(e) {
     resizing = true;
     startY = e.clientY;
@@ -69,7 +104,8 @@
     window.addEventListener('mouseup', onUp);
   }
 
-  $: pending = $transfers.filter(j => j.status === 'pending' || j.status === 'running');
+  // Paused transfers (resume later, lost connection, app closed) stay in "Pending".
+  $: pending = $transfers.filter(j => j.status === 'pending' || j.status === 'running' || j.status === 'paused');
   $: failed = $transfers.filter(j => j.status === 'failed' || j.status === 'cancelled');
   $: done = $transfers.filter(j => j.status === 'done');
 
@@ -133,26 +169,34 @@
             <span class="job-status {statusClass(job)}">{job.status}</span>
           </div>
           <div class="job-route">{dirLabel(job)}{#if activeTab === 'done' && avgSpeed(job)}<span class="avg-speed">• {avgSpeed(job)} {$t('avgSuffix')}</span>{/if}</div>
-          {#if job.status === 'running'}
-            <div class="progress-bar">
+          {#if job.status === 'running' || ((job.status === 'paused' || job.status === 'failed') && job.bytesDone > 0)}
+            <div class="progress-bar" class:stopped={job.status !== 'running'}>
               <div class="progress-fill" style="width: {progressPct(job)}%"></div>
             </div>
             <span class="progress-label">
               {progressPct(job)}% - {formatBytes(job.bytesDone)} / {formatBytes(job.size)}
-              {#if speeds[job.id] > 0}<span class="speed-label"> • {formatSpeed(speeds[job.id])}</span>{/if}
+              {#if job.status === 'running' && speeds[job.id] > 0}<span class="speed-label"> • {formatSpeed(speeds[job.id])}</span>{/if}
             </span>
           {/if}
           {#if job.error}
-            <div class="job-error">{job.error}</div>
+            <div class="job-error">{jobError(job, $t)}</div>
           {/if}
           <div class="job-actions">
             {#if job.status === 'pending' || job.status === 'running'}
               <button class="small-btn danger" on:click={() => cancelTransfer(job.id)}>{$t('cancel')}</button>
             {/if}
-            {#if job.status === 'failed'}
-              <button class="small-btn" on:click={() => retryTransfer(job.id)}>{$t('retry')}</button>
+            {#if job.status === 'paused' || job.status === 'failed'}
+              {@const runnable = canRun(job, openAccounts)}
+              {@const notHere = runnable ? '' : $t('transferNotConnected').replace('{host}', job.remoteHost || '?')}
+              {#if job.status === 'paused' || job.bytesDone > 0}
+                <button class="small-btn primary" disabled={!runnable} title={notHere || $t('resumeTransferHint')} on:click={() => runAgain(job, true)}>{$t('resumeTransfer')}</button>
+              {/if}
+              {#if job.status === 'failed'}
+                <button class="small-btn" disabled={!runnable} title={notHere || $t('restartTransferHint')} on:click={() => runAgain(job, false)}>{$t('restartTransfer')}</button>
+              {/if}
+              <button class="small-btn danger" title={$t('abandonTransferHint')} on:click={() => abandon(job)}>{$t('abandonTransfer')}</button>
             {/if}
-            {#if job.status === 'done' || job.status === 'failed' || job.status === 'cancelled'}
+            {#if job.status === 'done' || job.status === 'cancelled'}
               <button class="remove-btn" on:click={() => removeTransfer(job.id)} title="Supprimer">×</button>
             {/if}
           </div>
@@ -265,6 +309,13 @@
   color: var(--danger);
   border-color: var(--danger);
 }
+.small-btn.primary {
+  background: var(--accent-bg) border-box;
+  border-color: transparent;
+  color: white;
+}
+.small-btn.primary:hover:not(:disabled) { background: var(--accent-hover-bg) border-box; }
+.small-btn:disabled { opacity: 0.45; cursor: default; }
 .small-btn.cancel-all:hover {
   background: var(--danger);
   color: white;
@@ -348,6 +399,9 @@
   margin-top: 4px;
   overflow: hidden;
 }
+
+/* Paused / failed: how far it got, greyed */
+.progress-bar.stopped .progress-fill { background: var(--text-muted); }
 
 .progress-fill {
   height: 100%;

@@ -5164,3 +5164,139 @@ add/remove, rename/delete tracking), loaded at startup in App.svelte;
 fav block in FileBrowser.svelte (sorted folders first then by name,
 max 35% of the panel height with its own scroll, fold state in
 localStorage glideftp_fav_collapsed_{side}). i18n EN + FR.
+
+---
+
+#135
+Title: [Bug] With several tabs open, queued transfers run on whatever tab is active
+Labels: bug, transfers
+Version fixed: v1.8.0
+Description:
+A queued transfer used the connection active *when it started*, not the one
+it was queued on (Queue.executor was swapped by SetExecutor on every
+connect / tab switch / tab close). With two tabs A and B: queue 50 files to
+A, switch to B, and the files still waiting are uploaded to B (or fail
+there if the folder doesn't exist); a waiting download could fetch the
+same path from B and overwrite the local file with the wrong content. The
+queue rows kept showing "local → A". Same when tab A was closed: its
+remaining transfers moved to the tab left. Folder transfers were affected
+too (the walk listed / created folders on the active connection).
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+Each Job now carries ConnID (the connection active when it was queued,
+i.e. the tab the user is looking at). Queue.SetExecutor is gone: the queue
+gets a Resolver (connID → Executor, via Manager.ClientByID) and run() uses
+the job's own connection. Folder walkers (enqueueUploadDir /
+enqueueDownloadDir) capture the connection at start (transferConn) and use
+Manager.ListDirOn / MkDirOn; they stop when that connection is closed.
+
+Closing a connection (tab ✕, disconnect, replace via SiteManager / quick
+connect, connection lost) calls Queue.ConnectionClosed(id): its pending
+jobs fail with "connection_closed" (one bulk "transfer:connectionClosed"
+event), its running ones are interrupted and fail the same way; the
+transfer queue shows "Connection to <host> closed: the transfer was
+stopped" (i18n transferConnClosed). Jobs never move to another
+connection. A job whose connection vanished on its own (ListDir watchdog)
+fails the same way when it starts or errors.
+
+This also prepares v1.8.0 points 2 and 8 (resume / keep the queue), which
+need to know which server a transfer belongs to.
+
+---
+
+#136
+Title: [Feature] Resume interrupted transfers and keep the queue across disconnects, restarts and crashes
+Labels: enhancement, transfers
+Version fixed: v1.8.0
+Description:
+"Retry" always restarted a cut transfer from zero (a 4 GB ISO cut at 90%
+was sent again in full), and closing the app or disconnecting with
+transfers still pending or running lost them (or, over FTP, left them
+running silently after "Disconnect"). v1.8.0 points 2 and 8, done together.
+
+- Failed tab: "Resume" (continue where it stopped, shown when part of the
+  file was transferred), "Start over" (from zero), "Abandon" (remove the
+  transfer and delete the incomplete file it left: local to the trash,
+  remote when connected to that server).
+- Before disconnecting, closing a tab, replacing a connection (Sites /
+  quick connect) or quitting with transfers in progress: a dialog with
+  "Disconnect (quit) and resume later" (default), "Stop and disconnect
+  (quit)" and "Cancel" (nothing changes). Works in both directions.
+- Kept transfers stay in the Pending tab as paused (progress greyed). Once
+  connected to the same server account, a bar "N paused transfers for host.
+  Resume them?" with "Resume all" restarts them where they stopped. "Later"
+  hides it for that connection until one paused transfer is resumed by hand
+  from the queue, then it comes back for the others. A lost connection
+  pauses its transfers automatically.
+- The queue is saved continuously: after a crash / power cut the
+  unfinished transfers come back paused at the next launch (the queue
+  opens by itself).
+- Conflict dialog: "Resume" when every conflicting file exists at the
+  destination but smaller than the source.
+
+User choices: partial files keep their final name (like FileZilla, no
+.part); paused transfers shown in Pending; a separate "Abandon" button;
+"Resume" also in the conflict dialog. Passwords are never stored, so a
+resume only happens once the user reconnects.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+Connection layer: Client.UploadFrom / DownloadFrom(offset) + RemoteSize.
+FTP: APPE for uploads, REST + RETR (RetrFrom) for downloads, SIZE;
+SFTP: OpenFile + Truncate + Seek on the remote file, Seek on the source;
+local target opened with openLocalAt (truncated to offset, positioned).
+Both tested against real servers (pyftpdlib, OpenSSH): content identical
+after a resume, extra bytes after the offset are cut.
+
+Queue (internal/transfer): status "paused"; Job.Account
+(connection.AccountKey = protocol://user@host:port, same as the
+frontend's favKey), SrcModTime, Resume. resumeOffset: size of the
+partial destination; 0 when missing, bigger, or the source changed
+(size, upload mtime); -1 when already complete (job marked done).
+Resume is only set when the job itself wrote bytes or on an explicit
+"Resume", so a paused "Replace" never resumes after an old file.
+stop(match, failed|paused) replaces the closed-connection failure
+(ConnectionClosed(id, pause), StopConnections, StopAll), bulk
+"transfer:stopped" event; ResumePaused(target) + "transfer:requeued";
+Retry(id, resume, target) rebinds to an open connection of the same
+account (app.targetForJob), "not_connected" otherwise. Speed limit now
+counts only the bytes of the current run. store.go: pending / running /
+paused / failed jobs saved to queue.json (temp file + rename) every 2 s
+when changed and at shutdown (before disconnecting), reloaded as paused.
+
+app_transfers.go: RetryTransfer(id, resume), AbandonTransfer,
+StopConnectionTransfers, ResumePausedTransfers, QuitWithTransfers;
+QueueUploadResume / QueueDownloadResume. beforeClose asks about opened
+files first, then emits "app:quitWithTransfers" and cancels; the
+frontend answers with QuitWithTransfers (quitConfirmed flag, then
+runtime.Quit).
+
+Frontend: stores/transferGuard.js (guardTransfers(connIds) used by
+disconnect / closeTab / connectBySite* / quick-connect Replace, which
+return false on Cancel), TransferGuardModal.svelte, ResumeBanner.svelte
+("Later" stored in transfers.js resumeBannerDismissed, cleared by
+TransferQueue when a paused row is resumed),
+TransferQueue buttons, FileBrowser conflict "Resume" (partialCopies).
+i18n EN + FR.
+
+---
+
+#137
+Title: [UI] Connection tab ✕ tooltip says "Fermer" (hardcoded) instead of "Disconnect"
+Labels: ui, i18n
+Version fixed: v1.8.0
+Description:
+With several tabs open, hovering the ✕ of a connection tab showed
+"Fermer", hardcoded in French (also shown in an English UI), while the
+button actually disconnects from that tab's server (closeTab →
+CloseConnection → Manager.CloseOne → client.Disconnect; the other tabs
+stay connected).
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+The tooltip now uses the new i18n key disconnectTab: "Se déconnecter" /
+"Disconnect" (App.svelte, .conn-tab-close).

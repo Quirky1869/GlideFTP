@@ -323,6 +323,13 @@ func (c *FTPClient) CurrentDir() (string, error) {
 // Upload opens a dedicated FTP connection for this transfer so multiple uploads
 // can run concurrently (each on its own control+data connection pair).
 func (c *FTPClient) Upload(ctx context.Context, localPath, remotePath string, progress func(sent, total int64)) error {
+	return c.UploadFrom(ctx, localPath, remotePath, 0, progress)
+}
+
+// UploadFrom sends localPath from byte offset (0 = whole file). A resumed
+// upload appends to the partial remote file (APPE, the most widely
+// supported way to resume an upload).
+func (c *FTPClient) UploadFrom(ctx context.Context, localPath, remotePath string, offset int64, progress func(sent, total int64)) error {
 	c.mu.Lock()
 	connected := c.conn != nil
 	c.mu.Unlock()
@@ -346,14 +353,28 @@ func (c *FTPClient) Upload(ctx context.Context, localPath, remotePath string, pr
 	if err != nil {
 		return err
 	}
+	if offset > 0 {
+		if _, err := f.Seek(offset, io.SeekStart); err != nil {
+			return err
+		}
+	}
 
-	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), cb: progress}
+	pr := &progressReader{ctx: ctx, r: f, total: info.Size(), sent: offset, cb: progress}
+	if offset > 0 {
+		return conn.Append(remotePath, pr)
+	}
 	return conn.Stor(remotePath, pr)
 }
 
 // Download opens a dedicated FTP connection for this transfer so multiple downloads
 // can run concurrently (each on its own control+data connection pair).
 func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, progress func(received, total int64)) error {
+	return c.DownloadFrom(ctx, remotePath, localPath, 0, progress)
+}
+
+// DownloadFrom fetches remotePath from byte offset (0 = whole file) with
+// REST + RETR, writing after the first offset bytes of the local file.
+func (c *FTPClient) DownloadFrom(ctx context.Context, remotePath, localPath string, offset int64, progress func(received, total int64)) error {
 	c.mu.Lock()
 	connected := c.conn != nil
 	c.mu.Unlock()
@@ -370,7 +391,12 @@ func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, 
 	// SIZE must be sent on the control connection BEFORE RETR opens the data transfer.
 	size, _ := conn.FileSize(remotePath)
 
-	resp, err := conn.Retr(remotePath)
+	var resp *goftp.Response
+	if offset > 0 {
+		resp, err = conn.RetrFrom(remotePath, uint64(offset))
+	} else {
+		resp, err = conn.Retr(remotePath)
+	}
 	if err != nil {
 		return err
 	}
@@ -379,15 +405,47 @@ func (c *FTPClient) Download(ctx context.Context, remotePath, localPath string, 
 	if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
 		return err
 	}
-	f, err := os.Create(localPath)
+	f, err := openLocalAt(localPath, offset)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	pw := &progressWriter{ctx: ctx, w: f, total: size, cb: progress}
+	pw := &progressWriter{ctx: ctx, w: f, total: size, received: offset, cb: progress}
 	_, err = io.Copy(pw, resp)
 	return err
+}
+
+// openLocalAt opens a download target: truncated when offset is 0, else cut
+// to offset bytes and positioned there, ready to receive the rest.
+func openLocalAt(localPath string, offset int64) (*os.File, error) {
+	if offset <= 0 {
+		return os.Create(localPath)
+	}
+	f, err := os.OpenFile(localPath, os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	if err := f.Truncate(offset); err != nil {
+		f.Close()
+		return nil, err
+	}
+	if _, err := f.Seek(offset, io.SeekStart); err != nil {
+		f.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+// RemoteSize returns the size of a remote file (SIZE on the control connection).
+func (c *FTPClient) RemoteSize(path string) (int64, error) {
+	var size int64
+	err := c.control(func(conn *goftp.ServerConn) error {
+		var serr error
+		size, serr = conn.FileSize(path)
+		return serr
+	})
+	return size, err
 }
 
 type progressReader struct {
