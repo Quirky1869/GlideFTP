@@ -13,6 +13,8 @@ export function BrowseSSHKey():Promise<string>;
 
 export function CancelAllTransfers():Promise<void>;
 
+export function CancelDirSizes(arg1:string):Promise<void>;
+
 export function CancelOpenRemoteFile():Promise<void>;
 
 export function CancelSearch():Promise<void>;
@@ -44,6 +46,8 @@ export function ConnectWithPassword(arg1:string,arg2:string):Promise<connection.
 export function CreateSite(arg1:sites.Site):Promise<sites.Site>;
 
 export function DeleteSite(arg1:string):Promise<void>;
+
+export function DirSize(arg1:string,arg2:boolean,arg3:string):Promise<main.DirSizeResult>;
 
 export function Disconnect():Promise<void>;
 
@@ -97,6 +101,8 @@ export function InstallCustomSound(arg1:string):Promise<string>;
 
 export function LocalCopy(arg1:string,arg2:string):Promise<void>;
 
+export function LocalCreateFile(arg1:string):Promise<void>;
+
 export function LocalDelete(arg1:string):Promise<void>;
 
 export function LocalListDir(arg1:string):Promise<Array<fs.FileEntry>>;
@@ -128,6 +134,8 @@ export function QueueUploadDir(arg1:string,arg2:string):Promise<void>;
 export function RemoteCopy(arg1:string,arg2:string):Promise<void>;
 
 export function RemoteCopyDir(arg1:string,arg2:string):Promise<void>;
+
+export function RemoteCreateFile(arg1:string):Promise<void>;
 
 export function RemoteDelete(arg1:string):Promise<void>;
 

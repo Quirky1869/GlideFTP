@@ -155,6 +155,15 @@ func MkDir(path string) error {
 	return os.MkdirAll(path, 0755)
 }
 
+// CreateFile creates an empty file and fails if the name is already taken.
+func CreateFile(path string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
 func Delete(path string) error {
 	return os.RemoveAll(path)
 }

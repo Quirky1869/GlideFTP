@@ -498,6 +498,27 @@ func (m *Manager) CopyRemote(srcPath, destPath string) error {
 	return client.Upload(ctx, tmpPath, destPath, nil)
 }
 
+// CreateEmptyFile uploads an empty file to path ("New text file"). The caller
+// checks the name is free: an upload replaces an existing file.
+func (m *Manager) CreateEmptyFile(path string) error {
+	m.mu.Lock()
+	client := m.getActiveClient()
+	m.mu.Unlock()
+	if client == nil {
+		return fmt.Errorf("not connected")
+	}
+
+	tmp, err := os.CreateTemp("", "glideftp-newfile-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	tmp.Close()
+	defer os.Remove(tmpPath)
+
+	return client.Upload(context.Background(), tmpPath, path, nil)
+}
+
 // CopyRemoteDir recursively copies a remote directory tree.
 // Runs synchronously so the caller can await completion and refresh the panel.
 func (m *Manager) CopyRemoteDir(srcPath, destPath string) error {

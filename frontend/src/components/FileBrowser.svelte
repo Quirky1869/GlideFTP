@@ -1,10 +1,11 @@
 <script>
-  import { tick } from 'svelte';
+  import { tick, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { t, locale } from '../i18n/index.js';
   import { formatBytes } from '../stores/transfers.js';
   import { settings } from '../stores/settings.js';
-  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath } from '../../wailsjs/go/main/App.js';
+  import { QueueUpload, QueueDownload, QueueUploadDir, QueueDownloadDir, LocalListDir, RemoteListDir, ExpandLocalPath, LocalCreateFile, RemoteCreateFile, DirSize, CancelDirSizes } from '../../wailsjs/go/main/App.js';
+  import { EventsOn } from '../../wailsjs/runtime/runtime.js';
   import { queueVisible } from '../stores/transfers.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { formatDateWith } from '../utils/dateFormat.js';
@@ -35,6 +36,7 @@
   async function handleRefresh() {
     if (refreshing) return;
     refreshing = true;
+    resetDirSizes();
     if (treeMode) {
       await Promise.all([enterTreeMode(), new Promise(r => setTimeout(r, 500))]);
     } else {
@@ -649,10 +651,65 @@
     }
   }
 
+  // ── Folder size (right-click "Calculate size") ────────────────────────────
+
+  // path → { size, files, partial, running }; shown in the Size column until
+  // the panel changes folder or is refreshed by hand.
+  let dirSizes = {};
+  let dirSizeRun = 0; // bumped on reset: results of older runs are dropped
+  let dirSizeSeq = 0;
+  let dirSizePath = path;
+  $: if (path !== dirSizePath) { dirSizePath = path; resetDirSizes(); }
+  onDestroy(() => CancelDirSizes(side + ':'));
+
+  function resetDirSizes() {
+    if (Object.values(dirSizes).some(d => d.running)) CancelDirSizes(side + ':');
+    dirSizes = {};
+    dirSizeRun++;
+  }
+
+  // One folder at a time: each remote walk opens its own extra connections.
+  async function computeDirSizes(ents) {
+    closeContext();
+    const dirs = ents.filter(e => e.isDir && !dirSizes[e.path]?.running);
+    if (!dirs.length) return;
+    for (const d of dirs) dirSizes[d.path] = { size: 0, files: 0, running: true };
+    const run = dirSizeRun;
+    for (const d of dirs) {
+      if (run !== dirSizeRun) return;
+      const id = side + ':' + (++dirSizeSeq);
+      const off = EventsOn('dirsize:progress', (p) => {
+        if (p.id === id && run === dirSizeRun) dirSizes[d.path] = { ...dirSizes[d.path], size: p.size, files: p.files };
+      });
+      try {
+        const r = await DirSize(id, side === 'remote', d.path);
+        if (run === dirSizeRun) dirSizes[d.path] = { size: r.size, files: r.files, partial: r.partial, running: false };
+      } catch (e) {
+        if (run !== dirSizeRun) return;
+        delete dirSizes[d.path];
+        dirSizes = dirSizes;
+        const msg = e?.message || String(e);
+        if (msg !== 'cancelled') {
+          showPasteMsg($t('dirSizeFailed').replace('{name}', d.name).replace('{error}', msg), 'error');
+        }
+      } finally {
+        off();
+      }
+    }
+  }
+
+  function dirSizeTitle(d) {
+    if (!d || d.running) return '';
+    return $t('dirSizeFiles').replace('{n}', d.files.toLocaleString($locale)) + (d.partial ? '\n' + $t('dirSizePartial') : '');
+  }
+
   // ── New folder ────────────────────────────────────────────────────────────
 
   let newFolderTargetPath = '';
-  // { clickedPath, clickedName } while asking "current folder or the
+  // The same name row and "where?" dialog create a folder or, since v1.8.0,
+  // an empty text file that is then opened for editing.
+  let newItemKind = 'folder'; // 'folder' | 'file'
+  // { clickedPath, clickedName, kind } while asking "current folder or the
   // right-clicked folder?" after right-clicking a directory.
   let newFolderChoice = null;
 
@@ -664,44 +721,82 @@
     return (idx >= 0 ? clean.slice(idx + 1) : clean) || clean || p;
   }
 
-  function startNewFolder(targetPath) {
+  function startNewFolder(targetPath, kind = 'folder') {
+    newItemKind = kind;
     newFolderTargetPath = targetPath;
     newFolderName = '';
     newFolderMode = true;
     closeContext();
   }
 
+  function closeNewItem() {
+    newFolderName = '';
+    newFolderMode = false;
+    newFolderTargetPath = '';
+  }
+
   // Right-click "New folder" on a file/folder entry: a file has no
   // ambiguity (always creates in the current folder); a folder asks
   // whether to create it in the current folder or inside that folder.
-  function requestNewFolderForEntry(entry) {
+  function requestNewFolderForEntry(entry, kind = 'folder') {
     if (!entry || !entry.isDir) {
-      startNewFolder(path);
+      startNewFolder(path, kind);
       return;
     }
-    newFolderChoice = { clickedPath: entry.path, clickedName: entry.name };
+    newFolderChoice = { clickedPath: entry.path, clickedName: entry.name, kind };
     closeContext();
   }
 
   function chooseNewFolderTarget(useClicked) {
     const targetPath = useClicked ? newFolderChoice.clickedPath : path;
+    const { kind } = newFolderChoice;
     newFolderChoice = null;
-    startNewFolder(targetPath);
+    startNewFolder(targetPath, kind);
+  }
+
+  async function refreshAfterCreate(targetPath) {
+    if (showSearchResults) await refreshAfterSearchMutation();
+    else if (treeMode) await treeRefreshDir(targetPath);
+    else await onRefresh();
   }
 
   async function handleNewFolder() {
-    if (!newFolderName) { newFolderMode = false; return; }
+    if (!newFolderName.trim()) { closeNewItem(); return; }
     const targetPath = newFolderTargetPath || path;
     const base = targetPath.replace(/[/\\]?$/, '/');
+    if (newItemKind === 'file') {
+      await createTextFile(targetPath, base, newFolderName.trim());
+      closeNewItem();
+      return;
+    }
     try {
       await onMkDir(base + newFolderName);
-      if (showSearchResults) await refreshAfterSearchMutation();
-      else if (treeMode) await treeRefreshDir(targetPath);
-      else await onRefresh();
+      await refreshAfterCreate(targetPath);
     } catch {}
-    newFolderName = '';
-    newFolderMode = false;
-    newFolderTargetPath = '';
+    closeNewItem();
+  }
+
+  // New text file: ".txt" is added when the name has no extension, an existing
+  // name is refused (a remote upload would replace it), then the file opens in
+  // the default app - remote ones go through the usual "send back?" flow.
+  async function createTextFile(targetPath, base, typed) {
+    const name = /\.[^.]+$/.test(typed) ? typed : typed + '.txt';
+    const filePath = base + name;
+    try {
+      const siblings = targetPath === path
+        ? entries
+        : await (side === 'local' ? LocalListDir : RemoteListDir)(targetPath);
+      if ((siblings || []).some(e => e.name.toLowerCase() === name.toLowerCase())) {
+        showPasteMsg($t('newTextFileExists').replace('{name}', name), 'error');
+        return;
+      }
+      await (side === 'local' ? LocalCreateFile : RemoteCreateFile)(filePath);
+    } catch (e) {
+      showPasteMsg($t('newTextFileFailed').replace('{name}', name).replace('{error}', e?.message || String(e)), 'error');
+      return;
+    }
+    try { await refreshAfterCreate(targetPath); } catch {}
+    openEntry(side, { path: filePath, name, isDir: false, size: 0 });
   }
 
   // ── Transfer ──────────────────────────────────────────────────────────────
@@ -1461,12 +1556,12 @@
       <input
         type="text"
         bind:value={newFolderName}
-        placeholder={$t('newFolder')}
+        placeholder={newItemKind === 'file' ? $t('newTextFilePlaceholder') : $t('newFolder')}
         autofocus
-        on:keydown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') { newFolderMode = false; newFolderName = ''; newFolderTargetPath = ''; } }}
+        on:keydown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') closeNewItem(); }}
       />
       <button on:click={handleNewFolder}>{$t('save')}</button>
-      <button on:click={() => { newFolderMode = false; newFolderName = ''; newFolderTargetPath = ''; }}>{$t('cancel')}</button>
+      <button on:click={closeNewItem}>{$t('cancel')}</button>
     </div>
   {/if}
 
@@ -1555,7 +1650,13 @@
                 {/if}
               {/if}
             </span>
-            <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            {#if entry.isDir && dirSizes[entry.path]}
+              <span class="col-size" class:dir-size-running={dirSizes[entry.path].running} title={dirSizeTitle(dirSizes[entry.path])}>
+                {dirSizes[entry.path].running && !dirSizes[entry.path].size ? '…' : formatBytes(dirSizes[entry.path].size)}{dirSizes[entry.path].partial ? '*' : ''}
+              </span>
+            {:else}
+              <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            {/if}
             <span class="col-date">{formatDate(entry.modTime, dateFormat, $locale)}</span>
           </div>
         {/each}
@@ -1712,7 +1813,13 @@
                 <span class="file-name">{entry.name}</span>
               {/if}
             </span>
-            <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            {#if entry.isDir && dirSizes[entry.path]}
+              <span class="col-size" class:dir-size-running={dirSizes[entry.path].running} title={dirSizeTitle(dirSizes[entry.path])}>
+                {dirSizes[entry.path].running && !dirSizes[entry.path].size ? '…' : formatBytes(dirSizes[entry.path].size)}{dirSizes[entry.path].partial ? '*' : ''}
+              </span>
+            {:else}
+              <span class="col-size">{entry.isDir ? '' : formatBytes(entry.size)}</span>
+            {/if}
             <span class="col-date">{formatDate(entry.modTime, dateFormat, $locale)}</span>
           </div>
         {/each}
@@ -1733,6 +1840,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         {$t('newFolder')}
       </button>
+      <button on:click={() => startNewFolder(path, 'file')}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        {$t('newTextFile')}
+      </button>
     {:else}
       {#if contextFromSearch}
         <!-- Search results only: jump to / copy the result's location -->
@@ -1743,6 +1854,13 @@
         <button on:click={() => copySearchResultPath(contextEntry)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           {$t('copyPath')}
+        </button>
+        <hr class="menu-sep" />
+      {/if}
+      {#if contextEntry?.isDir}
+        <button on:click={() => computeDirSizes(selected.some(s => s.path === contextEntry.path) ? selected : [contextEntry])}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          {$t('computeDirSize')}
         </button>
         <hr class="menu-sep" />
       {/if}
@@ -1769,6 +1887,10 @@
       <button on:click={() => requestNewFolderForEntry(contextEntry)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         {$t('newFolder')}
+      </button>
+      <button on:click={() => requestNewFolderForEntry(contextEntry, 'file')}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        {$t('newTextFile')}
       </button>
       <hr class="menu-sep" />
       <button on:click={() => { cutEntries(selected.some(s => s.path === contextEntry?.path) ? selected : [contextEntry]); closeContext(); }}>
@@ -1801,7 +1923,7 @@
       <div class="confirm-icon confirm-icon-neutral">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
       </div>
-      <div class="confirm-msg">{$t('newFolderWhereTitle')}</div>
+      <div class="confirm-msg">{$t(newFolderChoice.kind === 'file' ? 'newTextFileWhereTitle' : 'newFolderWhereTitle')}</div>
       <div class="conflict-actions">
         <button class="conflict-replace-btn" on:click={() => chooseNewFolderTarget(false)}>
           {$t('newFolderCurrentDir')} ({folderBaseName(path)})
@@ -2211,6 +2333,8 @@
 .sort-arr { color: var(--accent); font-size: 10px; }
 
 .col-name { flex: 1; min-width: 0; }
+.dir-size-running { color: var(--accent); animation: dir-size-pulse 1.2s ease-in-out infinite; }
+@keyframes dir-size-pulse { 50% { opacity: 0.45; } }
 .col-size { width: var(--size-col-w, 80px); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .col-date { width: var(--date-col-w, 130px); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

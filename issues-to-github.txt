@@ -5007,3 +5007,77 @@ update shared with F2 rename, afterRename) or, for a drop where the dialog
 belongs to the destination panel, through localRename/remoteRename + a
 refresh of the other panel. i18n EN + FR (EN "Rename on host" became
 "Rename locally").
+
+---
+
+#131
+Title: [Feature] Right-click "New text file": create an empty .txt and open it for editing
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+Creating a text file on the server meant creating it locally, then
+uploading it. The panels' right-click menu now has "New text file" (on a
+file, on a folder and on an empty area), on both sides: name it, it is
+created empty, then opened with the default application like the
+existing "Open" entry. Text files only - other file types are out of scope
+(too many of them, too complex for no real gain).
+
+Solution (closing comment):
+Added in v1.8.0.
+
+Go: localfs.CreateFile(path) (O_CREATE|O_EXCL, refuses an existing name)
+→ App.LocalCreateFile; Manager.CreateEmptyFile(path) uploads an empty temp
+file with the active client → App.RemoteCreateFile. Wails bindings
+regenerated.
+
+FileBrowser.svelte reuses the "New folder" flow: newItemKind ('folder' |
+'file') drives the same name row (placeholder "File name (.txt by
+default)") and the same "where?" dialog when right-clicking a folder
+(current folder or the clicked folder, title "Where should the new text
+file be created?"); right-click on a file or on an empty area creates in
+the current folder. createTextFile() adds ".txt" when the name has no
+extension, refuses a name already used in the target folder (listed first
+when it isn't the current one - a remote upload would replace the file),
+creates the file, refreshes the panel (list, tree or search results), then
+calls openEntry(side, entry): local files open in place, remote ones are
+downloaded, opened and watched, with the usual "modified - send back?"
+prompt after saving. Errors show in the red message bar. i18n EN + FR.
+
+---
+
+#132
+Title: [Feature] Right-click "Calculate size" for folders (local and remote)
+Labels: enhancement
+Version fixed: v1.8.0
+Description:
+Folders show no size in the panels: nothing stores it, every file below a
+folder has to be listed and added up - cheap locally for most folders, but
+on a server FTP/SFTP have no "folder size" command, so it means one LIST per
+subfolder (thousands on a big NAS share). Computing it automatically for
+every folder would slow navigation down and load the server, so it is done
+on demand.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+app_dirsize.go: DirSize(id, remote, path) → { size, files, partial }.
+Local = filepath.WalkDir (symlinks never followed). Remote = parallel
+breadth-first walk like the remote search (remoteSearchWorkers dedicated
+listers via ParallelLister, fallback = main connection; starting folder on
+the main connection, its failure is an error). Both skip NAS system folders
+(isNASSystemDir: @..., #recycle, #snapshot), skip unreadable folders
+(partial = true) and stop after repeated LIST failures; the remote walk
+doesn't descend into entries whose mode starts with "l" and stops at depth
+64 (symlink loops). "dirsize:progress" events {id, size, files} every 300
+ms. CancelDirSizes(prefix) cancels the walks whose id starts with prefix
+(ids are "<side>:<n>", so one panel never stops the other's walk). Wails
+bindings regenerated.
+
+FileBrowser.svelte: right-click on a folder → "Calculate size" (every
+selected folder when the clicked one is in the selection), computed one
+folder at a time. The Size column shows the running total pulsing in the
+accent color, then the result; tooltip = number of files, "*" + note when
+some folders couldn't be read. Results (dirSizes, keyed by path) are kept
+until the panel changes folder or is refreshed by hand (F5 / button), which
+also cancels walks in progress; destroying the panel cancels too. Errors in
+the red message bar. Works in the list and in search results. i18n EN + FR.

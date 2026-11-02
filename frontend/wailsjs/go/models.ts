@@ -158,6 +158,22 @@ export namespace main {
 	        this.dataUrl = source["dataUrl"];
 	    }
 	}
+	export class DirSizeResult {
+	    size: number;
+	    files: number;
+	    partial: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DirSizeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.size = source["size"];
+	        this.files = source["files"];
+	        this.partial = source["partial"];
+	    }
+	}
 	export class ImportFileInfo {
 	    path: string;
 	    needsPassphrase: boolean;

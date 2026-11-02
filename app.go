@@ -44,6 +44,10 @@ type App struct {
 	searchMu     sync.Mutex
 	searchCancel context.CancelFunc
 	searchSeq    uint64
+
+	// Folder size walks in progress, by id (app_dirsize.go).
+	dirSizeMu      sync.Mutex
+	dirSizeCancels map[string]context.CancelFunc
 }
 
 func NewApp() *App {
@@ -684,6 +688,10 @@ func (a *App) RemoteMkDir(path string) error {
 	return a.connMgr.MkDir(path)
 }
 
+func (a *App) RemoteCreateFile(path string) error {
+	return a.connMgr.CreateEmptyFile(path)
+}
+
 func (a *App) RemoteDelete(path string) error {
 	return a.connMgr.Delete(path)
 }
@@ -708,6 +716,10 @@ func (a *App) LocalSearch(path, query string, recursive bool) ([]localfs.FileEnt
 
 func (a *App) LocalMkDir(path string) error {
 	return localfs.MkDir(path)
+}
+
+func (a *App) LocalCreateFile(path string) error {
+	return localfs.CreateFile(path)
 }
 
 func (a *App) LocalCopy(srcPath, destPath string) error {

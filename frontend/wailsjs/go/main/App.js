@@ -14,6 +14,10 @@ export function CancelAllTransfers() {
   return window['go']['main']['App']['CancelAllTransfers']();
 }
 
+export function CancelDirSizes(arg1) {
+  return window['go']['main']['App']['CancelDirSizes'](arg1);
+}
+
 export function CancelOpenRemoteFile() {
   return window['go']['main']['App']['CancelOpenRemoteFile']();
 }
@@ -76,6 +80,10 @@ export function CreateSite(arg1) {
 
 export function DeleteSite(arg1) {
   return window['go']['main']['App']['DeleteSite'](arg1);
+}
+
+export function DirSize(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DirSize'](arg1, arg2, arg3);
 }
 
 export function Disconnect() {
@@ -182,6 +190,10 @@ export function LocalCopy(arg1, arg2) {
   return window['go']['main']['App']['LocalCopy'](arg1, arg2);
 }
 
+export function LocalCreateFile(arg1) {
+  return window['go']['main']['App']['LocalCreateFile'](arg1);
+}
+
 export function LocalDelete(arg1) {
   return window['go']['main']['App']['LocalDelete'](arg1);
 }
@@ -244,6 +256,10 @@ export function RemoteCopy(arg1, arg2) {
 
 export function RemoteCopyDir(arg1, arg2) {
   return window['go']['main']['App']['RemoteCopyDir'](arg1, arg2);
+}
+
+export function RemoteCreateFile(arg1) {
+  return window['go']['main']['App']['RemoteCreateFile'](arg1);
 }
 
 export function RemoteDelete(arg1) {
