@@ -97,22 +97,11 @@ func OpenWithApp(appPath, filePath string) error {
 }
 
 // startAndCheck starts the command detached from the UI and reports an error
-// only if it exits with a failure within openerGrace. The process is always
-// reaped (cmd.Wait in a goroutine) so no zombie is left behind.
+// only if it exits with a failure within openerGrace.
 func startAndCheck(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Env = cleanEnv(os.Environ())
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(openerGrace):
-		return nil
-	}
+	return startAndWatch(cmd, openerGrace)
 }
 
 // Variables an AppImage runtime / AppRun injects to make GlideFTP find its

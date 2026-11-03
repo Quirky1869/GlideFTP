@@ -31,6 +31,11 @@ type Settings struct {
 	DoubleClickNavigateUp          bool   `json:"doubleClickNavigateUp"`
 	NotificationSoundEnabled       bool   `json:"notificationSoundEnabled"`
 	NotificationSound              string `json:"notificationSound"`
+	// In-app bubble (bottom right) when the whole transfer queue is finished.
+	QueueDoneBubble bool `json:"queueDoneBubble"`
+	// Last command line chosen for "Run a command" after the queue (pre-filled
+	// the next time). Only this one string is kept.
+	QueueDoneCommand string `json:"queueDoneCommand"`
 	// Original file name of the user-supplied sound (NotificationSound "custom"),
 	// the file itself lives in the config dir (see app_sound.go). "" = none.
 	CustomSoundName string `json:"customSoundName"`

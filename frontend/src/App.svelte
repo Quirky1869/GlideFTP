@@ -32,6 +32,9 @@
   import ResumeBanner from './components/ResumeBanner.svelte';
   import CompareLegend from './components/CompareLegend.svelte';
   import TransferGuardModal from './components/TransferGuardModal.svelte';
+  import QueueDoneCountdown from './components/QueueDoneCountdown.svelte';
+  import QueueDoneBubble from './components/QueueDoneBubble.svelte';
+  import { queueDoneCountdown, cancelCountdown } from './stores/queueDone.js';
   import SyncMissingModal from './components/SyncMissingModal.svelte';
   import { syncPrompt, answerSyncPrompt, toggleSyncBrowsing } from './stores/syncBrowse.js';
   import { toggleCompare } from './stores/compare.js';
@@ -105,6 +108,7 @@
   function handleKeydown(e) {
     if (e.key === 'Escape') {
       if ($notification) { closeNotify(); return; }
+      if ($queueDoneCountdown) { cancelCountdown(); return; }
       if ($transferGuard) { answerTransferGuard('cancel'); return; }
       if ($syncPrompt) { answerSyncPrompt('cancel'); return; }
       if ($releaseNotes) { closeReleaseNotes(); return; }
@@ -119,8 +123,9 @@
     const ctrl = e.ctrlKey || e.metaKey;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (ctrl && !e.shiftKey && !e.altKey && (k === 'o' || k === 'y')) {
-      const typing = e.target?.closest?.('input, textarea, select');
-      const overlay = showSettings || showSiteManager || $notification || $transferGuard || $syncPrompt || $releaseNotes;
+      // [role="dialog"]: a panel's own window (e.g. "Envoyer les différences").
+      const typing = e.target?.closest?.('input, textarea, select, [role="dialog"]');
+      const overlay = showSettings || showSiteManager || $notification || $transferGuard || $syncPrompt || $releaseNotes || $queueDoneCountdown;
       if (isConnected && !typing && !overlay) {
         e.preventDefault();
         if (k === 'o') toggleCompare();
@@ -349,6 +354,8 @@
 
   <ReleaseNotesModal />
   <TransferGuardModal />
+  <QueueDoneBubble />
+  <QueueDoneCountdown />
   <SyncMissingModal />
   <NotifyModal />
   <WindowSizeOverlay />

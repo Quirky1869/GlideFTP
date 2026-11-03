@@ -21,6 +21,7 @@
   import { compareMode, toggleCompare, alignedScroll } from '../stores/compare.js';
   import { compareEntries, alignEntries } from '../utils/compare.js';
   import { compareNames } from '../utils/sortNames.js';
+  import SendDiffModal from './SendDiffModal.svelte';
 
   export let side = 'local';
   export let path = '';
@@ -440,6 +441,31 @@
     }
     return t(side === 'local' ? 'cmpSizeLocal' : 'cmpSizeRemote')
       .replace('{here}', formatBytes(mark.here)).replace('{there}', formatBytes(mark.there));
+  }
+
+  // "Envoyer les différences": every entry of this folder marked by the
+  // comparison (even the hidden identical ones aside, the marks cover them
+  // all), folders first, then checked one by one in SendDiffModal and sent
+  // through transferEntries. null = dialog closed.
+  let sendDiffItems = null;
+  $: diffCount = cmpMarks ? entries.filter(e => cmpMarks.has(e.path)).length : 0;
+  $: if (!cmpMarks) sendDiffItems = null;
+
+  function openSendDiff() {
+    closeContext();
+    if (!cmpMarks || !diffCount) return;
+    sendDiffItems = entries
+      .filter(e => cmpMarks.has(e.path))
+      .sort((a, b) => (b.isDir - a.isDir) || compareNames(a.name, b.name, strictSort))
+      .map(e => {
+        const mark = cmpMarks.get(e.path);
+        return { entry: e, mark, title: cmpTitle(mark, $t, dateFormat, $locale) };
+      });
+  }
+
+  function sendDiff(list) {
+    sendDiffItems = null;
+    transferEntries(list);
   }
 
   // "Sort names like FileZilla" setting (case-sensitive, upper case first).
@@ -1103,7 +1129,7 @@
   }
 
   function handlePanelKeydown(e) {
-    if (renamingEntry || editingPath || confirmDeleteEntries) return;
+    if (renamingEntry || editingPath || confirmDeleteEntries || sendDiffItems) return;
 
     const ctrl = e.ctrlKey || e.metaKey;
     const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
@@ -2114,6 +2140,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         {$t('newTextFile')}
       </button>
+      {#if cmpMarks}
+        <hr class="menu-sep" />
+        <button on:click={openSendDiff} disabled={!diffCount} title={diffCount ? null : $t('sendDiffNoneHint')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/>{#if side === 'local'}<polyline points="9 9 12 12 9 15"/>{:else}<polyline points="15 9 12 12 15 15"/>{/if}</svg>
+          {side === 'local' ? $t('sendDiffMenuUpload') : $t('sendDiffMenuDownload')}{#if !diffCount}&nbsp;{$t('sendDiffNone')}{/if}
+        </button>
+      {/if}
     {:else}
       {#if contextFromSearch}
         <!-- Search results only: jump to / copy the result's location -->
@@ -2161,6 +2194,12 @@
         {/if}
         {$t('transfer')}
       </button>
+      {#if cmpMarks && !contextFromSearch}
+        <button on:click={openSendDiff} disabled={!diffCount} title={diffCount ? null : $t('sendDiffNoneHint')}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/>{#if side === 'local'}<polyline points="9 9 12 12 9 15"/>{:else}<polyline points="15 9 12 12 15 15"/>{/if}</svg>
+          {side === 'local' ? $t('sendDiffMenuUpload') : $t('sendDiffMenuDownload')}{#if !diffCount}&nbsp;{$t('sendDiffNone')}{/if}
+        </button>
+      {/if}
       <button on:click={() => requestNewFolderForEntry(contextEntry)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
         {$t('newFolder')}
@@ -2191,6 +2230,10 @@
       </button>
     {/if}
   </div>
+{/if}
+
+{#if sendDiffItems}
+  <SendDiffModal {side} items={sendDiffItems} onSend={sendDiff} onClose={() => sendDiffItems = null} />
 {/if}
 
 <!-- New folder: choose current folder vs the right-clicked folder -->
@@ -2785,7 +2828,8 @@
   font-size: 13px; text-align: left; cursor: pointer;
   transition: background 0.1s;
 }
-.context-menu button:hover { background: var(--bg-hover); }
+.context-menu button:hover:not(:disabled) { background: var(--bg-hover); }
+.context-menu button:disabled { opacity: 0.45; cursor: default; }
 .context-menu button svg { width: 14px; height: 14px; flex-shrink: 0; }
 .context-menu button.danger { color: var(--danger); }
 .menu-sep { border: none; border-top: 1px solid var(--border); margin: 3px 0; }

@@ -236,6 +236,7 @@
     notificationSoundEnabled: false,
     notificationSound: 'chime',
     customSoundName: '',
+    queueDoneBubble: false,
     searchIndexEnabled: false,
     checkUpdates: true,
     syncCreateMissing: false,
@@ -516,6 +517,16 @@
           </div>
         </div>
       {/if}
+      <div class="setting-row">
+        <label>{$t('queueDoneBubbleSetting')} <button class="reset-btn" hidden={form.queueDoneBubble === DEFAULTS.queueDoneBubble} on:click|stopPropagation={() => resetSetting('queueDoneBubble')} title={$t('resetToDefault')}>↺</button></label>
+        <button
+          type="button"
+          class="sw"
+          class:on={form.queueDoneBubble}
+          on:click={() => toggle('queueDoneBubble')}
+          aria-pressed={form.queueDoneBubble}
+        ><span class="sw-knob"></span></button>
+      </div>
     </section>
 
     <div class="divider"></div>

@@ -326,6 +326,10 @@ export function RetryTransfer(arg1, arg2) {
   return window['go']['main']['App']['RetryTransfer'](arg1, arg2);
 }
 
+export function RunQueueDoneCommand(arg1, arg2, arg3) {
+  return window['go']['main']['App']['RunQueueDoneCommand'](arg1, arg2, arg3);
+}
+
 export function SaveSettings(arg1) {
   return window['go']['main']['App']['SaveSettings'](arg1);
 }
@@ -338,6 +342,10 @@ export function SetOpenedFileAutoUpload(arg1, arg2) {
   return window['go']['main']['App']['SetOpenedFileAutoUpload'](arg1, arg2);
 }
 
+export function ShutdownComputer() {
+  return window['go']['main']['App']['ShutdownComputer']();
+}
+
 export function StopConnectionTransfers(arg1, arg2) {
   return window['go']['main']['App']['StopConnectionTransfers'](arg1, arg2);
 }
@@ -348,6 +356,10 @@ export function SwitchConnection(arg1) {
 
 export function TestConnection(arg1) {
   return window['go']['main']['App']['TestConnection'](arg1);
+}
+
+export function UnsentOpenedFileCount() {
+  return window['go']['main']['App']['UnsentOpenedFileCount']();
 }
 
 export function UpdateSite(arg1) {

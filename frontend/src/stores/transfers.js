@@ -2,7 +2,7 @@ import { writable, get } from 'svelte/store';
 import { EventsOn } from '../../wailsjs/runtime/runtime.js';
 import { GetTransfers, CancelTransfer, CancelAllTransfers, RetryTransfer, ClearTransfers, RemoveTransfer, AbandonTransfer, StopConnectionTransfers, ResumePausedTransfers } from '../../wailsjs/go/main/App.js';
 import { settings } from './settings.js';
-import { playNotificationSound } from '../utils/sound.js';
+import { queueFinished } from './queueDone.js';
 
 export const transfers = writable([]);
 export const queueVisible = writable(false);
@@ -16,22 +16,31 @@ function isActive(job) {
   return job.status === 'pending' || job.status === 'running';
 }
 
-// Plays the notification sound once the whole queue has drained (no more
-// pending/running jobs) - not after every individual file - so a batch of
-// N transfers only makes one sound, right when the last one wraps up.
-// A drain caused by "Cancel all" is not a finished batch - no sound then.
+// Once the whole queue has drained (no more pending/running jobs) - not
+// after every individual file - queueFinished plays the notification sound,
+// shows the bubble and runs the action chosen for the end of the queue
+// (stores/queueDone.js), once per batch. A drain caused by "Cancel all" or
+// by transfers stopped on purpose is not a finished batch - nothing then.
+// batchIds: every job seen pending/running since the queue was last empty,
+// to count how that batch ended.
 let hadActiveJobs = false;
-let suppressDrainSound = false;
+let suppressQueueDone = false;
+let batchIds = new Set();
 transfers.subscribe(list => {
-  const active = list.some(isActive);
-  if (hadActiveJobs && !active) {
-    const s = get(settings);
-    if (s?.notificationSoundEnabled && !suppressDrainSound) {
-      playNotificationSound(s.notificationSound);
+  const active = list.filter(isActive);
+  for (const j of active) batchIds.add(j.id);
+  if (hadActiveJobs && !active.length) {
+    if (!suppressQueueDone) {
+      const stats = { done: 0, failed: 0, paused: 0 };
+      for (const j of list) {
+        if (batchIds.has(j.id) && j.status in stats) stats[j.status]++;
+      }
+      queueFinished(stats);
     }
-    suppressDrainSound = false;
+    suppressQueueDone = false;
+    batchIds = new Set();
   }
-  hadActiveJobs = active;
+  hadActiveJobs = active.length > 0;
 });
 
 export async function initTransfers() {
@@ -102,7 +111,7 @@ export async function cancelTransfer(id) {
 }
 
 export async function cancelAllTransfers() {
-  if (get(transfers).some(isActive)) suppressDrainSound = true;
+  if (get(transfers).some(isActive)) suppressQueueDone = true;
   await CancelAllTransfers();
 }
 
@@ -120,12 +129,12 @@ export async function abandonTransfer(id) {
 
 // Before closing connections: stop their transfers (failed) or put them
 // aside (pause = "resume later"). A batch stopped this way is not a
-// finished batch - no notification sound.
+// finished batch - no notification sound, no action after the queue.
 export async function stopConnectionTransfers(connIds, pause) {
   // Only when it empties the whole queue: transfers of other tabs still
-  // running will end with their own sound.
+  // running will end with their own sound / action.
   const active = get(transfers).filter(isActive);
-  if (active.length && active.every(j => connIds.includes(j.connId))) suppressDrainSound = true;
+  if (active.length && active.every(j => connIds.includes(j.connId))) suppressQueueDone = true;
   await StopConnectionTransfers(connIds, pause);
 }
 

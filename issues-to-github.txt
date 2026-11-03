@@ -1914,7 +1914,7 @@ dial() helper (same credentials as the primary connection):
       // ... transfer using conn, no shared lock
   }
 
-This is the standard approach used by all major FTP clients (FileZilla, etc.):
+This is the standard approach used by all major FTP clients:
 since FTP only allows one active data transfer per control connection, N
 concurrent transfers require N separate control connections. The primary
 connection (c.conn) is preserved exclusively for control operations (ListDir,
@@ -3713,7 +3713,7 @@ Description:
 When renaming a file (F2 or right-click > Rename), the whole name was
 selected, extension included - typing a new name wiped the extension,
 which then had to be retyped. Most file managers (Windows Explorer,
-Dolphin, Nautilus, FileZilla) only pre-select the base name.
+Dolphin, Nautilus) only pre-select the base name.
 
 Solution (closing comment):
 Implemented in v1.7.8.
@@ -4027,8 +4027,7 @@ Labels: enhancement, ui, transfers
 Version fixed: v1.7.8
 Description:
 Open any file (text, image, PDF, video, Office...) straight from
-GlideFTP with the system's default application, like FileZilla's
-"View/Edit", and send remote files back to the server automatically when
+GlideFTP with the system's default application, and send remote files back to the server automatically when
 they are modified. Spec: memo/feature-open-with-default-app.md.
 
 Solution (closing comment):
@@ -4893,8 +4892,7 @@ Description:
 Double-clicking a folder that can't be listed (e.g. a NAS folder whose
 permissions deny everyone, FTP reply "550 /path: Permission denied", or a
 local folder without read rights) did nothing at all: no message, the panel
-just stayed where it was. FileZilla shows "Impossible de récupérer le
-contenu du dossier" with the server reply.
+just stayed where it was.
 
 Solution (closing comment):
 Fixed in v1.8.0.
@@ -5241,7 +5239,7 @@ running silently after "Disconnect"). v1.8.0 points 2 and 8, done together.
 - Conflict dialog: "Resume" when every conflicting file exists at the
   destination but smaller than the source.
 
-User choices: partial files keep their final name (like FileZilla, no
+User choices: partial files keep their final name (no
 .part); paused transfers shown in Pending; a separate "Abandon" button;
 "Resume" also in the conflict dialog. Passwords are never stored, so a
 resume only happens once the user reconnects.
@@ -5313,13 +5311,13 @@ Title: [Feature] Synchronized browsing (Ctrl+Y)
 Labels: enhancement, ui
 Version fixed: v1.8.0
 Description:
-v1.8.0 point 6, like FileZilla's "Synchronized browsing": when on,
+v1.8.0 point 6, synchronized browsing: when on,
 opening a folder in one panel makes the other panel open the folder of
 the same name, and ".." goes up on both sides. Handy to keep a local copy
 of a site in step with the server.
 
 - Toggle: link button in the header of both panels (accent when on) or
-  Ctrl+Y (FileZilla's shortcut; works wherever the focus is, ignored in
+  Ctrl+Y (works wherever the focus is, ignored in
   text fields, where it is redo, and with a window open on top).
   Session only; turned off on tab switch and disconnect.
 - Folder missing on the other side: dialog "The local folder « path » does
@@ -5350,26 +5348,26 @@ i18n EN + FR.
 ---
 
 #139
-Title: [Feature] Compare the two panels (Ctrl+O), FileZilla colours
+Title: [Feature] Compare the two panels (Ctrl+O)
 Labels: enhancement, ui
 Version fixed: v1.8.0
 Description:
-v1.8.0 point 5, like FileZilla's "Directory comparison": colours the
+v1.8.0 point 5, panel comparison: colours the
 entries of both panels that differ, to see at once what is left to send
 when updating a site.
 
 - Toggle: two-columns button in the header of both panels (accent when on)
-  or Ctrl+O (FileZilla's shortcut, works wherever the focus is, not while
+  or Ctrl+O (works wherever the focus is, not while
   typing in a field or with a window open on top). Session only.
-- FileZilla's colours, on purpose (users must not be lost): yellow = only
+- Colours: yellow = only
   on this side, green = newer than the other side's file (comparison by
   date), red = different size (comparison by size). No colour = identical.
-- A legend strip under the panels while it is on (FileZilla has none) and
+- A legend strip under the panels while it is on and
   a tooltip on each coloured row with the reason ("Newer here (02/11 14:32
   vs 28/10 09:10)", "Different size: 4.0 GB here, 3.6 GB on the server").
 - Settings: new section "Panel comparison (Ctrl+O)" with a "?" recalling
   the colours: compare by size (default) or date, "Hide identical files",
-  "Align the rows of both panels (like FileZilla)" (off by default): both
+  "Align the rows of both panels" (off by default): both
   panels show the same names on the same lines, sorted by name, with an
   empty line where a name only exists on the other side, and the two
   lists scroll together.
@@ -5400,17 +5398,16 @@ of a panel in one click and transfer them.
 ---
 
 #140
-Title: [Feature] Option: sort names like FileZilla (upper case first)
+Title: [Feature] Option: case-sensitive name sort (upper case first)
 Labels: enhancement, ui
 Version fixed: v1.8.0
 Description:
-FileZilla sorts names character by character: names starting with a dot,
-then UPPER CASE names, then lower case ones (Bureau, Documents, VirtualBox
+New option to sort names character by character: names starting with a
+dot, then UPPER CASE names, then lower case ones (Bureau, Documents, VirtualBox
 VMs, then aur, docker...; on a server: Recovery, _Archive, refonte-pc).
-GlideFTP mixes upper and lower case like a file explorer. Users coming
-from FileZilla asked for its order as an option.
+By default GlideFTP mixes upper and lower case like a file explorer.
 
-New switch in Settings > Interface, "Sort names like FileZilla (upper
+New switch in Settings > Interface, "Case-sensitive name sort (upper
 case first)", with a "?" showing both orders. Off by default: the order
 stays as before. Folders stay above files either way.
 
@@ -5455,3 +5452,94 @@ handleSettingsSaved: re-lists both panels only when showHiddenFiles
 changed (it ran a remote LIST after every save before). Flashbang dialog:
 themed popup, trapFocus, its Escape cancels without closing Settings.
 i18n EN + FR.
+
+---
+
+#142
+Title: [Feature] Send / download only the differences found by the panel comparison
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+Follow-up of the panel comparison (#139). While it is on, the right-click
+menu of a panel (empty area, folder or file, local and server sides) has
+"Send differences" (local) / "Download differences" (server). It opens a
+window "Send differences to the server" / "Download differences locally"
+listing every entry of the panel's folder marked yellow, green or red,
+all checked: each one can be unchecked, "Check all" toggles them (partial
+state when some are unchecked), the button shows the total size of the
+checked files ("+ N folders", folder sizes are never computed
+automatically). Send transfers them to the other panel's folder through
+the usual conflict check (Replace / Rename / Resume for a smaller copy).
+Yellow folders are sent with all their content; folders present on both
+sides are not walked (the comparison only covers the folder shown). With
+no difference, the menu entry is greyed out with "(none)" and a tooltip.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+New SendDiffModal.svelte (button check boxes because hidden native inputs
+don't work on WebKit-GTK, colour dot + reason tooltip per row, Escape /
+backdrop / Cancel close it, focus on the send button, role="dialog").
+FileBrowser.svelte: diffCount and openSendDiff() build the list from the
+panel's entries and cmpMarks (folders first, compareNames order, the
+hidden identical files are not marked anyway), sendDiff() calls
+transferEntries(list). Menu entry in the empty-area and entry menus when
+cmpMarks is set (list view, not search results), disabled when
+diffCount is 0. The panel's keyboard handler ignores keys while the
+window is open; App.svelte's global Ctrl+O / Ctrl+Y skip events coming
+from a [role="dialog"]. i18n EN + FR.
+
+---
+
+#143
+Title: [Feature] Action when the transfer queue is finished (bubble, sound, quit, shut down, command)
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+Suggested by a tester.
+Right-click anywhere in the transfer queue opens one flat menu "When the
+queue is finished":
+- Show a notification bubble / Play a sound: check boxes for the current
+  queue only ("For this queue only"); checked and locked when the Settings
+  turn them on for every queue ("On for every queue in the Settings").
+- Do nothing / Quit GlideFTP / Shut down the computer / Run a command...
+  (one choice). "Run a command..." asks for the command line, pre-filled
+  with the last one.
+A badge in the queue header shows the chosen action ("Shutdown when done")
+with a ✕ to cancel it while the transfers run. Everything is for the
+current queue only: back to "nothing" once it fired, never saved.
+
+The queue is finished when no transfer is pending or running any more,
+failed ones included (counted in the bubble / countdown); "Cancel all" or
+transfers stopped on purpose don't count as a finished queue.
+
+Bubble: in GlideFTP's window, bottom right, accent colour frame (gradient
+too), "Transfer queue finished: 12 succeeded, 1 failed", "Show the queue"
+link, closes after 8 s. New setting in Settings > Notifications: "Show a
+bubble when the transfer queue is finished".
+
+Shut down / quit: a countdown in the middle of the window (60 s / 10 s)
+with "Cancel the shutdown" (red, focused, Escape) and "Shut down now".
+Nothing is sent to the system before the countdown ends. Opened files with
+unsent changes are mentioned.
+
+Solution (closing comment):
+Added in v1.8.0.
+
+stores/queueDone.js: queueDoneAction, queueDoneOnce { bubble, sound },
+queueFinished(stats), countdown, bubble. stores/transfers.js: the existing
+queue-drain detection now collects the ids of the batch and calls
+queueFinished({ done, failed, paused }) (it played the sound before; the
+sound moved there). Components QueueDoneBubble.svelte,
+QueueDoneCountdown.svelte (App.svelte, Escape cancels the countdown, Ctrl+O/Y
+skipped while it shows), TransferQueue.svelte menu + badge + command
+prompt. Go app_queuedone.go: ShutdownComputer (saves queue.json, then
+internal/fs PowerOff: Linux `systemctl poweroff` then `loginctl poweroff`,
+logind/polkit lets the local session do it without root; Windows `shutdown
+/s /t 0`), RunQueueDoneCommand (internal/fs RunCommand: Linux `sh -c`
+with cleanEnv, Windows `cmd.exe /S /C "..."` without console window;
+GLIDEFTP_DONE / GLIDEFTP_FAILED added to its environment only; error
+shown when it exits with a failure within 2 s), UnsentOpenedFileCount.
+startAndWatch shared by startAndCheck (open with). Settings
+queueDoneBubble, queueDoneCommand (the only stored part: one string,
+replaced each time). i18n EN + FR.

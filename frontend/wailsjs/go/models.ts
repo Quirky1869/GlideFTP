@@ -324,6 +324,8 @@ export namespace settings {
 	    doubleClickNavigateUp: boolean;
 	    notificationSoundEnabled: boolean;
 	    notificationSound: string;
+	    queueDoneBubble: boolean;
+	    queueDoneCommand: string;
 	    customSoundName: string;
 	    searchIndexEnabled: boolean;
 	    searchIndexAsked: boolean;
@@ -364,6 +366,8 @@ export namespace settings {
 	        this.doubleClickNavigateUp = source["doubleClickNavigateUp"];
 	        this.notificationSoundEnabled = source["notificationSoundEnabled"];
 	        this.notificationSound = source["notificationSound"];
+	        this.queueDoneBubble = source["queueDoneBubble"];
+	        this.queueDoneCommand = source["queueDoneCommand"];
 	        this.customSoundName = source["customSoundName"];
 	        this.searchIndexEnabled = source["searchIndexEnabled"];
 	        this.searchIndexAsked = source["searchIndexAsked"];

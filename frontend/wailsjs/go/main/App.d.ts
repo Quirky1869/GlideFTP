@@ -170,17 +170,23 @@ export function ResumePausedTransfers(arg1:string):Promise<number>;
 
 export function RetryTransfer(arg1:string,arg2:boolean):Promise<void>;
 
+export function RunQueueDoneCommand(arg1:string,arg2:number,arg3:number):Promise<void>;
+
 export function SaveSettings(arg1:settings.Settings):Promise<void>;
 
 export function SetFavorites(arg1:string,arg2:Array<favorites.Favorite>):Promise<void>;
 
 export function SetOpenedFileAutoUpload(arg1:string,arg2:boolean):Promise<void>;
 
+export function ShutdownComputer():Promise<void>;
+
 export function StopConnectionTransfers(arg1:Array<string>,arg2:boolean):Promise<void>;
 
 export function SwitchConnection(arg1:string):Promise<void>;
 
 export function TestConnection(arg1:connection.Config):Promise<void>;
+
+export function UnsentOpenedFileCount():Promise<number>;
 
 export function UpdateSite(arg1:sites.Site):Promise<void>;
 
