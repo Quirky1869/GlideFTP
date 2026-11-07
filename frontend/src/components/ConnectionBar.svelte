@@ -234,10 +234,13 @@
 
     <div class="field-group">
       <label>{$t('protocol')}</label>
-      <select bind:value={protocol} disabled={(isConnected && !quickConnectMode) || isConnecting}>
-        <option value="ftp">FTP</option>
-        <option value="sftp">SFTP</option>
-      </select>
+      <div class="select-wrap" class:disabled={(isConnected && !quickConnectMode) || isConnecting}>
+        <select bind:value={protocol} disabled={(isConnected && !quickConnectMode) || isConnecting}>
+          <option value="ftp">FTP</option>
+          <option value="sftp">SFTP</option>
+        </select>
+        <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
     </div>
 
     <div class="field-group flex1">
@@ -425,6 +428,31 @@ input, select {
   transition: border-color 0.15s;
   height: 30px;
 }
+
+/* The select is drawn by us, not by the system theme: without this,
+   WebKitGTK draws it as a GTK button (theme padding + arrow) inside our
+   fixed 30px height, and the text gets cut off depending on the theme. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0 26px 0 8px;
+  line-height: 28px;
+  cursor: pointer;
+}
+.select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.select-arrow {
+  position: absolute;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.select-wrap.disabled .select-arrow { opacity: 0.5; }
 
 input:focus, select:focus {
   border-color: var(--accent);

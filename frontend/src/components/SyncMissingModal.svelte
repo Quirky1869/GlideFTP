@@ -84,9 +84,11 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
-  word-break: break-all;
+  /* Words of the sentence wrap only between words, never in the middle;
+     only the path (one long block) may be broken, when it can't fit. */
+  overflow-wrap: break-word;
 }
-.sm-path { color: var(--accent); }
+.sm-path { color: var(--accent); overflow-wrap: anywhere; }
 .sm-choices {
   display: flex;
   flex-direction: column;

@@ -5543,3 +5543,61 @@ shown when it exits with a failure within 2 s), UnsentOpenedFileCount.
 startAndWatch shared by startAndCheck (open with). Settings
 queueDoneBubble, queueDoneCommand (the only stored part: one string,
 replaced each time). i18n EN + FR.
+
+---
+
+#144
+Title: [Bug] Linux: "FTP" text cut off in the Protocol drop-down of the connection screen
+Labels: bug, ui, linux
+Version fixed: v1.8.0
+Description:
+On the connection screen (disconnected), the Protocol drop-down
+(FTP / SFTP) showed its text shifted down and cut off ("FTP" bitten at the
+bottom) on Arch (binary and AppImage). On Ubuntu (v1.7.9) the field was drawn
+as a grey system button with a big arrow but the text still fitted; on
+Windows (v1.7.9) it was fine.
+
+Cause: the <select> had a fixed height of 30px and its own padding
+(5px 8px) but no `appearance: none`. On Linux, WebKitGTK then draws it with
+the GTK theme's combo box (theme padding, font and arrow) inside those
+30px, so the result depends on the installed GTK theme: a theme with more
+padding pushes the text out of the box. Windows' WebView2 keeps the 30px
+box, hence no problem there. The CSS of this field did not change since
+v1.7.8 (checked with git diff): the difference comes from the environment
+(WebKitGTK / GTK theme), not from a code change.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+ConnectionBar.svelte: the select now has `-webkit-appearance: none;
+appearance: none;` with `padding: 0 26px 0 8px; line-height: 28px` so the
+system theme no longer draws it (same look on every OS and GTK theme). The
+arrow is our own: the select is wrapped in a `.select-wrap` (position
+relative) followed by an SVG chevron `.select-arrow` (12px, --text-muted,
+pointer-events: none so the click goes to the select), greyed with the
+`.disabled` class (class:disabled, not :has(), for older WebKitGTK) when
+the field is locked. The drop-downs of SiteManager.svelte and
+SettingsPanel.svelte are still drawn by GTK (not changed here).
+
+---
+
+#145
+Title: [UI] Synchronized browsing: words cut in the middle in the "missing folder" window title
+Labels: bug, ui
+Version fixed: v1.8.0
+Description:
+With synchronized browsing on (Ctrl+Y), the window "The folder « path »
+doesn't exist on the server" could cut a word of the sentence in the
+middle when wrapping, depending on the length of the path (FR: "le s /
+erveur."). It must never happen, in French or in English.
+
+Cause: .sm-title had `word-break: break-all`, which allows a line break
+between any two letters of every word, not only inside the long path.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+SyncMissingModal.svelte: .sm-title uses `overflow-wrap: break-word`
+instead (the sentence wraps between words only) and only the path span
+.sm-path gets `overflow-wrap: anywhere`, so a path too long for one line
+can still be broken instead of overflowing the window.

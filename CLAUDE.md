@@ -9,7 +9,7 @@ GlideFTP is a desktop FTP/SFTP client built with Go + Wails v2 + Svelte. Fully i
 UI reference sketch in `_images/exemple.png`. The original French design spec (`prompt-glideftp`) was removed from the repo in commit `af4095f` - no longer present, don't reference it as an existing file.
 
 **Project tracking files** (keep in sync after each session):
-- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#143. Add new entries after each fix.
+- `issues-to-github.txt` - detailed technical write-up of every issue (title, labels, description, solution). Currently covers #1-#145. Add new entries after each fix.
 
 Issue screenshots are stored in `./_images/issues/v{version}/` where `{version}` is the current app version. Example: for v1.7.5 in progress, screenshots are in `./_images/issues/v1.7.5/`. Always use the versioned subfolder matching the active release when referencing or looking up issue images.
 
