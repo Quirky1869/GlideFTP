@@ -588,6 +588,7 @@
 
   function handleClick(e, entry) {
     parentFocused = false;
+    if (renamingEntry && renamingEntry.path !== entry.path) cancelRename();
     if (e.ctrlKey || e.metaKey) {
       selected = selected.some(s => s.path === entry.path)
         ? selected.filter(s => s.path !== entry.path)
@@ -621,6 +622,7 @@
     if (e.shiftKey && !e.target.closest('input')) e.preventDefault();
     if (e.target.closest('.file-row')) return;
     if (e.target.closest('.file-list-header')) return;
+    if (renamingEntry) cancelRename();
 
     const startX = e.clientX;
     const startY = e.clientY;
@@ -708,23 +710,78 @@
   function startRename(entry) {
     renamingEntry = entry;
     renameValue = entry.name;
+    renameError = '';
+    renameDirEntries = null;
     closeContext();
+    // Search results don't hold the whole folder: list it for the name check.
+    if (showSearchResults) {
+      const dir = siblingPath(entry.path, '');
+      (side === 'local' ? LocalListDir : RemoteListDir)(dir)
+        .then(list => { if (renamingEntry?.path === entry.path) renameDirEntries = list || []; })
+        .catch(() => {});
+    }
+  }
+
+  function cancelRename() {
+    renamingEntry = null;
+    renameError = '';
+    renameDirEntries = null;
+  }
+
+  // ── Name already taken ──
+  // Checked while typing against the folder's entries already in memory: the
+  // input turns red with a message and the other entry gets a red dashed
+  // outline, so it can be found among thousands. Enter doesn't save then.
+  let renameError = '';         // backend refusal, shown under the input
+  let renameDirEntries = null;  // folder listing, search results mode only
+  $: renameSiblings = !renamingEntry ? []
+    : treeMode ? treeNodes
+    : showSearchResults ? (renameDirEntries || searchResults || [])
+    : entries;
+  $: renameDup = findRenameDup(renamingEntry, renameValue, renameSiblings);
+  $: renameDupPath = renameDup?.path || null;
+  // Entry outlined in red: taken by a rename or by a new folder / text file
+  $: dupMarkPath = renameDupPath || newItemDup?.path || null;
+  $: renameMsg = renameDup
+    ? $t(renameDup.isDir ? 'renameExistsDir' : 'renameExistsFile')
+    : renameError;
+
+  function findRenameDup(entry, name, list) {
+    if (!entry || !name || name === entry.name) return null;
+    const dir = siblingPath(entry.path, '');
+    const win = side === 'local' && /^[A-Za-z]:/.test(entry.path);
+    const same = win ? (n) => n.toLowerCase() === name.toLowerCase() : (n) => n === name;
+    return (list || []).find(e => e.path !== entry.path && same(e.name) && siblingPath(e.path, '') === dir) || null;
+  }
+
+  function renameErrorText(err) {
+    const msg = err?.message || String(err);
+    if (msg.includes('already_exists')) return $t('renameExistsHidden');
+    return $t('renameFailed').replace('{error}', msg);
   }
 
   // Enter and clicking elsewhere (blur) both save, like a file explorer. The
   // checks stop a second save: blur also fires when Enter's save removes the
   // input, and Escape clears renamingEntry first so its blur saves nothing.
+  // A taken name or a refused rename keeps the input open with its message
+  // (Escape or a click on another row cancels).
   let renameSaving = false;
   async function doRename(entry) {
     if (renameSaving || renamingEntry?.path !== entry.path) return;
-    if (!renameValue || renameValue === entry.name) { renamingEntry = null; return; }
+    if (!renameValue || renameValue === entry.name) { cancelRename(); return; }
+    if (renameDup) return;
     renameSaving = true;
-    const newPath = siblingPath(entry.path, renameValue);
+    const newName = renameValue;
+    const newPath = siblingPath(entry.path, newName);
     try {
       await onRename(entry.path, newPath);
-      await afterRename(entry, newPath, renameValue);
-    } catch {}
-    renamingEntry = null;
+    } catch (err) {
+      renameError = renameErrorText(err);
+      renameSaving = false;
+      return;
+    }
+    cancelRename();
+    try { await afterRename(entry, newPath, newName); } catch {}
     renameSaving = false;
   }
 
@@ -830,13 +887,50 @@
     newFolderTargetPath = targetPath;
     newFolderName = '';
     newFolderMode = true;
+    newItemError = '';
+    newItemDirEntries = null;
     closeContext();
+    // Another folder than the one shown (right-clicked folder, tree, search):
+    // list it for the name check.
+    if (targetPath !== path || treeMode || showSearchResults) {
+      (side === 'local' ? LocalListDir : RemoteListDir)(targetPath)
+        .then(list => { if (newFolderMode && newFolderTargetPath === targetPath) newItemDirEntries = list || []; })
+        .catch(() => {});
+    }
   }
 
   function closeNewItem() {
     newFolderName = '';
     newFolderMode = false;
     newFolderTargetPath = '';
+    newItemError = '';
+    newItemDirEntries = null;
+  }
+
+  // Name already taken, checked while typing like a rename (#146): red input
+  // + message under the row, red dashed outline on the entry that has it.
+  let newItemError = '';
+  let newItemDirEntries = null;
+  $: newItemSiblings = !newFolderMode ? []
+    : (newFolderTargetPath || path) === path && !treeMode && !showSearchResults ? entries
+    : (newItemDirEntries || []);
+  $: newItemDup = findNewItemDup(newFolderMode, newItemKind, newFolderName, newItemSiblings);
+  $: newItemMsg = newItemDup
+    ? $t(newItemDup.isDir ? 'renameExistsDir' : 'renameExistsFile')
+    : newItemError;
+
+  // ".txt" is added to a text file name without extension.
+  const textFileName = (typed) => /\.[^.]+$/.test(typed) ? typed : typed + '.txt';
+
+  function findNewItemDup(open, kind, typed, list) {
+    const t = typed.trim();
+    if (!open || !t) return null;
+    const name = kind === 'file' ? textFileName(t) : t;
+    const win = side === 'local' && /^[A-Za-z]:/.test(newFolderTargetPath || path);
+    // A new text file is refused whatever the case (createTextFile)
+    const ci = win || kind === 'file';
+    const same = ci ? (n) => n.toLowerCase() === name.toLowerCase() : (n) => n === name;
+    return (list || []).find(e => same(e.name)) || null;
   }
 
   // Right-click "New folder" on a file/folder entry: a file has no
@@ -866,6 +960,7 @@
 
   async function handleNewFolder() {
     if (!newFolderName.trim()) { closeNewItem(); return; }
+    if (newItemDup) return;
     const targetPath = newFolderTargetPath || path;
     const base = targetPath.replace(/[/\\]?$/, '/');
     if (newItemKind === 'file') {
@@ -875,16 +970,19 @@
     }
     try {
       await onMkDir(base + newFolderName);
-      await refreshAfterCreate(targetPath);
-    } catch {}
+    } catch (e) {
+      newItemError = $t('newFolderFailed').replace('{error}', e?.message || String(e));
+      return;
+    }
     closeNewItem();
+    try { await refreshAfterCreate(targetPath); } catch {}
   }
 
   // New text file: ".txt" is added when the name has no extension, an existing
   // name is refused (a remote upload would replace it), then the file opens in
   // the default app - remote ones go through the usual "send back?" flow.
   async function createTextFile(targetPath, base, typed) {
-    const name = /\.[^.]+$/.test(typed) ? typed : typed + '.txt';
+    const name = textFileName(typed);
     const filePath = base + name;
     try {
       const siblings = targetPath === path
@@ -1111,6 +1209,9 @@
 
   let parentFocused = false;
   $: if (path) parentFocused = false;
+  // Changing folder drops a rename left open
+  let renamePathSeen = path;
+  $: if (path !== renamePathSeen) { renamePathSeen = path; if (renamingEntry && !treeMode) cancelRename(); }
   $: if (path) closeSearch();
   $: dblClickUp = $settings?.doubleClickNavigateUp === true;
 
@@ -1129,6 +1230,8 @@
   }
 
   function handlePanelKeydown(e) {
+    // Rename input left open (taken name / refused) without the focus
+    if (renamingEntry && e.key === 'Escape' && !e.target.closest?.('input')) { cancelRename(); return; }
     if (renamingEntry || editingPath || confirmDeleteEntries || sendDiffItems) return;
 
     const ctrl = e.ctrlKey || e.metaKey;
@@ -1793,14 +1896,17 @@
       {/if}
       <input
         type="text"
+        class:conflict={!!newItemMsg}
         bind:value={newFolderName}
         placeholder={newItemKind === 'file' ? $t('newTextFilePlaceholder') : $t('newFolder')}
         autofocus
+        on:input={() => newItemError = ''}
         on:keydown={(e) => { if (e.key === 'Enter') handleNewFolder(); if (e.key === 'Escape') closeNewItem(); }}
       />
-      <button on:click={handleNewFolder}>{$t('save')}</button>
+      <button on:click={handleNewFolder} disabled={!!newItemDup}>{$t('save')}</button>
       <button on:click={closeNewItem}>{$t('cancel')}</button>
     </div>
+    {#if newItemMsg}<div class="new-item-msg" role="alert">{newItemMsg}</div>{/if}
   {/if}
 
   {#if searchMode}
@@ -1888,6 +1994,9 @@
         {#each sortedSearchResults as entry (entry.path)}
           <div
             class="file-row"
+            class:renaming={renamingEntry?.path === entry.path}
+            class:has-msg={renamingEntry?.path === entry.path && !!renameMsg}
+            class:rename-dup={dupMarkPath === entry.path}
             class:selected={selected.some(s => s.path === entry.path)}
             class:is-dir={entry.isDir}
             draggable={true}
@@ -1903,13 +2012,16 @@
               {#if renamingEntry?.path === entry.path}
                 <input
                   class="rename-input"
+                  class:conflict={!!renameMsg}
                   type="text"
                   bind:value={renameValue}
+                  on:input={() => renameError = ''}
                   on:click|stopPropagation
-                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') cancelRename(); }}
                   on:blur={() => doRename(entry)}
                   use:selectBaseName={entry.isDir}
                 />
+                {#if renameMsg}<span class="rename-msg" role="alert">{renameMsg}</span>{/if}
               {:else}
                 <span class="file-name">{entry.name}</span>
                 {#if searchRecursive && relativeSearchPath(entry.path)}
@@ -1939,13 +2051,16 @@
       {#each treeNodes as node, i (node.path)}
         <div
           class="tree-row"
+          class:renaming={renamingEntry?.path === node.path}
+          class:has-msg={renamingEntry?.path === node.path && !!renameMsg}
+          class:rename-dup={dupMarkPath === node.path}
           class:tree-active={node.isDir && node.path === path}
           class:tree-selected={!node.isDir && node.path === treeSelected}
           class:tree-file-row={!node.isDir}
           class:drag-target={node.isDir && rowDragOverPath === node.path}
           style="padding-left: {8 + node.depth * 16}px"
           draggable={true}
-          on:click={() => { treeSelected = node.path; if (node.isDir) navigate(node.path); }}
+          on:click={() => { if (renamingEntry && renamingEntry.path !== node.path) cancelRename(); treeSelected = node.path; if (node.isDir) navigate(node.path); }}
           on:dblclick={() => { if (!node.isDir) transferTreeFile(node); }}
           on:dragstart={(e) => { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData('application/glideftp', JSON.stringify({ entries: [{ path: node.path, name: node.name, isDir: node.isDir }], fromSide: side })); }}
           on:dragover={node.isDir ? (e) => handleRowDragOver(e, node.path) : null}
@@ -1978,13 +2093,16 @@
             {#if renamingEntry?.path === node.path}
               <input
                 class="tree-rename-input"
+                class:conflict={!!renameMsg}
                 type="text"
                 bind:value={renameValue}
+                on:input={() => renameError = ''}
                 on:click|stopPropagation
-                on:keydown={(e) => { if (e.key === 'Enter') doRename(renamingEntry); if (e.key === 'Escape') renamingEntry = null; }}
+                on:keydown={(e) => { if (e.key === 'Enter') doRename(renamingEntry); if (e.key === 'Escape') cancelRename(); }}
                 on:blur={() => { if (renamingEntry) doRename(renamingEntry); }}
                 use:selectBaseName={node.isDir}
               />
+              {#if renameMsg}<span class="rename-msg" role="alert">{renameMsg}</span>{/if}
             {:else}
               {node.name}
             {/if}
@@ -2060,6 +2178,9 @@
           {@const mark = cmpMarks?.get(entry.path)}
           <div
             class="file-row"
+            class:renaming={renamingEntry?.path === entry.path}
+            class:has-msg={renamingEntry?.path === entry.path && !!renameMsg}
+            class:rename-dup={dupMarkPath === entry.path}
             class:cmp-only={mark?.kind === 'only'}
             class:cmp-newer={mark?.kind === 'newer'}
             class:cmp-size={mark?.kind === 'size'}
@@ -2083,13 +2204,16 @@
               {#if renamingEntry?.path === entry.path}
                 <input
                   class="rename-input"
+                  class:conflict={!!renameMsg}
                   type="text"
                   bind:value={renameValue}
+                  on:input={() => renameError = ''}
                   on:click|stopPropagation
-                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') renamingEntry = null; }}
+                  on:keydown={(e) => { if (e.key === 'Enter') doRename(entry); if (e.key === 'Escape') cancelRename(); }}
                   on:blur={() => doRename(entry)}
                   use:selectBaseName={entry.isDir}
                 />
+                {#if renameMsg}<span class="rename-msg" role="alert">{renameMsg}</span>{/if}
               {:else}
                 <span class="file-name">{entry.name}</span>
               {/if}
@@ -3055,6 +3179,53 @@
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
+}
+
+/* Name already taken while renaming: red input + message under it, red
+   dashed outline on the entry that already has the name */
+.rename-input.conflict,
+.tree-rename-input.conflict,
+.new-folder-row input.conflict {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger);
+}
+.file-row.renaming,
+.tree-row.renaming { overflow: visible; }
+.file-row.renaming .col-name,
+.tree-row.renaming .tree-name { overflow: visible; position: relative; }
+.file-row .rename-msg { left: 22px; }
+/* The row grows to make room for the message: the rows under it stay readable */
+.file-row.has-msg { padding-bottom: 28px; }
+.tree-row.has-msg { height: 52px; padding-bottom: 26px; }
+.rename-msg {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  padding: 2px 8px;
+  border: 1px solid var(--danger);
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.new-folder-row button:disabled { opacity: 0.5; cursor: default; }
+.new-item-msg {
+  padding: 4px 10px 6px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.file-row.rename-dup,
+.tree-row.rename-dup {
+  outline: 1px dashed var(--danger);
+  outline-offset: -2px;
 }
 
 .tree-rename-input {

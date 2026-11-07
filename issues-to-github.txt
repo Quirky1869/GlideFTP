@@ -5601,3 +5601,55 @@ SyncMissingModal.svelte: .sm-title uses `overflow-wrap: break-word`
 instead (the sentence wraps between words only) and only the path span
 .sm-path gets `overflow-wrap: anywhere`, so a path too long for one line
 can still be broken instead of overflowing the window.
+
+---
+
+#146
+Title: [Bug] Renaming to a name already used in the folder: no message, and a local file could be silently replaced
+Labels: bug, ui
+Version fixed: v1.8.0
+Description:
+Renaming a file or folder (F2 / right-click) to a name another entry of the
+same folder already has gave no feedback: on Enter the old name simply came
+back. In a folder of thousands of entries the user could not tell why, nor
+find the other entry. Worse, when the rename did go through it replaced the
+other entry: locally on Linux os.Rename silently replaces a file (or an
+empty folder) and the replaced one is lost (not sent to the trash); many FTP
+servers replace a file on RNTO too.
+
+Cause: doRename in FileBrowser.svelte swallowed every error (`catch {}`)
+and closed the input; nothing checked the name before renaming.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+FileBrowser.svelte: the name is checked while typing (findRenameDup)
+against the folder's entries already in memory: `entries` in list view,
+the visible siblings in tree view, a listing of the result's folder
+(LocalListDir/RemoteListDir, loaded when the rename starts) in search
+results. Same folder only, exact name (case-insensitive for Windows local
+paths; a case-only rename of the same entry stays allowed). When the name
+is taken: the input gets a red border, a red message "A folder / A file
+already has this name" shows under it (.rename-msg, absolute, no layout
+shift) and the entry that has the name gets a red dashed outline
+(.rename-dup) so it can be spotted while scrolling. Enter and blur don't
+save then; the input stays open with the typed text. Escape, a click on
+another row or on an empty area, or a folder change cancel (cancelRename).
+Safety net: a rename refused by the backend (hidden entry, created
+meanwhile, permission...) shows "Cannot rename: <error>" in the same place
+instead of being ignored, the input stays open.
+
+internal/fs/local.go: Rename refuses a target that exists (ErrAlreadyExists,
+text "already_exists", shown as "An item already has this name (maybe
+hidden)") unless it is the same file (os.SameFile, Windows case-only
+rename). This also protects cut/paste and drag-and-drop moves in the local
+panel from replacing an entry.
+
+Follow-up (same version): the new folder / new text file name row gets the
+same check (findNewItemDup, against `entries` or a listing of the target
+folder when it isn't the one shown): red input, red message line under the
+row (.new-item-msg, in the flow), red dashed outline on the existing entry,
+Enter and "Save" blocked. A failed folder creation is now shown there
+(newFolderFailed) instead of being swallowed. The rename message no longer
+covers the next row: the row being renamed grows (.has-msg padding-bottom /
+taller tree row) and the message sits in that space.

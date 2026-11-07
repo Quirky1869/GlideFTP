@@ -1,6 +1,7 @@
 package fs
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -168,7 +169,20 @@ func Delete(path string) error {
 	return os.RemoveAll(path)
 }
 
+// ErrAlreadyExists is returned by Rename when the new name is taken. The
+// frontend recognizes its text.
+var ErrAlreadyExists = errors.New("already_exists")
+
+// Rename refuses a name already taken: os.Rename silently replaces a file (or
+// an empty folder) there, and the replaced one is lost, not sent to the trash.
+// The same file under another case (Windows, case-only rename) is allowed.
 func Rename(oldPath, newPath string) error {
+	if dst, err := os.Lstat(newPath); err == nil {
+		src, serr := os.Lstat(oldPath)
+		if serr != nil || !os.SameFile(src, dst) {
+			return ErrAlreadyExists
+		}
+	}
 	return os.Rename(oldPath, newPath)
 }
 
