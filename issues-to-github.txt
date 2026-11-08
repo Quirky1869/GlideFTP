@@ -5653,3 +5653,73 @@ Enter and "Save" blocked. A failed folder creation is now shown there
 (newFolderFailed) instead of being swallowed. The rename message no longer
 covers the next row: the row being renamed grows (.has-msg padding-bottom /
 taller tree row) and the message sits in that space.
+#147
+Title: [UI] Settings: sections hard to tell apart, group each one in a framed card
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+In the Settings panel every setting was a plain line with a thin separator,
+and sections were only told apart by their coloured title and a 1px divider.
+With a dozen sections and about forty settings the panel read as one long
+list: hard to see where a section starts and ends, hard to find a setting.
+
+Solution (closing comment):
+Done in v1.8.0.
+
+SettingsPanel.svelte: the settings of each section are wrapped in a
+`.card` (background --bg-secondary, 1px --border frame, 10px radius,
+overflow hidden) and the panel body gets the darker --bg-primary
+background, so each section stands out as a block (light theme: white cards
+on a light grey background). The `.divider` lines between sections are
+removed, the space between cards (gap 26px) is enough. Section titles sit
+above their card, smaller (11.5px, letter-spacing 0.1em), still in the
+accent colour / gradient. Rows are taller (min-height 52px, padding
+10px 16px) with a separator between rows inside the card only (border-top,
+none on the first row), labels in semi-bold. The custom date format preview
+now sits inside its card. No behaviour change: instant save, reset buttons,
+"?" hints and the gradient-mode rules are unchanged.
+
+---
+#148
+Title: [UI] Settings: a "?" help on every setting
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+Only a few settings (max concurrent transfers, operation timeout, max
+connections, case-sensitive sort, comparison alignment, update check,
+search index and the comparison / synchronized browsing sections) had a
+"?" explaining them. For the others the label alone had to be enough,
+and several of them hide details the user can't guess: the speed limit
+applies to each file and not to the total, hidden files are only filtered
+in the local panel, the notification sound plays once per queue and not
+after each file, a remote delete is permanent, the window size only
+applies at the next launch...
+
+Solution (closing comment):
+Done in v1.8.0.
+
+SettingsPanel.svelte: 20 more rows get the same hover "?" as the existing
+ones (.help-btn.hint-btn + openHint/closeHint, label with
+on:click|self|preventDefault): speed limit, default local directory,
+notification sound on/off, sound choice (test, own sound, 10 MB, 5 s cap),
+queue-finished notification, connection panel shadow, close "Manage sites"
+on outside click, double-click on "..", hidden files, confirm before delete,
+date format, start maximised, size badge while resizing, current window
+size, compare by, hide identical files, create the missing folder without
+asking, search cache, current version, release notes. New i18n keys
+`{labelKey}Hint` in en.js and fr.js. The texts say what really happens:
+speed limit per file (3 transfers at 500 KB/s can reach 1,500 KB/s in all),
+hidden files filtered in the local panel only (the server side shows what
+the server lists).
+
+Left without "?": Theme, Language, Colour, Window width / height
+(self-explanatory), the advanced date format row (its own "i" lists the
+codes) and "Default FTP port", which is saved but not used yet (it gets
+its "?" once it works).
+
+The search index row had a "?" too, but it showed nothing on hover and
+opened the search index window on click. To keep "?" meaning "hover help"
+everywhere, it is now a round button with a book icon (.icon-help-btn,
+same size as "?", pointer cursor, no hover text) that opens the window.
+
+---

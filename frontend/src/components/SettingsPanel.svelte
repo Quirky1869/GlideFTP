@@ -380,329 +380,329 @@
     <!-- Appearance -->
     <section>
       <h3>{$t('appearance')}</h3>
-      <div class="setting-row">
-        <label>{$t('theme')} <button class="reset-btn" hidden={form.theme === DEFAULTS.theme} on:click|stopPropagation={() => resetSetting('theme')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="toggle-group">
-          <button class="toggle-btn" class:active={form.theme === 'dark'} on:click={() => form = { ...form, theme: 'dark' }}>
-            <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            {$t('themeDark')}
-          </button>
-          <button class="toggle-btn" class:active={form.theme === 'light'} on:click={() => { if (form.theme !== 'light') confirmFlashbang = true; }}>
-            <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            {$t('themeLight')}
-          </button>
+      <div class="card">
+        <div class="setting-row">
+          <label>{$t('theme')} <button class="reset-btn" hidden={form.theme === DEFAULTS.theme} on:click|stopPropagation={() => resetSetting('theme')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="toggle-group">
+            <button class="toggle-btn" class:active={form.theme === 'dark'} on:click={() => form = { ...form, theme: 'dark' }}>
+              <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              {$t('themeDark')}
+            </button>
+            <button class="toggle-btn" class:active={form.theme === 'light'} on:click={() => { if (form.theme !== 'light') confirmFlashbang = true; }}>
+              <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              {$t('themeLight')}
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <label>{$t('language')} <button class="reset-btn" hidden={form.language === DEFAULTS.language} on:click|stopPropagation={() => resetSetting('language')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="toggle-group">
-          <button class="toggle-btn" class:active={form.language === 'en'} on:click={() => form = { ...form, language: 'en' }}>
-            🇬🇧 English
-          </button>
-          <button class="toggle-btn" class:active={form.language === 'fr'} on:click={() => form = { ...form, language: 'fr' }}>
-            🇫🇷 Français
-          </button>
+        <div class="setting-row">
+          <label>{$t('language')} <button class="reset-btn" hidden={form.language === DEFAULTS.language} on:click|stopPropagation={() => resetSetting('language')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="toggle-group">
+            <button class="toggle-btn" class:active={form.language === 'en'} on:click={() => form = { ...form, language: 'en' }}>
+              🇬🇧 English
+            </button>
+            <button class="toggle-btn" class:active={form.language === 'fr'} on:click={() => form = { ...form, language: 'fr' }}>
+              🇫🇷 Français
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <label>{$t('accentColor')}</label>
-        <div class="color-row">
-          {#if form.accentGradient}
-            <div class="color-swatch" style="background: linear-gradient(135deg, {form.accentColor || '#5B8AF5'}, {form.accentColor2 || '#C15BF5'})"></div>
-            <span class="color-hex">{form.accentColor || '#5B8AF5'} → {form.accentColor2 || '#C15BF5'}</span>
-          {:else}
-            <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
-            <span class="color-hex">{form.accentColor || '#5B8AF5'}</span>
-          {/if}
-          <button class="color-pick-btn" on:click={() => showColorPicker = true}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-            {$t('accentColor')}
-          </button>
+        <div class="setting-row">
+          <label>{$t('accentColor')}</label>
+          <div class="color-row">
+            {#if form.accentGradient}
+              <div class="color-swatch" style="background: linear-gradient(135deg, {form.accentColor || '#5B8AF5'}, {form.accentColor2 || '#C15BF5'})"></div>
+              <span class="color-hex">{form.accentColor || '#5B8AF5'} → {form.accentColor2 || '#C15BF5'}</span>
+            {:else}
+              <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
+              <span class="color-hex">{form.accentColor || '#5B8AF5'}</span>
+            {/if}
+            <button class="color-pick-btn" on:click={() => showColorPicker = true}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+              {$t('accentColor')}
+            </button>
+          </div>
         </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Transfers -->
     <section>
       <h3>{$t('transfers')}</h3>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('maxConcurrent')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConcurrentHint')} on:mouseenter={(e) => openHint(e, 'maxConcurrentHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConcurrentHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConcurrentTransfers === DEFAULTS.maxConcurrentTransfers} on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" on:click={() => step('maxConcurrentTransfers', -1, 1, 10)}>−</button>
-          <input type="number" bind:value={form.maxConcurrentTransfers} min="1" max="10" />
-          <button class="num-btn" on:click={() => step('maxConcurrentTransfers', 1, 1, 10)}>+</button>
+      <div class="card">
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('maxConcurrent')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConcurrentHint')} on:mouseenter={(e) => openHint(e, 'maxConcurrentHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConcurrentHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConcurrentTransfers === DEFAULTS.maxConcurrentTransfers} on:click|stopPropagation={() => resetSetting('maxConcurrentTransfers')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" on:click={() => step('maxConcurrentTransfers', -1, 1, 10)}>−</button>
+            <input type="number" bind:value={form.maxConcurrentTransfers} min="1" max="10" />
+            <button class="num-btn" on:click={() => step('maxConcurrentTransfers', 1, 1, 10)}>+</button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <label>{$t('transferSpeedLimit')} <button class="reset-btn" hidden={form.maxTransferSpeedKBps === DEFAULTS.maxTransferSpeedKBps} on:click|stopPropagation={() => resetSetting('maxTransferSpeedKBps')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', -100, 0, 100000)}>−</button>
-          <input type="number" bind:value={form.maxTransferSpeedKBps} min="0" max="100000" style="width: 80px" />
-          <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', 100, 0, 100000)}>+</button>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('transferSpeedLimit')} <button type="button" class="help-btn hint-btn" aria-label={$t('transferSpeedLimitHint')} on:mouseenter={(e) => openHint(e, 'transferSpeedLimitHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'transferSpeedLimitHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxTransferSpeedKBps === DEFAULTS.maxTransferSpeedKBps} on:click|stopPropagation={() => resetSetting('maxTransferSpeedKBps')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', -100, 0, 100000)}>−</button>
+            <input type="number" bind:value={form.maxTransferSpeedKBps} min="0" max="100000" style="width: 80px" />
+            <button class="num-btn" on:click={() => step('maxTransferSpeedKBps', 100, 0, 100000)}>+</button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <label>{$t('defaultLocalDir')}</label>
-        <div class="input-with-btn">
-          <input type="text" bind:value={form.defaultLocalDir} />
-          <button class="browse-btn" on:click={browseDir}>…</button>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('defaultLocalDir')} <button type="button" class="help-btn hint-btn" aria-label={$t('defaultLocalDirHint')} on:mouseenter={(e) => openHint(e, 'defaultLocalDirHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'defaultLocalDirHint')} on:blur={closeHint}>?</button></label>
+          <div class="input-with-btn">
+            <input type="text" bind:value={form.defaultLocalDir} />
+            <button class="browse-btn" on:click={browseDir}>…</button>
+          </div>
         </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Notifications -->
     <section>
       <h3>{$t('notifications')}</h3>
-      <div class="setting-row">
-        <label>{$t('notificationSoundEnabled')} <button class="reset-btn" hidden={form.notificationSoundEnabled === DEFAULTS.notificationSoundEnabled} on:click|stopPropagation={() => resetSetting('notificationSoundEnabled')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.notificationSoundEnabled}
-          on:click={() => toggle('notificationSoundEnabled')}
-          aria-pressed={form.notificationSoundEnabled}
-        ><span class="sw-knob"></span></button>
-      </div>
-      {#if form.notificationSoundEnabled}
+      <div class="card">
         <div class="setting-row">
-          <label>{$t('notificationSound')} <button class="reset-btn" hidden={form.notificationSound === DEFAULTS.notificationSound} on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
-          <div class="sound-row">
-            <select bind:value={form.notificationSound}>
-              {#each sortedSounds as sound (sound.id)}
-                <option value={sound.id}>{$t(sound.label)}</option>
-              {/each}
-              {#if form.customSoundName}
-                <option value={CUSTOM_SOUND_ID}>{$t('soundCustom')} : {form.customSoundName}</option>
-              {/if}
-            </select>
-            <button
-              type="button"
-              class="sound-test-btn"
-              title={$t('testSound')}
-              on:click={() => playNotificationSound(form.notificationSound)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="sound-test-btn"
-              title={$t('customSoundLoad').replace('{n}', MAX_SOUND_SECONDS)}
-              on:click={loadCustomSound}
-              disabled={loadingSound}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-            </button>
-            {#if form.customSoundName}
+          <label on:click|self|preventDefault>{$t('notificationSoundEnabled')} <button type="button" class="help-btn hint-btn" aria-label={$t('notificationSoundEnabledHint')} on:mouseenter={(e) => openHint(e, 'notificationSoundEnabledHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'notificationSoundEnabledHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.notificationSoundEnabled === DEFAULTS.notificationSoundEnabled} on:click|stopPropagation={() => resetSetting('notificationSoundEnabled')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.notificationSoundEnabled}
+            on:click={() => toggle('notificationSoundEnabled')}
+            aria-pressed={form.notificationSoundEnabled}
+          ><span class="sw-knob"></span></button>
+        </div>
+        {#if form.notificationSoundEnabled}
+          <div class="setting-row">
+            <label on:click|self|preventDefault>{$t('notificationSound')} <button type="button" class="help-btn hint-btn" aria-label={$t('notificationSoundHint')} on:mouseenter={(e) => openHint(e, 'notificationSoundHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'notificationSoundHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.notificationSound === DEFAULTS.notificationSound} on:click|stopPropagation={() => resetSetting('notificationSound')} title={$t('resetToDefault')}>↺</button></label>
+            <div class="sound-row">
+              <select bind:value={form.notificationSound}>
+                {#each sortedSounds as sound (sound.id)}
+                  <option value={sound.id}>{$t(sound.label)}</option>
+                {/each}
+                {#if form.customSoundName}
+                  <option value={CUSTOM_SOUND_ID}>{$t('soundCustom')} : {form.customSoundName}</option>
+                {/if}
+              </select>
               <button
                 type="button"
-                class="sound-test-btn sound-remove-btn"
-                title={$t('customSoundRemove')}
-                on:click={removeCustomSound}
+                class="sound-test-btn"
+                title={$t('testSound')}
+                on:click={() => playNotificationSound(form.notificationSound)}
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                </svg>
               </button>
-            {/if}
+              <button
+                type="button"
+                class="sound-test-btn"
+                title={$t('customSoundLoad').replace('{n}', MAX_SOUND_SECONDS)}
+                on:click={loadCustomSound}
+                disabled={loadingSound}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 18V5l12-2v13"/>
+                  <circle cx="6" cy="18" r="3"/>
+                  <circle cx="18" cy="16" r="3"/>
+                </svg>
+              </button>
+              {#if form.customSoundName}
+                <button
+                  type="button"
+                  class="sound-test-btn sound-remove-btn"
+                  title={$t('customSoundRemove')}
+                  on:click={removeCustomSound}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </button>
+              {/if}
+            </div>
           </div>
+        {/if}
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('queueDoneBubbleSetting')} <button type="button" class="help-btn hint-btn" aria-label={$t('queueDoneBubbleSettingHint')} on:mouseenter={(e) => openHint(e, 'queueDoneBubbleSettingHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'queueDoneBubbleSettingHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.queueDoneBubble === DEFAULTS.queueDoneBubble} on:click|stopPropagation={() => resetSetting('queueDoneBubble')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.queueDoneBubble}
+            on:click={() => toggle('queueDoneBubble')}
+            aria-pressed={form.queueDoneBubble}
+          ><span class="sw-knob"></span></button>
         </div>
-      {/if}
-      <div class="setting-row">
-        <label>{$t('queueDoneBubbleSetting')} <button class="reset-btn" hidden={form.queueDoneBubble === DEFAULTS.queueDoneBubble} on:click|stopPropagation={() => resetSetting('queueDoneBubble')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.queueDoneBubble}
-          on:click={() => toggle('queueDoneBubble')}
-          aria-pressed={form.queueDoneBubble}
-        ><span class="sw-knob"></span></button>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Connection -->
     <section>
       <h3>{$t('connection')}</h3>
-      <div class="setting-row">
-        <label>{$t('defaultPort')} <button class="reset-btn" hidden={form.defaultPort === DEFAULTS.defaultPort} on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" on:click={() => step('defaultPort', -1, 1, 65535)}>−</button>
-          <input type="number" bind:value={form.defaultPort} min="1" max="65535" />
-          <button class="num-btn" on:click={() => step('defaultPort', 1, 1, 65535)}>+</button>
+      <div class="card">
+        <div class="setting-row">
+          <label>{$t('defaultPort')} <button class="reset-btn" hidden={form.defaultPort === DEFAULTS.defaultPort} on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" on:click={() => step('defaultPort', -1, 1, 65535)}>−</button>
+            <input type="number" bind:value={form.defaultPort} min="1" max="65535" />
+            <button class="num-btn" on:click={() => step('defaultPort', 1, 1, 65535)}>+</button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <!-- |self|preventDefault: clicking the text must not "click" the buttons inside -->
-        <label on:click|self|preventDefault>{$t('timeout')} <button type="button" class="help-btn hint-btn" aria-label={$t('timeoutHint')} on:mouseenter={(e) => openHint(e, 'timeoutHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'timeoutHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.connectionTimeoutSec === DEFAULTS.connectionTimeoutSec} on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" on:click={() => step('connectionTimeoutSec', -5, 5, 300)}>−</button>
-          <input type="number" bind:value={form.connectionTimeoutSec} min="5" max="300" />
-          <button class="num-btn" on:click={() => step('connectionTimeoutSec', 5, 5, 300)}>+</button>
+        <div class="setting-row">
+          <!-- |self|preventDefault: clicking the text must not "click" the buttons inside -->
+          <label on:click|self|preventDefault>{$t('timeout')} <button type="button" class="help-btn hint-btn" aria-label={$t('timeoutHint')} on:mouseenter={(e) => openHint(e, 'timeoutHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'timeoutHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.connectionTimeoutSec === DEFAULTS.connectionTimeoutSec} on:click|stopPropagation={() => resetSetting('connectionTimeoutSec')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" on:click={() => step('connectionTimeoutSec', -5, 5, 300)}>−</button>
+            <input type="number" bind:value={form.connectionTimeoutSec} min="5" max="300" />
+            <button class="num-btn" on:click={() => step('connectionTimeoutSec', 5, 5, 300)}>+</button>
+          </div>
         </div>
-      </div>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('maxConnections')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConnectionsHint')} on:mouseenter={(e) => openHint(e, 'maxConnectionsHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConnectionsHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConnections === DEFAULTS.maxConnections} on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" on:click={() => step('maxConnections', -1, 1, 5)}>−</button>
-          <input type="number" bind:value={form.maxConnections} min="1" max="5" />
-          <button class="num-btn" on:click={() => step('maxConnections', 1, 1, 5)}>+</button>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('maxConnections')} <button type="button" class="help-btn hint-btn" aria-label={$t('maxConnectionsHint')} on:mouseenter={(e) => openHint(e, 'maxConnectionsHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'maxConnectionsHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.maxConnections === DEFAULTS.maxConnections} on:click|stopPropagation={() => resetSetting('maxConnections')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" on:click={() => step('maxConnections', -1, 1, 5)}>−</button>
+            <input type="number" bind:value={form.maxConnections} min="1" max="5" />
+            <button class="num-btn" on:click={() => step('maxConnections', 1, 1, 5)}>+</button>
+          </div>
         </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Interface -->
     <section>
       <h3>{$t('interface')}</h3>
-      <div class="setting-row">
-        <label>{$t('connectCardShadow')} <button class="reset-btn" hidden={form.connectCardShadow === DEFAULTS.connectCardShadow} on:click|stopPropagation={() => resetSetting('connectCardShadow')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.connectCardShadow}
-          on:click={() => toggle('connectCardShadow')}
-          aria-pressed={form.connectCardShadow}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('closeSiteManagerOnClickOutside')} <button class="reset-btn" hidden={form.closeSiteManagerOnClickOutside === DEFAULTS.closeSiteManagerOnClickOutside} on:click|stopPropagation={() => resetSetting('closeSiteManagerOnClickOutside')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.closeSiteManagerOnClickOutside}
-          on:click={() => toggle('closeSiteManagerOnClickOutside')}
-          aria-pressed={form.closeSiteManagerOnClickOutside}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('doubleClickNavigateUp')} <button class="reset-btn" hidden={form.doubleClickNavigateUp === DEFAULTS.doubleClickNavigateUp} on:click|stopPropagation={() => resetSetting('doubleClickNavigateUp')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.doubleClickNavigateUp}
-          on:click={() => toggle('doubleClickNavigateUp')}
-          aria-pressed={form.doubleClickNavigateUp}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('showHiddenFiles')} <button class="reset-btn" hidden={form.showHiddenFiles === DEFAULTS.showHiddenFiles} on:click|stopPropagation={() => resetSetting('showHiddenFiles')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.showHiddenFiles}
-          on:click={() => toggle('showHiddenFiles')}
-          aria-pressed={form.showHiddenFiles}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('caseSensitiveSort')} <button type="button" class="help-btn hint-btn" aria-label={$t('caseSensitiveSortHint')} on:mouseenter={(e) => openHint(e, 'caseSensitiveSortHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'caseSensitiveSortHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.caseSensitiveSort === DEFAULTS.caseSensitiveSort} on:click|stopPropagation={() => resetSetting('caseSensitiveSort')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.caseSensitiveSort}
-          on:click={() => toggle('caseSensitiveSort')}
-          aria-pressed={form.caseSensitiveSort}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('confirmOnDelete')} <button class="reset-btn" hidden={form.confirmOnDelete === DEFAULTS.confirmOnDelete} on:click|stopPropagation={() => resetSetting('confirmOnDelete')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.confirmOnDelete}
-          on:click={() => toggle('confirmOnDelete')}
-          aria-pressed={form.confirmOnDelete}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('dateFormat')} <button class="reset-btn" hidden={form.dateFormat === DEFAULTS.dateFormat} on:click|stopPropagation={() => resetSetting('dateFormat')} title={$t('resetToDefault')}>↺</button></label>
-        <select class="date-select" value={dateAdvanced ? DATE_ADVANCED : form.dateFormat} on:change={onDatePresetChange} on:focus={() => now = new Date()}>
-          {#each DATE_FORMAT_PRESETS as preset}
-            <option value={preset}>
-              {preset === SYSTEM_DATE_FORMAT ? `${$t('dateFormatSystem')} (${formatDateWith(now, preset, $locale)})` : formatDateWith(now, preset, $locale)}
-            </option>
-          {/each}
-          <option value={DATE_ADVANCED}>{$t('dateFormatAdvanced')}</option>
-        </select>
-      </div>
-      {#if dateAdvanced}
+      <div class="card">
         <div class="setting-row">
-          <label>{$t('dateFormatCustom')}</label>
-          <div class="date-custom">
-            <input type="text" bind:value={form.dateFormat} placeholder={DEFAULT_DATE_FORMAT} spellcheck="false" />
-            <button
-              type="button"
-              class="info-btn"
-              aria-label={$t('dateFormatTokens')}
-              on:mouseenter={openDateTip}
-              on:mouseleave={() => showDateTip = false}
-              on:focus={openDateTip}
-              on:blur={() => showDateTip = false}
-            >i</button>
+          <label on:click|self|preventDefault>{$t('connectCardShadow')} <button type="button" class="help-btn hint-btn" aria-label={$t('connectCardShadowHint')} on:mouseenter={(e) => openHint(e, 'connectCardShadowHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'connectCardShadowHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.connectCardShadow === DEFAULTS.connectCardShadow} on:click|stopPropagation={() => resetSetting('connectCardShadow')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.connectCardShadow}
+            on:click={() => toggle('connectCardShadow')}
+            aria-pressed={form.connectCardShadow}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('closeSiteManagerOnClickOutside')} <button type="button" class="help-btn hint-btn" aria-label={$t('closeSiteManagerOnClickOutsideHint')} on:mouseenter={(e) => openHint(e, 'closeSiteManagerOnClickOutsideHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'closeSiteManagerOnClickOutsideHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.closeSiteManagerOnClickOutside === DEFAULTS.closeSiteManagerOnClickOutside} on:click|stopPropagation={() => resetSetting('closeSiteManagerOnClickOutside')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.closeSiteManagerOnClickOutside}
+            on:click={() => toggle('closeSiteManagerOnClickOutside')}
+            aria-pressed={form.closeSiteManagerOnClickOutside}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('doubleClickNavigateUp')} <button type="button" class="help-btn hint-btn" aria-label={$t('doubleClickNavigateUpHint')} on:mouseenter={(e) => openHint(e, 'doubleClickNavigateUpHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'doubleClickNavigateUpHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.doubleClickNavigateUp === DEFAULTS.doubleClickNavigateUp} on:click|stopPropagation={() => resetSetting('doubleClickNavigateUp')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.doubleClickNavigateUp}
+            on:click={() => toggle('doubleClickNavigateUp')}
+            aria-pressed={form.doubleClickNavigateUp}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('showHiddenFiles')} <button type="button" class="help-btn hint-btn" aria-label={$t('showHiddenFilesHint')} on:mouseenter={(e) => openHint(e, 'showHiddenFilesHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'showHiddenFilesHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.showHiddenFiles === DEFAULTS.showHiddenFiles} on:click|stopPropagation={() => resetSetting('showHiddenFiles')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.showHiddenFiles}
+            on:click={() => toggle('showHiddenFiles')}
+            aria-pressed={form.showHiddenFiles}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('caseSensitiveSort')} <button type="button" class="help-btn hint-btn" aria-label={$t('caseSensitiveSortHint')} on:mouseenter={(e) => openHint(e, 'caseSensitiveSortHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'caseSensitiveSortHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.caseSensitiveSort === DEFAULTS.caseSensitiveSort} on:click|stopPropagation={() => resetSetting('caseSensitiveSort')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.caseSensitiveSort}
+            on:click={() => toggle('caseSensitiveSort')}
+            aria-pressed={form.caseSensitiveSort}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('confirmOnDelete')} <button type="button" class="help-btn hint-btn" aria-label={$t('confirmOnDeleteHint')} on:mouseenter={(e) => openHint(e, 'confirmOnDeleteHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'confirmOnDeleteHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.confirmOnDelete === DEFAULTS.confirmOnDelete} on:click|stopPropagation={() => resetSetting('confirmOnDelete')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.confirmOnDelete}
+            on:click={() => toggle('confirmOnDelete')}
+            aria-pressed={form.confirmOnDelete}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('dateFormat')} <button type="button" class="help-btn hint-btn" aria-label={$t('dateFormatHint')} on:mouseenter={(e) => openHint(e, 'dateFormatHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'dateFormatHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.dateFormat === DEFAULTS.dateFormat} on:click|stopPropagation={() => resetSetting('dateFormat')} title={$t('resetToDefault')}>↺</button></label>
+          <select class="date-select" value={dateAdvanced ? DATE_ADVANCED : form.dateFormat} on:change={onDatePresetChange} on:focus={() => now = new Date()}>
+            {#each DATE_FORMAT_PRESETS as preset}
+              <option value={preset}>
+                {preset === SYSTEM_DATE_FORMAT ? `${$t('dateFormatSystem')} (${formatDateWith(now, preset, $locale)})` : formatDateWith(now, preset, $locale)}
+              </option>
+            {/each}
+            <option value={DATE_ADVANCED}>{$t('dateFormatAdvanced')}</option>
+          </select>
+        </div>
+        {#if dateAdvanced}
+          <div class="setting-row">
+            <label>{$t('dateFormatCustom')}</label>
+            <div class="date-custom">
+              <input type="text" bind:value={form.dateFormat} placeholder={DEFAULT_DATE_FORMAT} spellcheck="false" />
+              <button
+                type="button"
+                class="info-btn"
+                aria-label={$t('dateFormatTokens')}
+                on:mouseenter={openDateTip}
+                on:mouseleave={() => showDateTip = false}
+                on:focus={openDateTip}
+                on:blur={() => showDateTip = false}
+              >i</button>
+            </div>
+          </div>
+          <div class="date-preview">
+            {$t('dateFormatPreview')} : <strong>{formatDateWith(now, form.dateFormat, $locale) || '-'}</strong>
+          </div>
+        {/if}
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('startMaximized')} <button type="button" class="help-btn hint-btn" aria-label={$t('startMaximizedHint')} on:mouseenter={(e) => openHint(e, 'startMaximizedHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'startMaximizedHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.startMaximized === DEFAULTS.startMaximized} on:click|stopPropagation={() => resetSetting('startMaximized')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.startMaximized}
+            on:click={() => toggle('startMaximized')}
+            aria-pressed={form.startMaximized}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row" class:row-disabled={form.startMaximized}>
+          <label>{$t('windowWidth')} <button class="reset-btn" hidden={form.windowWidth === DEFAULTS.windowWidth} on:click|stopPropagation={() => resetSetting('windowWidth')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowWidth', -50, 800, 3840)}>−</button>
+            <input type="number" bind:value={form.windowWidth} min="800" max="3840" disabled={form.startMaximized} />
+            <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowWidth', 50, 800, 3840)}>+</button>
           </div>
         </div>
-        <div class="date-preview">
-          {$t('dateFormatPreview')} : <strong>{formatDateWith(now, form.dateFormat, $locale) || '-'}</strong>
+        <div class="setting-row" class:row-disabled={form.startMaximized}>
+          <label>{$t('windowHeight')} <button class="reset-btn" hidden={form.windowHeight === DEFAULTS.windowHeight} on:click|stopPropagation={() => resetSetting('windowHeight')} title={$t('resetToDefault')}>↺</button></label>
+          <div class="num-input">
+            <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', -50, 600, 2160)}>−</button>
+            <input type="number" bind:value={form.windowHeight} min="600" max="2160" disabled={form.startMaximized} />
+            <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', 50, 600, 2160)}>+</button>
+          </div>
         </div>
-      {/if}
-      <div class="setting-row">
-        <label>{$t('startMaximized')} <button class="reset-btn" hidden={form.startMaximized === DEFAULTS.startMaximized} on:click|stopPropagation={() => resetSetting('startMaximized')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.startMaximized}
-          on:click={() => toggle('startMaximized')}
-          aria-pressed={form.startMaximized}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row" class:row-disabled={form.startMaximized}>
-        <label>{$t('windowWidth')} <button class="reset-btn" hidden={form.windowWidth === DEFAULTS.windowWidth} on:click|stopPropagation={() => resetSetting('windowWidth')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowWidth', -50, 800, 3840)}>−</button>
-          <input type="number" bind:value={form.windowWidth} min="800" max="3840" disabled={form.startMaximized} />
-          <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowWidth', 50, 800, 3840)}>+</button>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('showWindowSizeBadge')} <button type="button" class="help-btn hint-btn" aria-label={$t('showWindowSizeBadgeHint')} on:mouseenter={(e) => openHint(e, 'showWindowSizeBadgeHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'showWindowSizeBadgeHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.showWindowSizeBadge === DEFAULTS.showWindowSizeBadge} on:click|stopPropagation={() => resetSetting('showWindowSizeBadge')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.showWindowSizeBadge}
+            on:click={() => toggle('showWindowSizeBadge')}
+            aria-pressed={form.showWindowSizeBadge}
+          ><span class="sw-knob"></span></button>
         </div>
-      </div>
-      <div class="setting-row" class:row-disabled={form.startMaximized}>
-        <label>{$t('windowHeight')} <button class="reset-btn" hidden={form.windowHeight === DEFAULTS.windowHeight} on:click|stopPropagation={() => resetSetting('windowHeight')} title={$t('resetToDefault')}>↺</button></label>
-        <div class="num-input">
-          <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', -50, 600, 2160)}>−</button>
-          <input type="number" bind:value={form.windowHeight} min="600" max="2160" disabled={form.startMaximized} />
-          <button class="num-btn" disabled={form.startMaximized} on:click={() => step('windowHeight', 50, 600, 2160)}>+</button>
-        </div>
-      </div>
-      <div class="setting-row">
-        <label>{$t('showWindowSizeBadge')} <button class="reset-btn" hidden={form.showWindowSizeBadge === DEFAULTS.showWindowSizeBadge} on:click|stopPropagation={() => resetSetting('showWindowSizeBadge')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.showWindowSizeBadge}
-          on:click={() => toggle('showWindowSizeBadge')}
-          aria-pressed={form.showWindowSizeBadge}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row" class:row-disabled={form.startMaximized}>
-        <label>{$t('windowSizeCurrent')}</label>
-        <div class="current-size-row">
-          {#if sizeCopied}<span class="saved-msg">{form.windowWidth} × {form.windowHeight} ✓</span>{/if}
-          <button class="browse-btn" disabled={form.startMaximized} on:click={useCurrentWindowSize}>{$t('useCurrentWindowSize')}</button>
+        <div class="setting-row" class:row-disabled={form.startMaximized}>
+          <label on:click|self|preventDefault>{$t('windowSizeCurrent')} <button type="button" class="help-btn hint-btn" aria-label={$t('windowSizeCurrentHint')} on:mouseenter={(e) => openHint(e, 'windowSizeCurrentHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'windowSizeCurrentHint')} on:blur={closeHint}>?</button></label>
+          <div class="current-size-row">
+            {#if sizeCopied}<span class="saved-msg">{form.windowWidth} × {form.windowHeight} ✓</span>{/if}
+            <button class="browse-btn" disabled={form.startMaximized} on:click={useCurrentWindowSize}>{$t('useCurrentWindowSize')}</button>
+          </div>
         </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Panel comparison (v1.8.0 point 5) -->
     <section>
@@ -711,36 +711,36 @@
         <h3>{$t('compareSection')}</h3>
         <button type="button" class="help-btn hint-btn" aria-label={$t('compareSectionHint')} on:mouseenter={(e) => openHint(e, 'compareSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareSectionHint')} on:blur={closeHint}>?</button>
       </div>
-      <div class="setting-row">
-        <label>{$t('compareBy')} <button class="reset-btn" hidden={form.compareBy === DEFAULTS.compareBy} on:click|stopPropagation={() => resetSetting('compareBy')} title={$t('resetToDefault')}>↺</button></label>
-        <select class="date-select" bind:value={form.compareBy}>
-          <option value="size">{$t('compareBySize')}</option>
-          <option value="date">{$t('compareByDate')}</option>
-        </select>
-      </div>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('compareHideIdentical')} <button class="reset-btn" hidden={form.compareHideIdentical === DEFAULTS.compareHideIdentical} on:click|stopPropagation={() => resetSetting('compareHideIdentical')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.compareHideIdentical}
-          on:click={() => toggle('compareHideIdentical')}
-          aria-pressed={form.compareHideIdentical}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('compareAlign')} <button type="button" class="help-btn hint-btn" aria-label={$t('compareAlignHint')} on:mouseenter={(e) => openHint(e, 'compareAlignHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareAlignHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.compareAlign === DEFAULTS.compareAlign} on:click|stopPropagation={() => resetSetting('compareAlign')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.compareAlign}
-          on:click={() => toggle('compareAlign')}
-          aria-pressed={form.compareAlign}
-        ><span class="sw-knob"></span></button>
+      <div class="card">
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('compareBy')} <button type="button" class="help-btn hint-btn" aria-label={$t('compareByHint')} on:mouseenter={(e) => openHint(e, 'compareByHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareByHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.compareBy === DEFAULTS.compareBy} on:click|stopPropagation={() => resetSetting('compareBy')} title={$t('resetToDefault')}>↺</button></label>
+          <select class="date-select" bind:value={form.compareBy}>
+            <option value="size">{$t('compareBySize')}</option>
+            <option value="date">{$t('compareByDate')}</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('compareHideIdentical')} <button type="button" class="help-btn hint-btn" aria-label={$t('compareHideIdenticalHint')} on:mouseenter={(e) => openHint(e, 'compareHideIdenticalHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareHideIdenticalHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.compareHideIdentical === DEFAULTS.compareHideIdentical} on:click|stopPropagation={() => resetSetting('compareHideIdentical')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.compareHideIdentical}
+            on:click={() => toggle('compareHideIdentical')}
+            aria-pressed={form.compareHideIdentical}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('compareAlign')} <button type="button" class="help-btn hint-btn" aria-label={$t('compareAlignHint')} on:mouseenter={(e) => openHint(e, 'compareAlignHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'compareAlignHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.compareAlign === DEFAULTS.compareAlign} on:click|stopPropagation={() => resetSetting('compareAlign')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.compareAlign}
+            on:click={() => toggle('compareAlign')}
+            aria-pressed={form.compareAlign}
+          ><span class="sw-knob"></span></button>
+        </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Synchronized browsing (v1.8.0 point 6) -->
     <section>
@@ -749,68 +749,70 @@
         <h3>{$t('syncSection')}</h3>
         <button type="button" class="help-btn hint-btn" aria-label={$t('syncSectionHint')} on:mouseenter={(e) => openHint(e, 'syncSectionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'syncSectionHint')} on:blur={closeHint}>?</button>
       </div>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('syncCreateMissing')} <button class="reset-btn" hidden={form.syncCreateMissing === DEFAULTS.syncCreateMissing} on:click|stopPropagation={() => resetSetting('syncCreateMissing')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.syncCreateMissing}
-          on:click={() => toggle('syncCreateMissing')}
-          aria-pressed={form.syncCreateMissing}
-        ><span class="sw-knob"></span></button>
+      <div class="card">
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('syncCreateMissing')} <button type="button" class="help-btn hint-btn" aria-label={$t('syncCreateMissingHint')} on:mouseenter={(e) => openHint(e, 'syncCreateMissingHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'syncCreateMissingHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.syncCreateMissing === DEFAULTS.syncCreateMissing} on:click|stopPropagation={() => resetSetting('syncCreateMissing')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.syncCreateMissing}
+            on:click={() => toggle('syncCreateMissing')}
+            aria-pressed={form.syncCreateMissing}
+          ><span class="sw-knob"></span></button>
+        </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Search -->
     <section>
       <h3>{$t('searchSection')}</h3>
-      <div class="setting-row">
-        <!-- |self|preventDefault: clicking the text must not "click" the ? button inside -->
-        <label on:click|self|preventDefault>
-          {$t('searchIndexEnabled')}
-          <button type="button" class="help-btn" on:click|stopPropagation={() => showSearchIndexHelp = true} title={$t('searchIndexHelp')} aria-label={$t('searchIndexHelp')}>?</button>
-          <button class="reset-btn" hidden={form.searchIndexEnabled === DEFAULTS.searchIndexEnabled} on:click|stopPropagation={() => resetSetting('searchIndexEnabled')} title={$t('resetToDefault')}>↺</button>
-        </label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.searchIndexEnabled}
-          on:click={() => toggle('searchIndexEnabled')}
-          aria-pressed={form.searchIndexEnabled}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('searchIndexCache')} <span class="cache-size">({formatBytes(searchIndexSize)})</span></label>
-        <button class="browse-btn" disabled={searchIndexSize === 0} on:click={clearSearchIndex}>{$t('searchIndexClear')}</button>
+      <div class="card">
+        <div class="setting-row">
+          <!-- |self|preventDefault: clicking the text must not "click" the ? button inside -->
+          <label on:click|self|preventDefault>
+            {$t('searchIndexEnabled')}
+            <button type="button" class="help-btn icon-help-btn" on:click|stopPropagation={() => showSearchIndexHelp = true} aria-label={$t('searchIndexHelp')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg></button>
+            <button class="reset-btn" hidden={form.searchIndexEnabled === DEFAULTS.searchIndexEnabled} on:click|stopPropagation={() => resetSetting('searchIndexEnabled')} title={$t('resetToDefault')}>↺</button>
+          </label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.searchIndexEnabled}
+            on:click={() => toggle('searchIndexEnabled')}
+            aria-pressed={form.searchIndexEnabled}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('searchIndexCache')} <span class="cache-size">({formatBytes(searchIndexSize)})</span> <button type="button" class="help-btn hint-btn" aria-label={$t('searchIndexCacheHint')} on:mouseenter={(e) => openHint(e, 'searchIndexCacheHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'searchIndexCacheHint')} on:blur={closeHint}>?</button></label>
+          <button class="browse-btn" disabled={searchIndexSize === 0} on:click={clearSearchIndex}>{$t('searchIndexClear')}</button>
+        </div>
       </div>
     </section>
-
-    <div class="divider"></div>
 
     <!-- Updates -->
     <section>
       <h3>{$t('updatesSection')}</h3>
-      <div class="setting-row">
-        <label on:click|self|preventDefault>{$t('checkUpdates')} <button type="button" class="help-btn hint-btn" aria-label={$t('checkUpdatesHint')} on:mouseenter={(e) => openHint(e, 'checkUpdatesHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'checkUpdatesHint')} on:blur={closeHint}>?</button><button type="button" class="help-btn test-banner-btn" disabled={checkingUpdate} on:click|stopPropagation={testUpdateBanner} title={$t('updateTestBannerBtn')} aria-label={$t('updateTestBannerBtn')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> <button class="reset-btn" hidden={form.checkUpdates === DEFAULTS.checkUpdates} on:click|stopPropagation={() => resetSetting('checkUpdates')} title={$t('resetToDefault')}>↺</button></label>
-        <button
-          type="button"
-          class="sw"
-          class:on={form.checkUpdates}
-          on:click={() => toggle('checkUpdates')}
-          aria-pressed={form.checkUpdates}
-        ><span class="sw-knob"></span></button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('currentVersion')} <span class="cache-size">v{appVersion}</span></label>
-        <button class="browse-btn" disabled={checkingUpdate} on:click={checkUpdateNow}>
-          {checkingUpdate ? $t('updateChecking') : $t('checkUpdatesNow')}
-        </button>
-      </div>
-      <div class="setting-row">
-        <label>{$t('releaseNotes')}</label>
-        <button class="browse-btn" disabled={!appVersion} on:click={() => openReleaseNotes(appVersion)}>{$t('releaseNotesShow')}</button>
+      <div class="card">
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('checkUpdates')} <button type="button" class="help-btn hint-btn" aria-label={$t('checkUpdatesHint')} on:mouseenter={(e) => openHint(e, 'checkUpdatesHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'checkUpdatesHint')} on:blur={closeHint}>?</button><button type="button" class="help-btn test-banner-btn" disabled={checkingUpdate} on:click|stopPropagation={testUpdateBanner} title={$t('updateTestBannerBtn')} aria-label={$t('updateTestBannerBtn')}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button> <button class="reset-btn" hidden={form.checkUpdates === DEFAULTS.checkUpdates} on:click|stopPropagation={() => resetSetting('checkUpdates')} title={$t('resetToDefault')}>↺</button></label>
+          <button
+            type="button"
+            class="sw"
+            class:on={form.checkUpdates}
+            on:click={() => toggle('checkUpdates')}
+            aria-pressed={form.checkUpdates}
+          ><span class="sw-knob"></span></button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('currentVersion')} <span class="cache-size">v{appVersion}</span> <button type="button" class="help-btn hint-btn" aria-label={$t('currentVersionHint')} on:mouseenter={(e) => openHint(e, 'currentVersionHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'currentVersionHint')} on:blur={closeHint}>?</button></label>
+          <button class="browse-btn" disabled={checkingUpdate} on:click={checkUpdateNow}>
+            {checkingUpdate ? $t('updateChecking') : $t('checkUpdatesNow')}
+          </button>
+        </div>
+        <div class="setting-row">
+          <label on:click|self|preventDefault>{$t('releaseNotes')} <button type="button" class="help-btn hint-btn" aria-label={$t('releaseNotesHint')} on:mouseenter={(e) => openHint(e, 'releaseNotesHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'releaseNotesHint')} on:blur={closeHint}>?</button></label>
+          <button class="browse-btn" disabled={!appVersion} on:click={() => openReleaseNotes(appVersion)}>{$t('releaseNotesShow')}</button>
+        </div>
       </div>
     </section>
 
@@ -944,18 +946,18 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 26px;
+  /* darker than the cards so each section stands out as a block */
+  background: var(--bg-primary);
 }
 
-section { padding-bottom: 4px; }
-
 h3 {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   color: var(--accent);
-  margin: 0 0 12px;
+  margin: 0 0 10px 4px;
 }
 
 /* Section title with a "?" hint next to it */
@@ -963,21 +965,33 @@ h3 {
   display: flex;
   align-items: center;
   gap: 2px;
-  margin: 0 0 12px;
+  margin: 0 0 10px 4px;
 }
 .section-title h3 { margin: 0; }
+
+/* One framed card per section, rows separated inside it */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
 
 .setting-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border-subtle);
+  min-height: 52px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  border-top: 1px solid var(--border);
 }
+.card > .setting-row:first-child { border-top: none; }
 
 .setting-row label:first-child {
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
   flex: 1;
 }
@@ -1155,9 +1169,10 @@ input:focus { border-color: var(--accent); }
 }
 .help-btn:hover, .help-btn:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
 .hint-btn { cursor: help; }
-/* "Tester le bandeau" (Mises à jour): same round button as "?", with an eye */
-.test-banner-btn { display: inline-flex; align-items: center; justify-content: center; }
-.test-banner-btn svg { width: 11px; height: 11px; }
+/* "Tester le bandeau" (Mises à jour, eye) and the search index book (opens its window
+   on click, no hover text): same round button as "?", with an icon */
+.test-banner-btn, .icon-help-btn { display: inline-flex; align-items: center; justify-content: center; }
+.test-banner-btn svg, .icon-help-btn svg { width: 11px; height: 11px; }
 .test-banner-btn:disabled { opacity: 0.5; cursor: default; }
 .hint-tip {
   position: fixed;
@@ -1252,8 +1267,8 @@ input:focus { border-color: var(--accent); }
   font-size: 12px;
   color: var(--text-muted);
   text-align: right;
-  padding: 6px 0 8px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 16px 10px;
+  margin-top: -4px;
 }
 .date-preview strong { color: var(--accent); font-weight: 600; }
 
@@ -1286,7 +1301,6 @@ input:focus { border-color: var(--accent); }
   color: var(--text-secondary);
 }
 
-.divider { height: 1px; background: var(--border); margin: 16px 0; }
 
 .reset-btn {
   background: none;
