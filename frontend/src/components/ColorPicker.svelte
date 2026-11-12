@@ -93,6 +93,10 @@
     angle = deg;
   }
 
+  function stepAngle(d) {
+    angle = Math.max(0, Math.min(360, deg + d));
+  }
+
   // ── Hue wheel (Uni tab): hue ring + saturation/brightness square ─────────
 
   const WHEEL = 220;               // CSS px
@@ -407,7 +411,18 @@
         <span class="input-label">{$t('gradientAngle')}</span>
         <input type="range" class="angle-slider" min="0" max="360" bind:value={angle} style="--pct: {deg / 3.6}%" />
         <div class="angle-box">
-          <input class="num" type="number" min="0" max="360" bind:value={angle} on:change={onAngleChange} aria-label={$t('gradientAngle')} />
+          <div class="angle-input">
+            <input class="num" type="number" min="0" max="360" bind:value={angle} on:change={onAngleChange} aria-label={$t('gradientAngle')} />
+            <!-- custom +1 / -1 arrows (native spinners are unreliable on WebKit-GTK) -->
+            <div class="angle-steps">
+              <button type="button" tabindex="-1" disabled={deg >= 360} on:click={() => stepAngle(1)} aria-label="+1°">
+                <svg viewBox="0 0 10 6"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button type="button" tabindex="-1" disabled={deg <= 0} on:click={() => stepAngle(-1)} aria-label="-1°">
+                <svg viewBox="0 0 10 6"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
           <span>°</span>
         </div>
       </div>
@@ -752,11 +767,43 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 72px;
+  width: 86px;
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
+.angle-input {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.angle-input .num { padding-right: 22px; }
+.angle-steps {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  bottom: 1px;
+  width: 18px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+}
+.angle-steps button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.angle-steps button:first-child { border-radius: 0 5px 0 0; border-bottom: 1px solid var(--border); }
+.angle-steps button:last-child { border-radius: 0 0 5px 0; }
+.angle-steps button:hover:not(:disabled) { color: var(--text-primary); background: var(--bg-hover); }
+.angle-steps button:disabled { opacity: 0.35; cursor: default; }
+.angle-steps svg { width: 9px; height: 6px; }
 
 .section-title {
   display: flex;

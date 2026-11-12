@@ -5743,13 +5743,19 @@ shown when clicking Save is the mode applied (gradient on/off).
 - Solid tab: hue ring + saturation/brightness square in one canvas (hue 0
   at the top, clockwise; ring drawn as 360 thin sectors, no
   createConicGradient for old WebKitGTK), HEX / RGB toggle for the input
-  fields (no HSL, no eyedropper), recent colors as round swatches.
+  fields (no HSL, no eyedropper; the selected button is tinted with the
+  color being edited, not the saved accent), recent colors as round
+  swatches.
 - Gradient tab: large preview whose "linear-gradient(N°)" label only shows
   on hover; a bar with the two points (0 % / 100 %, click one to edit it,
-  labels with their hex); angle slider + number field (0-360); "Resulting
-  gradient" row with the two colors and a swap button; "Selected point"
-  editor (square, hue slider, HEX R G B on one row); recent gradients as
-  squares (they now remember the angle too).
+  labels with their hex); angle slider + number field (0-360) with small
+  up/down arrows for +1 / -1 degree (custom buttons, native spinners are
+  unreliable on WebKit-GTK; greyed at 0 and 360); "Resulting gradient" row
+  with the two colors and a swap button; "Selected point" editor (square,
+  then a large round preview of the point's color next to the hue slider,
+  with a thin bar of the resulting gradient under the slider, so the
+  result stays in view while picking; HEX R G B on one row); recent
+  gradients as squares (they now remember the angle too).
 New setting accentGradientAngle (default 135, out-of-range values reset at
 load): stores/settings.js builds every accent gradient var with it
 (gradientAngle() helper), the Settings swatch uses it. Linear only, the
