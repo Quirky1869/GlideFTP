@@ -5723,3 +5723,39 @@ everywhere, it is now a round button with a book icon (.icon-help-btn,
 same size as "?", pointer cursor, no hover text) that opens the window.
 
 ---
+#149
+Title: [UI] Color picker: redesign as two tabs (Solid / Gradient) with a hue wheel and a gradient angle
+Labels: enhancement, ui
+Version fixed: v1.8.0
+Description:
+With the gradient on, the color picker stacked three cards in a 340px
+panel (gradient preview + recents, main color, gradient color), each color
+with its own square, hue slider, HEX and R/G/B fields: long to scroll, and
+the two colors of the gradient were edited far apart. The gradient angle
+was fixed at 135 degrees.
+
+Solution (closing comment):
+Done in v1.8.0.
+
+ColorPicker.svelte rewritten. A segmented control at the top replaces the
+"Gradient" switch: "Uni" / "Dégradé" (EN "Solid" / "Gradient"); the tab
+shown when clicking Save is the mode applied (gradient on/off).
+- Solid tab: hue ring + saturation/brightness square in one canvas (hue 0
+  at the top, clockwise; ring drawn as 360 thin sectors, no
+  createConicGradient for old WebKitGTK), HEX / RGB toggle for the input
+  fields (no HSL, no eyedropper), recent colors as round swatches.
+- Gradient tab: large preview whose "linear-gradient(N°)" label only shows
+  on hover; a bar with the two points (0 % / 100 %, click one to edit it,
+  labels with their hex); angle slider + number field (0-360); "Resulting
+  gradient" row with the two colors and a swap button; "Selected point"
+  editor (square, hue slider, HEX R G B on one row); recent gradients as
+  squares (they now remember the angle too).
+New setting accentGradientAngle (default 135, out-of-range values reset at
+load): stores/settings.js builds every accent gradient var with it
+(gradientAngle() helper), the Settings swatch uses it. Linear only, the
+stops stay at 0 % and 100 % (no radial/conic, no movable stops).
+i18n: colorTabSolid, gradientResult, gradientSelectedPoint, gradientAngle,
+gradientSwap, gradientStopStart, gradientStopEnd; accentPrimaryColor and
+accentGradientColor removed.
+
+---

@@ -43,7 +43,7 @@ const darken = (hex, f = 0.84) =>
 const rgba = (hex, a) => `rgba(${hexRgb(hex).join(', ')}, ${a})`;
 
 export function applyAccentFromSettings(s) {
-  applyAccentColor(s?.accentColor, !!s?.accentGradient, s?.accentColor2);
+  applyAccentColor(s?.accentColor, !!s?.accentGradient, s?.accentColor2, s?.accentGradientAngle);
 }
 
 // Sets the accent CSS vars. With gradient off, every "-2" / "-bg" var equals
@@ -55,11 +55,21 @@ export function applyAccentFromSettings(s) {
 //   --accent-2, --accent-glow-2, --accent-subtle-2   color 2 (two-tone shadows)
 // html[data-accent-gradient] is set while the gradient is on, for the
 // gradient-text / gradient-border overrides that only make sense then.
-export function applyAccentColor(hex, gradient = false, hex2 = null) {
+export const DEFAULT_GRADIENT_ANGLE = 135;
+
+// Gradient angle in degrees (setting accentGradientAngle), 135 when missing.
+export function gradientAngle(a) {
+  if (a === null || a === undefined || a === '') return DEFAULT_GRADIENT_ANGLE;
+  const n = Math.round(Number(a));
+  return Number.isFinite(n) && n >= 0 && n <= 360 ? n : DEFAULT_GRADIENT_ANGLE;
+}
+
+export function applyAccentColor(hex, gradient = false, hex2 = null, angle = DEFAULT_GRADIENT_ANGLE) {
   if (!isHex(hex)) hex = DEFAULT_ACCENT;
   if (!isHex(hex2)) hex2 = DEFAULT_ACCENT_2;
   const c2 = gradient ? hex2 : hex;
-  const grad = (a, b) => `linear-gradient(135deg, ${a}, ${b})`;
+  const deg = gradientAngle(angle);
+  const grad = (a, b) => `linear-gradient(${deg}deg, ${a}, ${b})`;
   const root = document.documentElement;
   const set = (k, v) => root.style.setProperty(k, v);
 

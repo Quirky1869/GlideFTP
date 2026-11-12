@@ -2,7 +2,7 @@
   import { onDestroy } from 'svelte';
   import { openReleaseNotes } from '../stores/releaseNotes.js';
   import { t, locale } from '../i18n/index.js';
-  import { settings, saveSettings } from '../stores/settings.js';
+  import { settings, saveSettings, gradientAngle } from '../stores/settings.js';
   import { BrowseLocalDir, ExportSettings, ImportSettings, GetSearchIndexInfo, ClearSearchIndex, ChooseCustomSound, InstallCustomSound, RemoveCustomSound, GetAppVersion } from '../../wailsjs/go/main/App.js';
   import SearchIndexModal from './SearchIndexModal.svelte';
   import { formatBytes } from '../stores/transfers.js';
@@ -209,8 +209,8 @@
     }
   }
 
-  async function onColorApply({ color, gradient, color2 }) {
-    form = { ...form, accentColor: color, accentGradient: gradient, accentColor2: color2 };
+  async function onColorApply({ color, gradient, color2, angle }) {
+    form = { ...form, accentColor: color, accentGradient: gradient, accentColor2: color2, accentGradientAngle: angle };
     showColorPicker = false;
     await save();
   }
@@ -409,7 +409,7 @@
           <label>{$t('accentColor')}</label>
           <div class="color-row">
             {#if form.accentGradient}
-              <div class="color-swatch" style="background: linear-gradient(135deg, {form.accentColor || '#5B8AF5'}, {form.accentColor2 || '#C15BF5'})"></div>
+              <div class="color-swatch" style="background: linear-gradient({gradientAngle(form.accentGradientAngle)}deg, {form.accentColor || '#5B8AF5'}, {form.accentColor2 || '#C15BF5'})"></div>
               <span class="color-hex">{form.accentColor || '#5B8AF5'} → {form.accentColor2 || '#C15BF5'}</span>
             {:else}
               <div class="color-swatch" style="background: {form.accentColor || '#5B8AF5'}"></div>
@@ -887,6 +887,7 @@
     value={form.accentColor || '#5B8AF5'}
     gradient={!!form.accentGradient}
     value2={form.accentColor2 || '#C15BF5'}
+    angle={gradientAngle(form.accentGradientAngle)}
     onClose={() => showColorPicker = false}
     onApply={onColorApply}
   />

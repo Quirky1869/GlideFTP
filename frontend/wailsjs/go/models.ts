@@ -314,6 +314,7 @@ export namespace settings {
 	    accentColor: string;
 	    accentGradient: boolean;
 	    accentColor2: string;
+	    accentGradientAngle: number;
 	    maxConnections: number;
 	    connectCardShadow: boolean;
 	    windowWidth: number;
@@ -356,6 +357,7 @@ export namespace settings {
 	        this.accentColor = source["accentColor"];
 	        this.accentGradient = source["accentGradient"];
 	        this.accentColor2 = source["accentColor2"];
+	        this.accentGradientAngle = source["accentGradientAngle"];
 	        this.maxConnections = source["maxConnections"];
 	        this.connectCardShadow = source["connectCardShadow"];
 	        this.windowWidth = source["windowWidth"];

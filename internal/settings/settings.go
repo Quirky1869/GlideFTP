@@ -21,6 +21,7 @@ type Settings struct {
 	AccentColor                    string `json:"accentColor"`
 	AccentGradient                 bool   `json:"accentGradient"`
 	AccentColor2                   string `json:"accentColor2"`
+	AccentGradientAngle            int    `json:"accentGradientAngle"` // degrees, 0-360
 	MaxConnections                 int    `json:"maxConnections"`
 	ConnectCardShadow              bool   `json:"connectCardShadow"`
 	WindowWidth                    int    `json:"windowWidth"`
@@ -79,6 +80,7 @@ func Default() *Settings {
 		AccentColor:                    "#5B8AF5",
 		AccentGradient:                 false,
 		AccentColor2:                   "#C15BF5",
+		AccentGradientAngle:            135,
 		MaxConnections:                 3,
 		ConnectCardShadow:              false,
 		WindowWidth:                    1400,
@@ -121,6 +123,9 @@ func Load() (*Settings, error) {
 	// frontend now expects %-tokens (see frontend/src/utils/dateFormat.js).
 	if s.DateFormat != "system" && !strings.Contains(s.DateFormat, "%") {
 		s.DateFormat = Default().DateFormat
+	}
+	if s.AccentGradientAngle < 0 || s.AccentGradientAngle > 360 {
+		s.AccentGradientAngle = Default().AccentGradientAngle
 	}
 	return s, nil
 }
