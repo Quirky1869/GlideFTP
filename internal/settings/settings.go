@@ -124,6 +124,10 @@ func Load() (*Settings, error) {
 	if s.DateFormat != "system" && !strings.Contains(s.DateFormat, "%") {
 		s.DateFormat = Default().DateFormat
 	}
+	// 22 is SFTP's port, never an FTP default (the frontend skips it too).
+	if s.DefaultPort < 1 || s.DefaultPort > 65535 || s.DefaultPort == 22 {
+		s.DefaultPort = Default().DefaultPort
+	}
 	if s.AccentGradientAngle < 0 || s.AccentGradientAngle > 360 {
 		s.AccentGradientAngle = Default().AccentGradientAngle
 	}

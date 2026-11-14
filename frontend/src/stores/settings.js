@@ -5,6 +5,19 @@ import { locale } from '../i18n/index.js';
 export const settings = writable(null);
 export const theme = writable('dark');
 
+// Port offered for a new FTP connection (connection screen, quick connect,
+// new site): the "Default FTP port" setting, 21 when unset or invalid. 22 is
+// SFTP's port and never an FTP default (the FTP port fields skip it).
+export function ftpDefaultPort(s) {
+  const p = Number(s?.defaultPort);
+  return Number.isInteger(p) && p >= 1 && p <= 65535 && p !== 22 ? p : 21;
+}
+
+// Default port for a protocol: 22 for SFTP, the setting for FTP.
+export function defaultPortFor(protocol, s) {
+  return protocol === 'sftp' ? 22 : ftpDefaultPort(s);
+}
+
 export async function loadSettings() {
   try {
     const s = await GetSettings();

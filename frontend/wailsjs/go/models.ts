@@ -446,6 +446,7 @@ export namespace transfer {
 	    // Go type: time
 	    srcModTime: any;
 	    resume: boolean;
+	    wrote: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Job(source);
@@ -469,6 +470,7 @@ export namespace transfer {
 	        this.finishedAt = this.convertValues(source["finishedAt"], null);
 	        this.srcModTime = this.convertValues(source["srcModTime"], null);
 	        this.resume = source["resume"];
+	        this.wrote = source["wrote"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

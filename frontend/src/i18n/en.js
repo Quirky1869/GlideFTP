@@ -269,6 +269,7 @@ export default {
   defaultLocalDirHint: 'Folder opened in the local panel when GlideFTP starts.\nYou can type a path or pick it with the "..." button. Shortcuts like ~, $HOME or %USERPROFILE% are accepted.\nChanging it also moves the local panel right away.',
   connection: 'Connection',
   defaultPort: 'Default FTP port',
+  defaultPortHint: 'Port offered for a new FTP connection: connection screen, quick connect and new site.\nSFTP always uses port 22, which cannot be chosen here. Sites already saved keep their own port.',
   timeout: 'Operation timeout (seconds)',
   timeoutHint: 'Maximum time to wait for the server to answer, when connecting and when opening a folder. Past this delay the operation is aborted.\nThis is not an idle disconnect: an open connection is kept alive as long as the app is running.',
   notifications: 'Notifications',

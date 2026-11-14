@@ -62,6 +62,12 @@ export async function initTransfers() {
     }
   });
 
+  // A cancelled transfer's incomplete file was deleted: refresh the panels
+  // so it disappears (same trigger as a finished transfer).
+  EventsOn('transfer:partialDiscarded', (id) => {
+    completedTransfer.set({ id, _ts: Date.now() });
+  });
+
   EventsOn('transfer:progress', (job) => {
     transfers.update(list => list.map(j => j.id === job.id ? { ...j, bytesDone: job.bytesDone, size: job.size } : j));
   });

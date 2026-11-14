@@ -5765,3 +5765,96 @@ gradientSwap, gradientStopStart, gradientStopEnd; accentPrimaryColor and
 accentGradientColor removed.
 
 ---
+#150
+Title: [Bug] Cancelling a transfer left the incomplete file at the destination
+Labels: bug, transfer
+Version fixed: v1.8.0
+Description:
+Cancelling a running download or upload (row "Cancel" or "Cancel all")
+interrupted it but left the partial file at the destination. Since #136
+partial files keep their final name (no .part), so it passed for a
+complete file. Cancelling a paused transfer (Cancel all) left its partial
+file too.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+internal/transfer/queue.go: new Job.Wrote (JSON "wrote", saved in
+queue.json), set by the progress callback. progressReader/progressWriter
+(ftp.go, shared with sftp.go) now report their first Read/Write even when
+the context is already cancelled: the first call only happens once the
+destination is open (STOR accepted / SFTP file created / local file
+created), so "destination touched" is known even before the first byte.
+On context.Canceled, run() calls discardPartial(job, executor); Cancel()
+of a pending/paused job and CancelAll() of pending/paused jobs call
+discardPartialAsync (connection looked up by ConnID, local file deleted
+even without one). Condition hasPartial = Wrote || BytesDone > 0 (older
+queue.json files): a job that never wrote (e.g. a "Replace" cancelled
+during the dial) never deletes the existing file. Local = os.Remove (not
+the trash, unlike Abandon: a fragment is useless); remote =
+Executor.Delete (added to the interface, Client already had it), retried
+once after 1 s (an FTP server may still be closing the STOR). Emits
+"transfer:partialDiscarded" → transfers.js sets completedTransfer so the
+panels refresh. Pause, Stop (connection closed) and lost connection keep
+the partial file on purpose (resume).
+Folders: the folders created by a folder transfer are not deleted (files
+already complete in them are kept, and the folder may have existed before).
+
+---
+#151
+Title: [UI] Settings: number fields misaligned inside their -/+ stepper
+Labels: bug, ui
+Version fixed: v1.8.0
+Description:
+In Settings, every number field with -/+ buttons (window width/height,
+simultaneous transfers, speed limit, default FTP port, operation timeout,
+max connections) showed its value in a smaller box inside the stepper:
+its own border and rounded corners, shorter than the 32px buttons, so its
+background did not line up with the stepper behind it (clearly visible in
+the light theme). The port stepper of the connection screen was fine.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+SettingsPanel.svelte: `.num-input input` and the generic
+`input[type="text"], input[type="number"]` rule had the same specificity
+(0,1,1); the generic one comes later in the file, so its border, 4px
+radius and 5px 8px padding won. The stepper rule is now
+`.num-input input[type="number"]` (stronger): no top/bottom border, radius
+0, padding 0 4px. `.num-input` has a fixed 32px height, `align-items:
+stretch` and the input background, so the field and the buttons fill the
+whole height; the accent focus border moved to the stepper frame
+(`:focus-within`), like one single control.
+
+---
+#152
+Title: [Bug] "Default FTP port" setting was saved but never used
+Labels: bug, settings
+Version fixed: v1.8.0
+Description:
+Settings > Connection > "Default FTP port" was saved in settings.json but
+nothing read it: ConnectionBar (initial value, quick connect, FTP/SFTP
+swap) and SiteManager's new-site form hard-coded 21. The row also had no
+"?" help (left out in #148 until it worked). While checking, a site saved
+with an emptied port field was stored with port 0 and could never connect.
+
+Solution (closing comment):
+Fixed in v1.8.0.
+
+stores/settings.js: ftpDefaultPort(s) (setting, 21 when invalid, never 22)
+and defaultPortFor(protocol, s) (22 for SFTP).
+ConnectionBar.svelte: port starts at the setting; ftpPort replaces 21 in
+the FTP/SFTP guards and in quick connect; portOrDefault() for connect /
+quick connect / "save as site" when the field is emptied; stepPort starts
+from the protocol default; followFtpDefault() moves an editable FTP port
+still on the old default when the setting changes or loads late (a port
+typed by hand is kept).
+SiteManager.svelte: new-site form port = setting; setProtocol/setAuthType
+swap 22 <-> setting; validPort() on save, duplicate and "Test connection"
+(empty / out of range -> protocol default instead of 0).
+SettingsPanel.svelte: "?" hint defaultPortHint (EN + FR), stepper skips 22
+(stepFtpPort), a typed 22 / invalid value is saved as 21.
+internal/settings/settings.go Load(): DefaultPort out of range or 22 -> 21.
+SFTP keeps 22 (no setting); saved sites keep their own port.
+
+---

@@ -3,7 +3,7 @@
   import { t } from '../i18n/index.js';
   import { GetSites, CreateSite, UpdateSite, DeleteSite, ReorderSites, BrowseSSHKey, GetKeyringStatus, ExportSitesPlainSelected, ExportSitesEncryptedSelected, OpenImportDialog, DoImportSites, TestConnection } from '../../wailsjs/go/main/App.js';
   import { connectBySite, connectBySiteWithPassword, addConnection, connections, connectionStatus, refreshRemote } from '../stores/connection.js';
-  import { settings } from '../stores/settings.js';
+  import { settings, ftpDefaultPort, defaultPortFor } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { notify } from '../stores/notify.js';
 
@@ -70,7 +70,7 @@
       await TestConnection({
         protocol: form.protocol,
         host: form.host,
-        port: form.port,
+        port: validPort(form),
         user: form.user,
         password: form.password,
         encryption: form.encryption,
@@ -167,7 +167,7 @@
       name: '',
       protocol: 'ftp',
       host: '',
-      port: 21,
+      port: ftpDefaultPort($settings),
       encryption: 'none',
       authType: 'normal',
       user: '',
@@ -192,10 +192,10 @@
     let port = form.port;
     if (p === 'sftp') {
       if (authType !== 'interactive' && authType !== 'key') authType = 'interactive';
-      if (port === 21) port = 22;
+      if (port === ftpDefaultPort($settings)) port = 22;
     } else {
       if (authType === 'interactive' || authType === 'key') authType = 'normal';
-      if (port === 22) port = 21;
+      if (port === 22) port = ftpDefaultPort($settings);
     }
     form = { ...form, protocol: p, authType, port };
   }
@@ -205,10 +205,10 @@
     let port = form.port;
     if (a === 'interactive' || a === 'key') {
       protocol = 'sftp';
-      if (port === 21) port = 22;
+      if (port === ftpDefaultPort($settings)) port = 22;
     } else {
       protocol = 'ftp';
-      if (port === 22) port = 21;
+      if (port === 22) port = ftpDefaultPort($settings);
     }
     form = { ...form, authType: a, protocol, port };
   }
@@ -268,8 +268,15 @@
     editMode = true;
   }
 
+  // An emptied or out-of-range port is saved as the protocol's default port
+  // (before, it was saved as 0 and the site could never connect).
+  function validPort(f) {
+    const p = Number(f.port);
+    return Number.isInteger(p) && p >= 1 && p <= 65535 ? p : defaultPortFor(f.protocol, $settings);
+  }
+
   async function saveSite() {
-    const toSave = { ...form };
+    const toSave = { ...form, port: validPort(form) };
     // Don't persist password when using ask_password auth
     if (toSave.authType === 'ask_password') {
       toSave.password = '';
@@ -294,7 +301,7 @@
   }
 
   async function duplicateSite() {
-    const copy = { ...form, name: form.name + ' (copie)' };
+    const copy = { ...form, port: validPort(form), name: form.name + ' (copie)' };
     await CreateSite(copy);
     await loadSites();
   }

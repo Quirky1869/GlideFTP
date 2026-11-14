@@ -454,9 +454,19 @@ type progressReader struct {
 	total int64
 	sent  int64
 	cb    func(sent, total int64)
+	// started: the first Read happens once the destination is open (STOR
+	// accepted, SFTP file created); it is reported even if cancelled, so
+	// the queue knows the destination was touched.
+	started bool
 }
 
 func (p *progressReader) Read(buf []byte) (int, error) {
+	if !p.started {
+		p.started = true
+		if p.cb != nil {
+			p.cb(p.sent, p.total)
+		}
+	}
 	if p.ctx != nil {
 		if err := p.ctx.Err(); err != nil {
 			return 0, err
@@ -476,9 +486,16 @@ type progressWriter struct {
 	total    int64
 	received int64
 	cb       func(received, total int64)
+	started  bool // see progressReader
 }
 
 func (p *progressWriter) Write(buf []byte) (int, error) {
+	if !p.started {
+		p.started = true
+		if p.cb != nil {
+			p.cb(p.received, p.total)
+		}
+	}
 	if p.ctx != nil {
 		if err := p.ctx.Err(); err != nil {
 			return 0, err

@@ -4,7 +4,7 @@
   import { t } from '../i18n/index.js';
   import { connectionStatus, connectionError, connect, disconnect, activeConnectionConfig, connections, activeConnectionId, addConnectionAdHoc, closeTab } from '../stores/connection.js';
   import { guardTransfers } from '../stores/transferGuard.js';
-  import { settings } from '../stores/settings.js';
+  import { settings, ftpDefaultPort, defaultPortFor } from '../stores/settings.js';
   import { trapFocus } from '../utils/focusTrap.js';
   import { notify } from '../stores/notify.js';
   import { GetSites, CreateSite, GetKeyringStatus } from '../../wailsjs/go/main/App.js';
@@ -15,7 +15,8 @@
   let host = '';
   let user = '';
   let password = '';
-  let port = 21;
+  // FTP default = the "Default FTP port" setting (ftpPort below).
+  let port = ftpDefaultPort(get(settings));
   let protocol = 'ftp';
   let sshKeyPath = '';
   let authType = 'normal';
@@ -40,17 +41,28 @@
   $: showSaveSite = !isConnected;
   $: if (fieldsLocked || !password) showPwd = false;
 
-  $: if (!isConnected && protocol === 'sftp' && port === 21) port = 22;
-  $: if (!isConnected && protocol === 'ftp' && port === 22) port = 21;
-  $: if (quickConnectMode && protocol === 'sftp' && port === 21) port = 22;
-  $: if (quickConnectMode && protocol === 'ftp' && port === 22) port = 21;
+  $: ftpPort = ftpDefaultPort($settings);
+  // The setting changed (or was loaded after this bar): an editable FTP port
+  // still on the old default follows it, a port typed by hand is kept.
+  let lastFtpPort = ftpDefaultPort(get(settings));
+  $: followFtpDefault(ftpPort);
+  function followFtpDefault(p) {
+    if (p === lastFtpPort) return;
+    if ((!isConnected || quickConnectMode) && protocol === 'ftp' && Number(port) === lastFtpPort) port = p;
+    lastFtpPort = p;
+  }
+
+  $: if (!isConnected && protocol === 'sftp' && port === ftpPort) port = 22;
+  $: if (!isConnected && protocol === 'ftp' && port === 22) port = ftpPort;
+  $: if (quickConnectMode && protocol === 'sftp' && port === ftpPort) port = 22;
+  $: if (quickConnectMode && protocol === 'ftp' && port === 22) port = ftpPort;
 
   // Fill fields from active connection config when connected (not in quick connect mode)
   $: if (isConnected && !quickConnectMode && $activeConnectionConfig) {
     protocol = $activeConnectionConfig.protocol || 'ftp';
     host = $activeConnectionConfig.host || '';
     user = $activeConnectionConfig.user || '';
-    port = $activeConnectionConfig.port || 21;
+    port = $activeConnectionConfig.port || defaultPortFor(protocol, $settings);
     password = '············';
   }
 
@@ -74,7 +86,7 @@
     host = '';
     user = '';
     password = '';
-    port = 21;
+    port = ftpPort;
     setTimeout(() => hostInputRef?.focus(), 0);
   }
 
@@ -84,7 +96,7 @@
       protocol = $activeConnectionConfig.protocol || 'ftp';
       host = $activeConnectionConfig.host || '';
       user = $activeConnectionConfig.user || '';
-      port = $activeConnectionConfig.port || 21;
+      port = $activeConnectionConfig.port || defaultPortFor(protocol, $settings);
       password = '············';
     }
   }
@@ -97,13 +109,13 @@
     }
     if ($connections.length > 1 && onMultiDisconnect) {
       // Multiple connections: preserve typed values, trigger disconnect-all dialog
-      pendingQuickCfg = { protocol, host, port: Number(port), user, password, authType, sshKeyPath, encryption };
+      pendingQuickCfg = { protocol, host, port: portOrDefault(), user, password, authType, sshKeyPath, encryption };
       quickConnectMode = false;
       onMultiDisconnect();
       return;
     }
     // Single connection: capture values, exit quick connect mode, show keep-or-replace dialog
-    const cfg = { protocol, host, port: Number(port), user, password, authType, sshKeyPath, encryption };
+    const cfg = { protocol, host, port: portOrDefault(), user, password, authType, sshKeyPath, encryption };
     quickConnectMode = false;
     quickConnectDialog = { cfg };
   }
@@ -149,7 +161,7 @@
     pendingQuickCfg = null;
     showError = false;
     try {
-      await connect({ protocol, host, port: Number(port), user, password, authType, sshKeyPath, encryption });
+      await connect({ protocol, host, port: portOrDefault(), user, password, authType, sshKeyPath, encryption });
     } catch (e) {
       errorMsg = e?.toString() || 'Connection failed';
       showError = true;
@@ -181,7 +193,7 @@
     try {
       const h = host.trim();
       const u = user.trim();
-      const p = Number(port) || (protocol === 'sftp' ? 22 : 21);
+      const p = portOrDefault();
       const existing = (await GetSites() || []).find(s =>
         s.host.toLowerCase() === h.toLowerCase() && s.port === p && s.protocol === protocol && s.user === u);
       if (existing) {
@@ -202,8 +214,13 @@
     }
   }
 
+  // An emptied port field connects / saves on the protocol's default port.
+  function portOrDefault() {
+    return Number(port) || defaultPortFor(protocol, $settings);
+  }
+
   function stepPort(delta) {
-    let next = (Number(port) || 21) + delta;
+    let next = (Number(port) || defaultPortFor(protocol, $settings)) + delta;
     if (protocol === 'ftp' && next === 22) next += delta > 0 ? 1 : -1;
     port = Math.max(1, Math.min(65535, next));
   }

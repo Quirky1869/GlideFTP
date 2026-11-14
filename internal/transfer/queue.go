@@ -55,7 +55,10 @@ type Job struct {
 	// destination. Only set when this job wrote part of it (BytesDone > 0)
 	// or on an explicit "Resume" - never because a file happens to be there
 	// (a "Replace" paused before its first byte must not resume an old file).
-	Resume   bool               `json:"resume"`
+	Resume bool `json:"resume"`
+	// Wrote: a run of this job opened the destination and started writing
+	// it. Only then is the file there ours, so a cancel may delete it.
+	Wrote    bool               `json:"wrote"`
 	cancelFn context.CancelFunc `json:"-"`
 	// stopAs is set when the job is interrupted on purpose (connection
 	// closed, paused): the status it ends with instead of "cancelled".
@@ -73,6 +76,7 @@ type Executor interface {
 	UploadFrom(ctx context.Context, localPath, remotePath string, offset int64, progress func(sent, total int64)) error
 	DownloadFrom(ctx context.Context, remotePath, localPath string, offset int64, progress func(received, total int64)) error
 	RemoteSize(path string) (int64, error)
+	Delete(path string) error
 }
 
 type EventEmitter func(eventName string, data interface{})
@@ -267,6 +271,7 @@ func (q *Queue) run(job *Job) {
 	jobStart := time.Now()
 	progress := func(done, total int64) {
 		q.mu.Lock()
+		job.Wrote = true
 		job.BytesDone = done
 		job.Size = total
 		limitBps := q.speedLimitBps
@@ -308,6 +313,11 @@ func (q *Queue) run(job *Job) {
 			// lost connection): one clear reason instead of a raw EOF.
 			q.setStatus(job, StatusFailed, ErrConnectionClosed)
 		case errors.Is(err, context.Canceled):
+			// Cancelled by the user: the incomplete file is useless.
+			q.mu.Lock()
+			snap := *job
+			q.mu.Unlock()
+			q.discardPartial(snap, executor)
 			q.setStatus(job, StatusCancelled, "")
 		default:
 			q.setStatus(job, StatusFailed, err.Error())
@@ -420,6 +430,7 @@ func (q *Queue) Cancel(id string) error {
 				job.FinishedAt = time.Now()
 				q.dirty = true
 				q.emitter("transfer:update", job)
+				q.discardPartialAsync(*job)
 				return nil
 			}
 			if job.Status == StatusRunning && job.cancelFn != nil {
@@ -442,12 +453,16 @@ func (q *Queue) CancelAll() {
 	now := time.Now()
 	var ids []string
 	var cancelFns []context.CancelFunc
+	var stale []Job // stopped jobs that left a partial file (resumed later)
 	for _, job := range q.jobs {
 		switch job.Status {
 		case StatusPending, StatusPaused:
 			job.Status = StatusCancelled
 			job.FinishedAt = now
 			ids = append(ids, job.ID)
+			if hasPartial(job) {
+				stale = append(stale, *job)
+			}
 		case StatusRunning:
 			if job.cancelFn != nil {
 				cancelFns = append(cancelFns, job.cancelFn)
@@ -461,6 +476,65 @@ func (q *Queue) CancelAll() {
 		cancel()
 	}
 	q.emitter("transfer:cancelledAll", ids)
+	for _, job := range stale {
+		q.discardPartialAsync(job)
+	}
+}
+
+// hasPartial: the job left an incomplete file at its destination (a run
+// wrote to it, or it was paused / failed part way). BytesDone covers the
+// queue.json files saved before Wrote existed.
+func hasPartial(job *Job) bool {
+	return job.Wrote || job.BytesDone > 0
+}
+
+// discardPartialAsync is discardPartial for a job that is not running (its
+// connection is looked up; a local file is deleted even without one).
+func (q *Queue) discardPartialAsync(job Job) {
+	if !hasPartial(&job) {
+		return
+	}
+	q.mu.Lock()
+	resolve := q.resolve
+	q.mu.Unlock()
+	go func() {
+		var ex Executor
+		if resolve != nil {
+			ex = resolve(job.ConnID)
+		}
+		q.discardPartial(job, ex)
+	}()
+}
+
+// discardPartial deletes the incomplete destination file of a job the user
+// cancelled: it carries the final name, so it must not pass for a complete
+// one. Never a file the job did not write to (a "Replace" cancelled before
+// its first byte keeps the original). Local = deleted for good (not the
+// trash, it is only a fragment); remote = deleted if the connection is
+// open, retried once (an FTP server can still be closing the upload).
+func (q *Queue) discardPartial(job Job, ex Executor) {
+	if !hasPartial(&job) {
+		return
+	}
+	if job.Direction == Download {
+		if info, err := os.Stat(job.LocalPath); err == nil && !info.IsDir() {
+			if os.Remove(job.LocalPath) == nil {
+				q.emitter("transfer:partialDiscarded", job.ID)
+			}
+		}
+		return
+	}
+	if ex == nil {
+		return
+	}
+	err := ex.Delete(job.RemotePath)
+	if err != nil {
+		time.Sleep(time.Second)
+		err = ex.Delete(job.RemotePath)
+	}
+	if err == nil {
+		q.emitter("transfer:partialDiscarded", job.ID)
+	}
 }
 
 // stop ends the pending and running jobs matching match: as StatusFailed

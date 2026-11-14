@@ -124,6 +124,12 @@
     for (const k of Object.keys(DEFAULTS)) {
       if (typeof DEFAULTS[k] === 'number') snapshot[k] = Number(snapshot[k]);
     }
+    // Default FTP port typed by hand: out of range or 22 (SFTP) → back to 21.
+    const fp = snapshot.defaultPort;
+    if (!Number.isInteger(fp) || fp < 1 || fp > 65535 || fp === 22) {
+      snapshot.defaultPort = DEFAULTS.defaultPort;
+      form = { ...form, defaultPort: DEFAULTS.defaultPort };
+    }
     const json = JSON.stringify(snapshot);
     if (json === lastSavedJson) return;
     lastSavedJson = json;
@@ -153,6 +159,13 @@
     const current = Number(form[key]) || 0;
     const next = Math.max(min, Math.min(max, current + delta));
     form = { ...form, [key]: next };
+  }
+
+  // Default FTP port: skips 22 (SFTP's port), like the connection screen.
+  function stepFtpPort(delta) {
+    let next = (Number(form.defaultPort) || 21) + delta;
+    if (next === 22) next += delta;
+    form = { ...form, defaultPort: Math.max(1, Math.min(65535, next)) };
   }
 
   // ── Custom notification sound ──
@@ -536,11 +549,11 @@
       <h3>{$t('connection')}</h3>
       <div class="card">
         <div class="setting-row">
-          <label>{$t('defaultPort')} <button class="reset-btn" hidden={form.defaultPort === DEFAULTS.defaultPort} on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
+          <label on:click|self|preventDefault>{$t('defaultPort')} <button type="button" class="help-btn hint-btn" aria-label={$t('defaultPortHint')} on:mouseenter={(e) => openHint(e, 'defaultPortHint')} on:mouseleave={closeHint} on:focus={(e) => openHint(e, 'defaultPortHint')} on:blur={closeHint}>?</button> <button class="reset-btn" hidden={form.defaultPort === DEFAULTS.defaultPort} on:click|stopPropagation={() => resetSetting('defaultPort')} title={$t('resetToDefault')}>↺</button></label>
           <div class="num-input">
-            <button class="num-btn" on:click={() => step('defaultPort', -1, 1, 65535)}>−</button>
+            <button class="num-btn" on:click={() => stepFtpPort(-1)}>−</button>
             <input type="number" bind:value={form.defaultPort} min="1" max="65535" />
-            <button class="num-btn" on:click={() => step('defaultPort', 1, 1, 65535)}>+</button>
+            <button class="num-btn" on:click={() => stepFtpPort(1)}>+</button>
           </div>
         </div>
         <div class="setting-row">
@@ -1093,25 +1106,38 @@ h3 {
 /* ── Number stepper ── */
 .num-input {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  height: 32px;
+  box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
+  background: var(--bg-input);
 }
+.num-input:focus-within { border-color: var(--accent); }
 
-.num-input input {
+/* .num-input input[type="number"] beats the generic input[type="number"] rule further down
+   (same specificity before, so its own border, radius and padding won and
+   the field sat as a smaller box inside the stepper). */
+.num-input input[type="number"] {
   width: 60px;
+  height: auto;
+  box-sizing: border-box;
   text-align: center;
   background: var(--bg-input);
   border: none;
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
+  border-radius: 0;
   color: var(--text-primary);
-  padding: 5px 4px;
+  padding: 0 4px;
+  margin: 0;
   font-size: 13px;
   outline: none;
   -moz-appearance: textfield;
+  -webkit-appearance: none;
 }
+.num-input input[type="number"]:focus { border-color: var(--border); }
 .num-input input::-webkit-inner-spin-button,
 .num-input input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -1120,7 +1146,7 @@ h3 {
   border: none;
   color: var(--text-secondary);
   padding: 0 10px;
-  height: 32px;
+  height: auto;
   font-size: 16px;
   cursor: pointer;
   transition: background 0.1s, color 0.1s;

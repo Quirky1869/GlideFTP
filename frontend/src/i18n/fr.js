@@ -269,6 +269,7 @@ export default {
   defaultLocalDirHint: 'Dossier ouvert dans le panneau local au lancement de GlideFTP.\nVous pouvez taper un chemin ou le choisir avec le bouton "...". Les raccourcis ~, $HOME ou %USERPROFILE% sont acceptés.\nLe changer déplace aussi le panneau local tout de suite.',
   connection: 'Connexion',
   defaultPort: 'Port FTP par défaut',
+  defaultPortHint: 'Port proposé pour une nouvelle connexion FTP : écran de connexion, connexion rapide et nouveau site.\nLe SFTP utilise toujours le port 22, qui ne peut pas être choisi ici. Les sites déjà enregistrés gardent leur propre port.',
   timeout: 'Délai d\'opération (secondes)',
   timeoutHint: 'Temps d\'attente maximum d\'une réponse du serveur, à la connexion et à l\'ouverture d\'un dossier. Passé ce délai, l\'opération est abandonnée.\nCe n\'est pas une déconnexion après inactivité : une connexion ouverte est maintenue tant que l\'application tourne.',
   notifications: 'Notifications',
